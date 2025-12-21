@@ -1,5 +1,6 @@
 import { Colour } from "../types.js";
 
+// schema:
 export type PieceType = 
     | "pawn"
     | "rook"
@@ -10,7 +11,7 @@ export type PieceType =
 
 export class Piece {
     constructor(
-        public type: PieceType,
-        public colour: Colour
+        public readonly type: PieceType, //make pieces and piece colours immutable with readonly
+        public readonly colour: Colour
     ) {}
 }
