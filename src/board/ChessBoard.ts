@@ -16,41 +16,67 @@ export class ChessBoard {
         this.setupInitialPosition();
     }
 
-    private setupInitialPosition(): void {
-
-        const bankRank: PieceType[] = [ // the row with the major pieces (not pawns!)
-            "rook", // file index: 0
-            "knight", // 1
-            "bishop", // 2
-            "queen", // 3
-            "king", // 4
-            "bishop", // 5
-            "knight", // 6
-            "rook" // 7
-        ];
-
-        for (let file = 0; file < 8; file++) {
-            this.squares[1][file].piece = new Piece("pawn", "white"); // create all white pawns via loop
-            this.squares[6][file].piece = new Piece("pawn", "black"); // create all black pawns via loop
-
-            this.squares[0][file].piece = new Piece(bankRank[file], "white"); // white bank rank pieces
-            this.squares[7][file].piece = new Piece(bankRank[file], "black"); // white bank rank pieces
+        private placePiece(rank: Rank, file: File, piece: Piece): void {
+            this.squares[rank][file].piece = piece; // Places piece on square
         }
-    }
 
-    public getSquare(rank: Rank, file: File): Square {
-        return this.squares[rank][file]
+
+    // Code below sets up all 32 pieces on board in initial position
+    /**
+        * Board orientation:
+        * - rank 0 = White back rank
+        * - rank 1 = White pawns
+        * - rank 6 = Black pawns
+        * - rank 7 = Black back rank
+        *
+        * Ranks increase from White's side towards Black's side.
+    */
+        private setupInitialPosition(): void { 
+
+            const backRank: PieceType[] = [ // the row with the major pieces (not pawns!)
+                "rook", // file index: 0
+                "knight", // 1
+                "bishop", // 2
+                "queen", // 3
+                "king", // 4
+                "bishop", // 5
+                "knight", // 6
+                "rook" // 7
+            ];
+
+            this.setUpPawns(); 
+            this.setUpBackRanks(backRank); // external data on piece type layout above is passed in
+
+        }
+    
+        private setUpPawns(): void {
+            for (let file = 0 as File; file < 8; file++) {
+                this.placePiece(1, file, new Piece("pawn", "white")); // create all white pawns via loop
+                this.placePiece(6, file, new Piece("pawn", "black")); // create all black pawns via loop
+            }
+        }
+
+        private setUpBackRanks(backRank: PieceType[]): void {
+            for (let file = 0 as File; file < 8; file++) {
+                this.placePiece(0, file, new Piece(backRank[file], "white")); // create white back rank pieces
+                this.placePiece(7, file, new Piece(backRank[file], "black")); // create black back rank pieces
+                }
+            }
+    
+
+        public getSquare(rank: Rank, file: File): Square {
+            return this.squares[rank][file]
         // public method callable outside the class that returns Square
         // safe public way to access one square
-    }
+        }
 
-    private createEmptyBoard(): Square[][] { // private internal helper
+        private createEmptyBoard(): Square[][] { // private internal helper
 
-        const board: Square[][] = []; //creates empty array that will become
+            const board: Square[][] = []; //creates empty array that will become
         // full 2D board grid
 
-        for (const rank of RANKS) { //outer loop, builds horizontal rows (ranks)
-            const row: Square[] = [];
+            for (const rank of RANKS) { //outer loop, builds horizontal rows (ranks)
+                const row: Square[] = [];
 
             for (const file of FILES) { //inner nested loop, builds vertical columns (files)
                 row.push(new Square(rank, file, null)); // creates new Square instance
@@ -59,7 +85,7 @@ export class ChessBoard {
         board.push(row); // add completed row to board
         }
 
-    return board; // returns finished row
+    return board; // returns whole board
     }
 }
 
