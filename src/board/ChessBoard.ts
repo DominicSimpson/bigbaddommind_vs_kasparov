@@ -73,7 +73,7 @@ export class ChessBoard {
         private createEmptyBoard(): Square[][] { // private internal helper
 
             const board: Square[][] = []; //creates empty array that will become
-        // full 2D board grid
+            // full 2D board grid
 
             for (const rank of RANKS) { //outer loop, builds horizontal rows (ranks)
                 const row: Square[] = [];
