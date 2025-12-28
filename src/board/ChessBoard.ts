@@ -3,6 +3,12 @@ import { FILES, RANKS } from "./coords.js";
 import type { File, Rank } from "../types.js"
 import { Piece, PieceType } from "../pieces/Piece.js";
 
+export interface Move {
+    fromRank: Rank;
+    fromFile: File;
+    toRank: Rank;
+    toFile: File;
+}
 
 export class ChessBoard {
     private squares: Square[][]; //declares private property called squares
@@ -50,14 +56,14 @@ export class ChessBoard {
         }
     
         private setUpPawns(): void {
-            for (let file = 0 as File; file < 8; file++) {
+            for (const file of FILES) {
                 this.placePiece(1, file, new Piece("pawn", "white")); // create all white pawns via loop
                 this.placePiece(6, file, new Piece("pawn", "black")); // create all black pawns via loop
             }
         }
 
         private setUpBackRanks(backRank: PieceType[]): void {
-            for (let file = 0 as File; file < 8; file++) {
+            for (const file of FILES) {
                 this.placePiece(0, file, new Piece(backRank[file], "white")); // create white back rank pieces
                 this.placePiece(7, file, new Piece(backRank[file], "black")); // create black back rank pieces
                 }
@@ -68,6 +74,16 @@ export class ChessBoard {
             return this.squares[rank][file]
         // public method callable outside the class that returns Square
         // safe public way to access one square
+        }
+
+        public movePiece(move: Move): void {
+            const fromSquare = this.getSquare(move.fromRank, move.fromFile);
+            const toSquare = this.getSquare(move.toRank, move.toFile);
+
+            if (!fromSquare.piece) throw new Error("No piece on source square.");
+
+            toSquare.piece = fromSquare.piece;
+            fromSquare.piece = null;
         }
 
         private createEmptyBoard(): Square[][] { // private internal helper
