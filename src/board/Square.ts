@@ -16,7 +16,7 @@ export class Square { // Square representation
     get isLight(): boolean { // 
         return (this.file + this.rank) % 2 === 1;
         // determines if square is light or dark square and
-        // renders accordingly; a1 is dark (as is customary with real boards), b1 light, etc.   
+        // renders accordingly, starting with a1 as dark (as is customary with real boards), b1 light, etc.   
     }
 
     get coord(): string {

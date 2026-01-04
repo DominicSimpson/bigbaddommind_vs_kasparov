@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chess app domain entity relationship diagram (engine concepts)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="" />
+  <link rel="icon" href="favicon.png">
+</head>
+<body>
+  <h1>Chess app domain entity relationship diagram (engine concepts)</h1>
+    <pre class="mermaid">
+        erDiagram
+            CHESSGAME ||--|| CHESSBOARD : owns
+            CHESSGAME ||--|| RULESENGINE : uses
+            CHESSGAME ||--o{ MOVE: records
+
+            CHESSBOARD ||--o{ SQUARE : contains
+            SQUARE }o--|| PIECE : holds
+            PIECE ||--|| MOVEPOLICY : uses
+
+            RULESENGINE ||--o{ MOVEPOLICY : provides
+            RULESENGINE ||--o{ VALIDATOR : includes
+
+            MOVE {
+                int fromRank
+                int fromFile
+                int toRank
+                int toFile
+                string promotion
+            }
+
+            CHESSBOARD {
+                Square[][] squares
+            }
+
+            SQUARE {
+                int rank
+                int file
+                Piece piece
+                bool isOccupied
+                bool isLight
+                string coord
+            }
+
+            PIECE {
+                string type
+                string colour
+            }
+
+            RULESENGINE {
+                string variant
+            }
+
+            MOVEPOLICY {
+                string pieceType
+            }
+
+            VALIDATOR {
+                bool isLegal
+            }
+
+    </pre>
+
+
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ startOnLoad: true });
+    </script>
+
+</body>
+</html>

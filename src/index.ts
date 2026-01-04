@@ -5,9 +5,9 @@ const board = new ChessBoard();
 console.log(board.getSquare(1, 4).piece);
 
 
-board.movePiece({
+board.movePiece({ // e2 > e4
                 fromRank: 1,
-                fromFile: 2,
+                fromFile: 4,
                 toRank: 3,
                 toFile: 4
 });

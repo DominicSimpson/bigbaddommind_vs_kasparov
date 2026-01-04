@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Architecture flowchart (folder structure + dependencies)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="description" content="" />
+  <link rel="icon" href="favicon.png">
+</head>
+<body>
+  <h1>Architecture flowchart (folder structure + dependencies)</h1>
+    <pre class="mermaid">
+        flowchart TB
+            subgraph SRC[src/]
+                subgraph BOARD[src/board/]
+                    CB[ChessBoard.ts]
+                    SQ[Square.ts]
+                    COORDS[coords.ts]
+                end
+
+                subgraph PIECES[src/pieces/]
+                    P[Pieces.ts]
+                    PT[PieceType.ts or in Piece.ts]
+                end
+
+                subgraph MOVES[src/moves/]
+                    M[Move.ts]
+                end
+
+                subgraph RULES[src/rules/]
+                    RE[RulesEngine.ts]
+                    GEN[MoveGenerator.ts]
+                    VAL[MoveValidator.ts]
+                end
+
+                subgraph GAME[src/game/]
+                    G[ChessGame.ts]
+                    TURN[TurnManager.ts]
+                    HIST[MoveHistory.ts]
+                end
+
+                subgraph TYPES[src/]
+                    T[types.ts]
+                end
+            end
+
+            %% Dependencies (arrows point from user -> dependency)
+            CB --> SQ
+            CB --> COORDS
+            CB --> P
+            SQ --> P
+            SQ --> T
+            COORDS --> T
+            P --> T
+            M --> T
+
+            %% Rules layer reads state and produces moves
+            GEN --> CB
+            GEN --> M
+            VAL --> CB
+            VAL --> M
+            RE --> GEN
+            RE --> VAL
+
+            %% Game orchestrates everything (highest-level)
+            G --> CB
+            G --> RE
+            G --> HIST
+            G --> TURN
+            HIST --> M
+            TURN --> T
+    </pre>
+
+
+    <script type="module">
+      import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+      mermaid.initialize({ startOnLoad: true });
+    </script>
+
+</body>
+</html>
