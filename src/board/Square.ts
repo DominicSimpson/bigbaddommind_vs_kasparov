@@ -1,4 +1,4 @@
-import { File, Rank } from "../types.js";
+import { File, Rank } from "../types/coords.js";
 import { Piece } from "../pieces/Piece.js";
 
 export class Square { // Square representation

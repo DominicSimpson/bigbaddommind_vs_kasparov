@@ -1,4 +1,4 @@
-import { Colour } from "../types.js";
+import { Colour } from "../types/colour.js";
 
 // schema:
 export type PieceType = 

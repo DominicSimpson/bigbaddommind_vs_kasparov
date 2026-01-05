@@ -1,14 +1,8 @@
 import { Square } from "./Square.js";
-import { FILES, RANKS } from "./coords.js";
-import type { File, Rank } from "../types.js"
+import { FILES, RANKS, File, Rank } from "../types/coords.js";
 import { Piece, PieceType } from "../pieces/Piece.js";
+import type { Move } from "../types/Move.js";
 
-export interface Move {
-    fromRank: Rank;
-    fromFile: File;
-    toRank: Rank;
-    toFile: File;
-}
 
 export class ChessBoard {
     private squares: Square[][]; //declares private property called squares
