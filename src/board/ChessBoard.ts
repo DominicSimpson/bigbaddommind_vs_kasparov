@@ -70,13 +70,13 @@ export class ChessBoard {
         // safe public way to access one square
     }
 
-    public getPseudoLegalMoves(fromRank: Rank, fromFile: File): Move[] {
+    public getPseudoLegalMoves(fromRank: Rank, fromFile: File): Move[] { // logic for piece movement
         const square = this.getSquare(fromRank, fromFile);
         const piece = square.piece;
         if (!piece) return [];
 
         switch (piece.type) {
-            case "pawn":    return []; // this.pawnMoves(fromRank, fromFile, piece);    
+            case "pawn":    return this.pawnMoves(fromRank, fromFile, piece);    
             case "knight":  return this.knightMoves(fromRank, fromFile, piece);
             case "bishop":  return [];
             case "rook":    return [];
@@ -86,21 +86,22 @@ export class ChessBoard {
     }
 
     private inBounds(r: number, f: number): boolean { // Abbreviations for rank and file
-        return r >= 0 && r < 8 && f >= 0 && f < 8;
+        return r >= 0 && r < 8 && f >= 0 && f < 8; // checks if is in bounds of chessboard
     }
 
-    private isEmpty(r: number, f: number): boolean {
+    private isEmpty(r: number, f: number): boolean { // checks if square is empty
         if (!this.inBounds(r, f)) return false;
         return this.getSquare(r as Rank, f as File).piece === null;
     }
 
+    // checks if square is occuped by enemy piece
     private isEnemy(r: number, f: number, colour: Piece["colour"]): boolean {
         if (!this.inBounds(r, f)) return false;
         const p = this.getSquare(r as Rank, f as File).piece;
         return p !== null && p.colour !== colour;
     }
 
-    private pushIfOk(
+    private pushIfOk( // add a move to array if destination is valid
         moves: Move[], 
         fromRank: Rank,
         fromFile: File,
@@ -118,7 +119,7 @@ export class ChessBoard {
         
         if (target === null) {
             moves.push({ fromRank, fromFile, toRank: tr, toFile: tf });
-        } else if (target.colour !== colour) {
+        } else if (target.colour !== colour) { // general capture logic
             moves.push({ fromRank, fromFile, toRank: tr, toFile: tf, capture: true });
             }
         }
@@ -137,14 +138,14 @@ export class ChessBoard {
     // f + 1: one file right
     // f - 1: one file left
 
-    private pawnMoves(r: number, f: number, piece: Piece): Move[] {
+    private pawnMoves(r: Rank, f: File, piece: Piece): Move[] {
         const moves: Move[] = [];
 
         // if piece is white, white pawns move "positive" (up),
         // otherwise pawn is black and therefore moves "negative" (down)
         // (obviously assuming white pieces start at bottom of board and black on stop, as conventional)
         // ternary operator can be used because of type definition specifying only black or white:
-        const dir = piece.colour == "white" ? +1 : -1; // dir = direction
+        const dir = piece.colour == "white" ? 1 : -1; // dir = direction
 
         // starting position for both sets of pawns:
         const startRank = piece.colour === "white" ? 1 : 6;
@@ -153,25 +154,25 @@ export class ChessBoard {
         const oneStepR = r + dir; // logic for if pawn moves one square up (white) / down (black)
 
         if (this.inBounds(oneStepR, f) && this.isEmpty(oneStepR, f)) {
-            moves.push({ from: { rank: r, file: f }, to: { rank: oneStepR, file: f } });
-        }
+            this.pushIfOk(moves, r, f, oneStepR, f, piece.colour);
+        
 
         const twoStepR = r + 2 * dir; // // logic for if pawn moves two squares up (white) / down (black)
 
         if (r === startRank && this.isEmpty(twoStepR, f)) {
-            moves.push({ from: { rank: r, file: f }, to: { rank: twoStepR, file: f } });
+            this.pushIfOk(moves, r, f, twoStepR, f, piece.colour);
         }
+    }
 
-        // capture of opponent piece 
 
-        // dr = delta rank - change in rank (first number)
         // df = delta file - change in file (second number)
         // accounts for pawn being able to capture opponent piece diagonally left or right
         for (const df of [-1, +1]) {
             const capR = r + dir;
             const capF = f + df;
-            if (this.isEmpty(capR, capF, piece.colour)) {
-                moves.push({ from: { rank: r, file: f }, to: { rank: capR, file: capF }, capture: true });
+            if (this.isEnemy(capR, capF, piece.colour)) {
+            // pushIfOk already checks enemy vs friendly and sets capture:true
+                this.pushIfOk(moves, r, f, capR, capF, piece.colour);
             }
         }
         
@@ -190,6 +191,7 @@ export class ChessBoard {
             [+2, -1], [+2, +1] // two ranks up, one file left / two ranks up, one file right
         ];
 
+        // dr = delta rank - change in rank (first number)
         for (const [dr, df] of jumps) { // each pair of the above possible moves is:
             this.pushIfOk(moves, r, f, r + dr, f + df, piece.colour);
             //destination rank = r + dr
