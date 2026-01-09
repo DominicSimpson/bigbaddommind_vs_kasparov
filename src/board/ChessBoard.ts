@@ -58,8 +58,8 @@ export class ChessBoard {
 
     private setUpBackRanks(backRank: PieceType[]): void {
         for (const file of FILES) {
-            this.placePiece(0, file, new Piece(backRank[file], "white")); // create white back rank pieces
-            this.placePiece(7, file, new Piece(backRank[file], "black")); // create black back rank pieces
+            this.placePiece(0, file, new Piece(backRank[file], "white")); // create white back rank pieces via loop
+            this.placePiece(7, file, new Piece(backRank[file], "black")); // create black back rank pieces via loop
             }
         }
     
@@ -76,12 +76,12 @@ export class ChessBoard {
         if (!piece) return [];
 
         switch (piece.type) {
-            case "pawn":    return this.pawnMoves(fromRank, fromFile, piece);    
+            case "pawn":    return this.pawnMoves(fromRank, fromFile, piece);
+            case "rook":    return [];
             case "knight":  return this.knightMoves(fromRank, fromFile, piece);
             case "bishop":  return [];
-            case "rook":    return [];
             case "queen":   return [];
-            case "king":    return [];
+            case "king":    return this.kingMoves(fromRank, fromFile, piece);
         }
     }
 
@@ -138,12 +138,18 @@ export class ChessBoard {
     // f + 1: one file right
     // f - 1: one file left
 
+    // dr = delta rank - change in rank (first number)
+    // df = delta file - change in file (second number)
+
+
     private pawnMoves(r: Rank, f: File, piece: Piece): Move[] {
-        const moves: Move[] = [];
+        // r: the pawns' current rank (0–7)
+        // f: the pawns' current file (0–7)
+        const moves: Move[] = []; // creates empty array to store moves pawns will make
 
         // if piece is white, white pawns move "positive" (up),
         // otherwise pawn is black and therefore moves "negative" (down)
-        // (obviously assuming white pieces start at bottom of board and black on stop, as conventional)
+        // (obviously assuming white pieces start at bottom of board and black on top, as conventional)
         // ternary operator can be used because of type definition specifying only black or white:
         const dir = piece.colour == "white" ? 1 : -1; // dir = direction
 
@@ -153,19 +159,18 @@ export class ChessBoard {
         // r for rank:
         const oneStepR = r + dir; // logic for if pawn moves one square up (white) / down (black)
 
-        if (this.inBounds(oneStepR, f) && this.isEmpty(oneStepR, f)) {
+        if (this.inBounds(oneStepR, f) && this.isEmpty(oneStepR, f)) { // checks if move is valid
             this.pushIfOk(moves, r, f, oneStepR, f, piece.colour);
         
 
         const twoStepR = r + 2 * dir; // // logic for if pawn moves two squares up (white) / down (black)
 
-        if (r === startRank && this.isEmpty(twoStepR, f)) {
+        if (r === startRank && this.isEmpty(twoStepR, f)) { // checks if move is valid
             this.pushIfOk(moves, r, f, twoStepR, f, piece.colour);
         }
     }
 
 
-        // df = delta file - change in file (second number)
         // accounts for pawn being able to capture opponent piece diagonally left or right
         for (const df of [-1, +1]) {
             const capR = r + dir;
@@ -180,8 +185,8 @@ export class ChessBoard {
     }
     
     private knightMoves(r: Rank, f: File, piece: Piece): Move[] {
-        // r: the knight's current rank (0–7)
-        // f: the knight's current file (0–7)
+        // r: the knights' current rank (0–7)
+        // f: the knights' current file (0–7)
         const moves: Move[] = []; // creates empty array to store moves knight will make
         const jumps: Array<[number, number]> = [
         // A knight always moves in a 2 + 1 pattern, with exactly 8 permutations of movement:
@@ -191,7 +196,6 @@ export class ChessBoard {
             [+2, -1], [+2, +1] // two ranks up, one file left / two ranks up, one file right
         ];
 
-        // dr = delta rank - change in rank (first number)
         for (const [dr, df] of jumps) { // each pair of the above possible moves is:
             this.pushIfOk(moves, r, f, r + dr, f + df, piece.colour);
             //destination rank = r + dr
@@ -200,6 +204,33 @@ export class ChessBoard {
         return moves;
     }
 
+    
+    private kingMoves(r: Rank, f: File, piece: Piece): Move[] {
+        // r: the kings' current rank (0–7)
+        // f: the kings' current file (0–7)
+        const moves: Move[] = []; // creates empty array to store moves king will make
+        // // Movement permutations:
+        // ( 1,-1): up-left
+        // ( 1, 0): up
+        // ( 1, 1): up-right
+        // ( 0,-1): left
+        // ( 0, 0): no move
+        // ( 0, 1): right
+        // ( 1,-1): down-left
+        // ( 1, 0): down
+        // ( 1, 1): down-right
+        
+        // Starts an outer loop over delta rank (dr), i.e. vertical movement:
+        for (let dr = -1; dr <= 1; dr++) { // -1: one rank down; +1: one rank up
+        // Starts an inner nested loop over delta file (df), i.e. horizontal movement:
+            for (let df = -1; df <= 1; df++) {
+                if (dr === 0 && df === 0) continue; // (0,0): no move
+                this.pushIfOk(moves, r, f, r + dr, f + df, piece.colour) // computes candidate destination
+                // after establishing that it is valid (i.e. not off board grid or if contains friendly piece)
+            }
+        }
+        return moves;
+    }
 
     public movePiece(move: Move): void {
         const fromSquare = this.getSquare(move.fromRank, move.fromFile);
