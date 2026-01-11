@@ -354,7 +354,7 @@ export class ChessBoard {
             const row: Square[] = [];
 
         for (const file of FILES) { //inner nested loop, builds vertical columns (files)
-            row.push(new Square(rank, file, null)); // creates new Square instance
+            row.push(new Square(file, rank, null)); // creates new Square instance
     }
 
         board.push(row); // add completed row to board
