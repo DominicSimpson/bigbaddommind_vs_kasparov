@@ -91,6 +91,14 @@ export class ChessBoard {
         // safe public way to access one square
     }
 
+    public getSideToMove(): Colour {
+        return this.sideToMove;
+    }
+
+    public canUndo(): boolean {
+        return this.history.length > 0;
+    }
+
     // ───────────────────────────────
         // 4. Move generation (piece generators)
     // ───────────────────────────────
@@ -332,15 +340,18 @@ export class ChessBoard {
         // 5. Move execution (mutating)
     // ───────────────────────────────
 
-    public movePiece(move: Move): void {
+    public makeMove(move: Move): void {
         const fromSquare = this.getSquare(move.fromRank, move.fromFile);
         const toSquare = this.getSquare(move.toRank, move.toFile);
 
-        if (!fromSquare.piece) throw new Error("No piece on source square.");
-        // if a piece is not occupying a square
+        const piece = fromSquare.piece;
 
-        toSquare.piece = fromSquare.piece; // piece is now recorded as in new square
-        fromSquare.piece = null; // original square that piece moved from is now unoccupied
+        if (!piece) throw new Error("No piece on source square.");
+        // if a piece is not occupying a square
+        if (piece.colour !== this.sideToMove) throw new Error("Not your turn.");
+
+        // toSquare.piece = fromSquare.piece; // piece is now recorded as in new square
+        // fromSquare.piece = null; // original square that piece moved from is now unoccupied
     }
 
     // ───────────────────────────────
