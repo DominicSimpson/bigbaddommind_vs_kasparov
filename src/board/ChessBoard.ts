@@ -3,12 +3,41 @@ import { FILES, RANKS } from "../types/coords.js";
 import type { File, Rank } from "../types/coords.js";
 import { Piece, PieceType } from "../pieces/Piece.js";
 import type { Move } from "../types/Move.js";
+import type { Colour } from "../types/colour.js";
+import type { UndoRecord } from "../board/UndoRecord.js";
+import type { CastlingRights } from "../board/UndoRecord.js";
+
 
 
 export class ChessBoard {
+
+    // ───────────────────────────────
+        // 1. Fields / state
+    // ───────────────────────────────
     private squares: Square[][]; //declares private property called squares
     //Type: 2D array of Square objects (8 rows x 8 columns)
     //private so that code outside the class cannot do board.squares
+    private history: UndoRecord[] = []; // see notes in UndoRecord.ts
+
+    private sideToMoveFirst: Colour = "white"; // white always moves first - that's the rules!
+
+    private castlingRights: CastlingRights = { 
+        whiteK: true, 
+        whiteQ: true, 
+        blackK: true, 
+        blackQ: true 
+    };
+
+    private enPassantTarget: { rank: Rank, file: File} | null = null;
+
+    private halfMoveClock = 0;
+    private fullMoveNumber = 1;
+
+    
+    // ───────────────────────────────
+        // 2. Constructor / setup
+    // ───────────────────────────────
+
     constructor() {
         this.squares = this.createEmptyBoard(); //sets internal squares grid
         // to freshly generated empty 8x8 board
@@ -121,7 +150,7 @@ export class ChessBoard {
         if (target === null) {
             moves.push({ fromRank, fromFile, toRank: tr, toFile: tf });
         } else if (target.colour !== colour) { // general capture logic
-            moves.push({ fromRank, fromFile, toRank: tr, toFile: tf, capture: true });
+            moves.push({ fromRank, fromFile, toRank: tr, toFile: tf, isCapture: true });
             }
         }
 
@@ -158,7 +187,7 @@ export class ChessBoard {
                     moves.push({ fromRank: r, fromFile: f, toRank: tr, toFile: tf });
                 } else {
                     if (target.colour !== piece.colour) { // confirms square is occupied by enemy
-                        moves.push({ fromRank: r, fromFile: f, toRank: tr, toFile: tf, capture: true });
+                        moves.push({ fromRank: r, fromFile: f, toRank: tr, toFile: tf, isCapture: true });
                     }
                     break; // ray stops either because square is friendly piece, or capture of enemy piece ends movement
                 }

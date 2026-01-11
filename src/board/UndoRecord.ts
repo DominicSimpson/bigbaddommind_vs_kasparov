@@ -29,7 +29,7 @@ export interface UndoRecord { // state delta recorder
     sideToMoveBefore: Colour; // makeMove() flips the turn; undoMove() must restore it exactly
     castlingRightsBefore: CastlingRights; // castling rights are historical rather than positional,
     // i.e. they cannot be inferred just from looking at the board
-    // for example, a rook may be on a1, but if it moved earlier, castling is then illegal
+    // for example, a rook may be on h1, but if it moved earlier, castling is then illegal
     // Therefore a snapshot needs to be taken
     enPassantTargetBefore: { rank: Rank, file: File } | null; //en passant eligibility lasts 
     // exactly one move
