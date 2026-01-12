@@ -30,8 +30,8 @@ export class ChessBoard {
 
     private enPassantTarget: { rank: Rank, file: File} | null = null;
 
-    private halfMoveClock = 0;
-    private fullMoveNumber = 1;
+    private halfMoveClock = 0; // see UndoRecord.ts notes for more on this
+    private fullMoveNumber = 1; // ditto
 
     
     // ───────────────────────────────
@@ -51,11 +51,11 @@ export class ChessBoard {
             "rook", // file index: 0
             "knight", // 1
             "bishop", // 2
-            "queen", // 3
-            "king", // 4
+            "queen",  // 3
+            "king",   // 4
             "bishop", // 5
             "knight", // 6
-            "rook" // 7
+            "rook"    // 7
         ];
 
             this.setUpPawns(); 
@@ -183,7 +183,7 @@ export class ChessBoard {
         }
 
 
-        // accounts for pawn being able to capture opponent piece diagonally left or right up
+        // accounts for pawn being able to capture opponent piece diagonally left / right up
         for (const df of [-1, +1]) {
             const capR = r + dir;
             const capF = f + df;
@@ -340,25 +340,78 @@ export class ChessBoard {
         // 5. Move execution (mutating)
     // ───────────────────────────────
 
-    public makeMove(move: Move): void {
-        const fromSquare = this.getSquare(move.fromRank, move.fromFile);
-        const toSquare = this.getSquare(move.toRank, move.toFile);
+    public makeMove(move: Move): void { // returns void because it mutates board state rather than
+        // producing a value
+        const fromSquare = this.getSquare(move.fromRank, move.fromFile); // where the piece is moving from
+        const toSquare = this.getSquare(move.toRank, move.toFile); // where the piece is moving to
 
-        const piece = fromSquare.piece;
+        const piece = fromSquare.piece; // takes piece currently on fromSquare
 
-        if (!piece) throw new Error("No piece on source square.");
         // if a piece is not occupying a square
+        if (!piece) throw new Error("No piece on source square.");
+        // enforces alternating turns
         if (piece.colour !== this.sideToMove) throw new Error("Not your turn.");
 
-        // toSquare.piece = fromSquare.piece; // piece is now recorded as in new square
-        // fromSquare.piece = null; // original square that piece moved from is now unoccupied
+    
+        //snapshot before changes - UndoRecord
+        const undo: UndoRecord = { // starts building the undo snapshot that will allow reverting later
+            // This needs to happen before the board is touched
+            move,
+            movedPiece: piece, // the exact piece object that moved
+            capturedPiece: toSquare.piece ?? null, // stores what was on the destination square before move,
+            // if it is not null; otherwise use null
+            sideToMoveBefore: this.sideToMove, // saves whose turn it was before move
+            castlingRightsBefore: { ...this.castlingRights }, // copies castling rights object
+            // spread operator is used to make shallow copy so that later mutations don't change saved snapshot
+            enPassantTargetBefore: this.enPassantTarget // saves previous en passant target square
+                ? { ...this.enPassantTarget } // as above, copies it to avoid shared references
+                : null,
+            halfmoveClockBefore: this.halfMoveClock, // read section of UndoRecord.ts for this
+            fullmoveNumberBefore: this.fullMoveNumber // saves these two counters
+        };
+
+        this.enPassantTarget = null; // clear en passant target by default
+
+        //move piece + capture
+        fromSquare.piece = null; // original square that piece moved from is now unoccupied
+        toSquare.piece = piece; // piece is now recorded as in new destination square
+
+        //special move handling (promotion, castling, en passsant)
+        if (piece.type === "pawn") { // en passant can only be done with pawns
+            const dr = move.toRank - move.fromRank;
+            if (dr === 2 || dr === -2) { // dr === 2: white; dr === -2: black
+                // If it moved two squares, set en passant target;
+                // pawn double-step creates a square 'behind it' that can be captured en passant.
+                const midRank = (move.fromRank + move.toRank) / 2; //mid-rank is the rank inbetween from and to
+                // that square becomes the en passant target:
+                this.enPassantTarget = { rank: midRank as Rank, file: move.fromFile };
+            }
+        
+        // halfmove clock: resets to 0 on pawn move or capture
+        const isCapture = undo.capturedPiece !== null;
+        const isPawnMove = piece.type === "pawn";
+        this.halfMoveClock = (isPawnMove || isCapture) ? 0 : this.halfMoveClock + 1;
+        // otherwise it increments by 1
+        // This is used for the 50-move rule and for FEN.
+
+        // fullmove number is complete and increments only after Black's move
+        if (this.sideToMove === "black") this.fullMoveNumber +=1;
+            
+        // toggle whose turn it is
+        this.sideToMove = this.sideToMove === "white" ? "black": "white";
+
+        // record undo - saves the snapshot so undoMove() can pop it and reverse everything
+        // commits move to the undo stack
+        this.history.push(undo);
+
+        };
     }
 
     // ───────────────────────────────
         // 6. Low-level helpers
     // ───────────────────────────────
 
-    private pushIfOk( // add a move to array if destination is valid
+    private pushIfOk( // add (push) a move to array if destination is valid
         moves: Move[], 
         fromRank: Rank,
         fromFile: File,
@@ -376,7 +429,7 @@ export class ChessBoard {
         
         if (target === null) {
             moves.push({ fromRank, fromFile, toRank: tr, toFile: tf });
-        } else if (target.colour !== colour) { // general capture logic
+        } else if (target.colour !== colour) { // general capture logic if there is and it's an enemy piece
             moves.push({ fromRank, fromFile, toRank: tr, toFile: tf, isCapture: true });
             }
     }
@@ -416,5 +469,3 @@ export class ChessBoard {
     }
 
 }
-
-
