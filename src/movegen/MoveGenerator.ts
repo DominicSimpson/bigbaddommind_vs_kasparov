@@ -6,7 +6,7 @@ import { FILES, RANKS } from "../types/coords.js";
 import type { File, Rank } from "../types/coords.js";
 
 
-class MoveGenerator { // pseudo-legal moves - obey piece movement rules
+export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
   // but do not yet check whether king is in check/checkmate (obviously illegal in real chess)
   // or if promotions/en passant/castling has happened
   static getPseudoLegalMoves(board: ChessBoard): Move[] {
@@ -24,17 +24,17 @@ class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         if (piece.colour !== sideToMove) continue;
 
         switch (piece.type) { // switch statement for pieces
-          case "knight":
-            this.addKnightMoves(board, rank, file, piece, moves);
-            break;
           case "pawn":
             this.addPawnMoves(board, rank, file, piece, moves);
             break;
-          case "bishop":
-            this.addBishopMoves(board, rank, file, piece, moves); 
-            break;
           case "rook":
             this.addRookMoves(board, rank, file, piece, moves); 
+            break;
+          case "knight":
+            this.addKnightMoves(board, rank, file, piece, moves);
+            break;
+          case "bishop":
+            this.addBishopMoves(board, rank, file, piece, moves); 
             break;
           case "queen":
             this.addQueenMoves(board, rank, file, piece, moves);
@@ -52,6 +52,49 @@ class MoveGenerator { // pseudo-legal moves - obey piece movement rules
   // -------------------------
     // Piece-specific helpers
   // -------------------------
+
+    private static addPawnMoves(
+      board: ChessBoard,
+      fromRank: Rank,
+      fromFile: File,
+      piece: Piece,
+      moves: Move[]
+    ): void {
+      
+      // basic pawn support
+      const dir = piece.colour === "white" ? 1: -1;
+      const oneStepRank = fromRank + dir;
+
+      // 1. Forward movement
+      if (this.isOnBoard(oneStepRank, fromFile)) {
+        const fwdSq = board.getSquare(oneStepRank as Rank, fromFile);
+        if (!fwdSq.piece) {
+          moves.push(this.makeMove(board, fromRank, fromFile, oneStepRank as Rank, fromFile));
+        }
+      }
+
+      // 2. Captures (diagonals)
+      for (const df of [-1, 1]) {
+        const capFile = fromFile + df;
+        const capRank = fromRank + dir;
+        if (!this.isOnBoard(capRank, capFile)) continue;
+
+        const capSq = board.getSquare(capRank as Rank, capFile as File);
+        if (capSq.piece && capSq.piece.colour !== piece.colour) {
+          moves.push(this.makeMove(board, fromRank, fromFile, capRank as Rank, capFile as File));
+        }
+      }
+    }
+  
+    private static addRookMoves(
+      board: ChessBoard,
+      rank: Rank,
+      file: File,
+      piece: Piece,
+      moves: Move[]
+    ): void {
+      this.addSlidingMoves(board, rank, file, piece, moves, ROOK_DIRS);
+    }
 
 
 }
