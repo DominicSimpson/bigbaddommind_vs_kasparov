@@ -4,6 +4,7 @@ import type { Colour } from "../types/colour.js";
 import { Piece } from "../pieces/Piece.js";
 import { FILES, RANKS } from "../types/coords.js";
 import type { File, Rank } from "../types/coords.js";
+import path from "path";
 
 
 export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
@@ -94,6 +95,88 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       moves: Move[]
     ): void {
       this.addSlidingMoves(board, rank, file, piece, moves, ROOK_DIRS);
+    }
+
+    private static addKnightMoves(
+      board: ChessBoard,
+      fromRank: Rank,
+      fromFile: File,
+      piece: Piece,
+      moves: Move[]
+    ): void {
+      const deltas: Array<[number, number]> = [
+        [+1, +2],
+        [+2, +1],
+        [+2, -1],
+        [+1, -2],
+        [-1, -2],
+        [-2, -1],
+        [-2, +1],
+        [-1, +2]
+      ];
+
+      for (const [df, dr] of deltas) {
+        const toFile = fromFile + df;
+        const toRank = fromRank + dr;
+
+        if (!this.isOnBoard(toRank, toFile)) continue;
+
+        const toSquare = board.getSquare(toRank as Rank, toFile as File);
+        if (toSquare.piece && toSquare.piece.colour === piece.colour)
+
+        moves.push(this.makeMove(board, fromRank, fromFile, toRank as Rank, toFile as File));
+      }
+    }
+    
+    private static addBishopMoves(
+      board: ChessBoard,
+      rank: Rank,
+      file: File,
+      piece: Piece,
+      moves: Move[]
+    ): void {
+      this.addSlidingMoves(board, rank, file, piece, moves, BISHOP_DIRS);
+    }
+
+     private static addQueenMoves(
+      board: ChessBoard,
+      rank: Rank,
+      file: File,
+      piece: Piece,
+      moves: Move[]
+    ): void {
+      this.addSlidingMoves(board, rank, file, piece, moves, QUEEN_DIRS);
+    }
+
+    private static addKingMoves(
+      board: ChessBoard,
+      rank: Rank,
+      file: File,
+      piece: Piece,
+      moves: Move[]
+    ): void {
+      const deltas: Array<[number, number]> = [
+        [-1, -1],
+        [ 0, -1],
+        [+1, -1],
+        [-1,  0],
+        [+1,  0],
+        [-1, +1],
+        [ 0, +1],
+        [+1, +1]
+      ];
+
+      for (const [df, dr] of deltas) {
+        const toFile = fromFile + df;
+        const toRank = fromRank + dr;
+
+        if (!this.isOnBoard(toRank, toFile)) continue;
+
+        const toSquare = board.getSquare(toRank as Rank, toFile as File);
+        if (toSquare.piece && toSquare.piece.colour === piece.colour) continue;
+
+        moves.push(this.makeMove(board, fromRank, fromFile, toRank as Rank, toFile as File));
+      }
     }
 
 
