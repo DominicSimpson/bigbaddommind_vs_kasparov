@@ -108,7 +108,7 @@ export class ChessBoard {
         }
 
         const attacker: Colour = colour === "white" ? "black": "white";
-        return this.isSquareAttacked(kingsPos.rank, kingsPos.file, attacker);
+        return this.isSquareAttacked(kingPos.rank, kingPos.file, attacker);
     }
 
     // ───────────────────────────────
