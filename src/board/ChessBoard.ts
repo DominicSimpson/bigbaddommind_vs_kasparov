@@ -4,8 +4,8 @@ import type { File, Rank } from "../types/coords.js";
 import { Piece, PieceType } from "../pieces/Piece.js";
 import type { Move } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
-import type { UndoRecord } from "../board/UndoRecord.js";
-import type { CastlingRights } from "../board/UndoRecord.js";
+import type { CastlingRights } from "../types/CastlingRights.js";
+import type { UndoRecord } from "../types/UndoRecord.js";
 
 
 
@@ -18,6 +18,8 @@ export class ChessBoard {
     //Type: 2D array of Square objects (8 rows x 8 columns)
     //private so that code outside the class cannot do board.squares
     private history: UndoRecord[] = []; // see notes in UndoRecord.ts
+    private undoStack: UndoRecord[] = [];
+
 
     private sideToMove: Colour = "white"; // white always moves first - that's the rules!
 
@@ -97,6 +99,16 @@ export class ChessBoard {
 
     public canUndo(): boolean {
         return this.history.length > 0;
+    }
+
+    public isKingInCheck(colour: Colour): boolean {
+        const kingPos = this.findKing(colour); // the actual, current square position of each king
+        if (!kingPos) {
+            return false;
+        }
+
+        const attacker: Colour = colour === "white" ? "black": "white";
+        return this.isSquareAttacked(kingsPos.rank, kingsPos.file, attacker);
     }
 
     // ───────────────────────────────
@@ -408,7 +420,7 @@ export class ChessBoard {
     }
 
     // ───────────────────────────────
-        // 6. Low-level helpers
+        // 6. Low-level private helpers
     // ───────────────────────────────
 
     private pushIfOk( // add (push) a move to array if destination is valid
@@ -448,6 +460,36 @@ export class ChessBoard {
         if (!this.inBounds(r, f)) return false;
         const p = this.getSquare(r as Rank, f as File).piece;
         return p !== null && p.colour !== colour;
+    }
+
+    private findKing(colour: Colour): { rank: Rank; file: File } | null {
+        for (let rank = 0; rank < 8; rank++) {
+            for (let file = 0; file < 8; file++) {
+                const sq = this.getSquare(rank as Rank, file as File);
+                const p = sq.piece;
+                if (p && p.type === "king" && p.colour === colour) {
+                    return { rank: rank as Rank, file: file as File}
+                }
+            }
+        }
+        
+        return null;
+    }
+
+    private isSquareAttacked(rank: Rank, file: File, byColour: Colour): boolean {
+        // 1. Pawn attacks
+        if (this.isAttackedByPawn(rank, file, byColour)) return true;
+
+        // 2. Knight attacks
+        if (this.isAttackedByKnight(rank, file, byColour)) return true;
+
+        // 3. King attacks (adjacent squares)
+        if (this.isAttackedByKing(rank, file, byColour)) return true;
+
+        // 4. Sliding pieces (rook/bishop/queen rays) attack
+        if (this.isAttackedBySlidingPieces(rank, file, byColour)) return true;
+
+        return false;   
     }
  
     private createEmptyBoard(): Square[][] { // private internal helper

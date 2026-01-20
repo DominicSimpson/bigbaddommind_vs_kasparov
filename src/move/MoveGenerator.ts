@@ -240,7 +240,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
     // packages intent
     private static makeMove(
       board: ChessBoard,
-      fromRank: Rank,
+      fromRank: Rank, 
       fromFile: File,
       toRank: Rank,
       toFile: File

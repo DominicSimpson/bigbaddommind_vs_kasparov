@@ -1,14 +1,8 @@
-import type { Move } from "../types/Move.js";
+import type { Move } from "./Move.js";
 import type { Piece } from "../pieces/Piece.js";
-import type { Rank, File } from "../types/coords.js";
-import type { Colour } from "../types/colour.js";
-
-export type CastlingRights = {
-    whiteK: boolean; // white king
-    whiteQ: boolean; // white queen
-    blackK: boolean; // black king
-    blackQ: boolean; // black queen
-};
+import type { Rank, File } from "./coords.js";
+import type { Colour } from "./colour.js";
+import type { CastlingRights } from "./CastlingRights.js";
 
 export interface UndoRecord { // state delta recorder
     // Before making a move, take a snapshot of everything that will change
