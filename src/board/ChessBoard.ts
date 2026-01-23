@@ -171,8 +171,8 @@ export class ChessBoard {
         // f: the pawns' current file (0–7)
         const moves: Move[] = []; // creates empty array to store moves pawns will make
 
-        // if piece is white, white pawns move "positive" (up),
-        // otherwise pawn is black and therefore moves "negative" (down)
+        // if piece is white, white pawns move "positive" (up / north),
+        // otherwise pawn is black and therefore moves "negative" (down / south)
         // (obviously assuming white pieces start at bottom of board and black on top, as conventional)
         // ternary operator can be used because of type definition specifying only black or white:
         const dir = piece.colour === "white" ? 1 : -1; // dir = direction
@@ -195,7 +195,7 @@ export class ChessBoard {
         }
 
 
-        // accounts for pawn being able to capture opponent piece diagonally left / right up
+        // accounts for pawn being able to capture opponent piece north-west / north-east
         for (const df of [-1, +1]) {
             const capR = r + dir;
             const capF = f + df;
@@ -462,6 +462,7 @@ export class ChessBoard {
         return p !== null && p.colour !== colour;
     }
 
+    // locates where King is on board for each colour
     private findKing(colour: Colour): { rank: Rank; file: File } | null {
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
@@ -490,6 +491,190 @@ export class ChessBoard {
         if (this.isAttackedBySlidingPieces(rank, file, byColour)) return true;
 
         return false;   
+    }
+
+
+    // --------------------------------------------------------------------- 
+
+    // The following logic applies to all the following isAttackedBy helpers:
+    // // Rank:
+        // moving down the board - negative
+        // moving up the board - positive
+    // // File:
+        // moving right - positive
+        // moving left - negative
+
+    // r + 1: one rank up (north)
+    // r - 1: one rank down (south)
+    // f + 1: one file right (east)
+    // f - 1: one file left (west)
+
+    // dr = delta rank - change in rank (first number)
+    // df = delta file - change in file (second number)
+
+    // ----------------------------------------------------------------------
+
+    // checks if any square has been attacked by a pawn
+    private isAttackedByPawn(rank: Rank, file: File, byColour: Colour): boolean {
+        // r: the pawns' current rank (0–7)
+        // f: the pawns' current file (0–7)
+
+        // if piece is white, white pawns move "positive" (up),
+        // otherwise pawn is black and therefore moves "negative" (down)
+        // (obviously assuming white pieces start at bottom of board and black on top, as conventional)
+        // ternary operator can be used because of type definition specifying only black or white:
+        const pawnRank = byColour === "white" ? rank -1: rank +1;
+        if (pawnRank < 0 || pawnRank > 7) return false; // out of range
+
+        const leftFile = file - 1; // pawn takes opponent piece north-west direction
+        if (leftFile >= 0) {
+            const p = this.getSquare(pawnRank as Rank, leftFile as File).piece;
+            if (p && p.colour === byColour && p.type === "pawn") return true;
+        }
+
+        const rightFile = file + 1; // pawn takes opponent piece north-east direction
+        if (rightFile <= 7) {
+            const p = this.getSquare(pawnRank as Rank, leftFile as File).piece;
+            if (p && p.colour === byColour && p.type === "pawn") return true;
+        }
+
+        return false;
+    }
+
+    // checks if any square has been attacked by a knight
+    private isAttackedByKnight(rank: Rank, file: File, byColour: Colour): boolean {
+        // r: the knights' current rank (0–7)
+        // f: the knights' current file (0–7)
+        const deltas: Array<[number, number]> = [
+            // A knight always moves in a 2 + 1 pattern, with exactly 8 permutations of movement:
+            [-2, -1], // two ranks down, one file left
+            [-2, +1], // two ranks down, one file right
+            [-1, -2], // one rank down, two files left
+            [-1, +2], // one rank down, two files right
+            [+1, -2], // one rank up, two files left 
+            [+1, +2], // one rank up, two files right  
+            [+2, -1], // two ranks up, one file left
+            [+2, +1]  // two ranks up, one file right
+        ]
+
+        for (const [dr, df] of deltas) { // each pair of the above possible moves is:
+            const r = rank + dr;
+            const f = file + df;
+            //destination rank = r + dr
+            //destination file = f + df
+            if (r < 0 || r > 7 || f < 0 || f > 7) continue;
+
+            const p = this.getSquare(r as Rank, f as File).piece;
+
+            if (p && p.colour === byColour && p.type === "knight") return true;
+        }
+
+        return false;
+    }
+
+    // checks if any square has been attacked by a king
+    private isAttackedByKing(rank: Rank, file: File, byColour: Colour): boolean {
+        // r: the kings' current rank (0–7)
+        // f: the kings' current file (0–7)
+         // // Movement permutations:
+        // ( 1,-1): north-west
+        // ( 1, 0): north
+        // ( 1, 1): north-east
+        // ( 0,-1): west
+        // ( 0, 0): no move
+        // ( 0, 1): east
+        // (-1,-1): south-west
+        // (-1, 0): south
+        // (-1, 1): south-east
+
+        // Starts an outer loop over delta rank (dr), i.e. vertical movement:
+        for (let dr = -1; dr <= 1; dr++) { // -1: one rank down; +1: one rank up
+        // Starts an inner nested loop over delta file (df), i.e. horizontal movement:
+            for (let df = -1; df <= 1; df++) {
+                if (dr === 0 && df === 0) continue; // (0,0): no move
+
+                const r = rank + dr;
+                const f = file + df;
+                if (r < 0 || r > 7 || f < 0 || f > 7) continue; // out of bounds
+
+                const p = this.getSquare(r as Rank, f as File).piece;
+                if (p && p.colour === byColour && p.type === "king") return true;
+            }
+        }
+
+        return false;
+    }
+
+    private isAttackedBySlidingPieces(rank: Rank, file: File, byColour: Colour): boolean {
+        // sliding pieces: rooks (straight lines), bishops (diagonals), queens (both)
+        const rookDirs: Array<[number, number]> = [
+            [+1,  0], // north
+            [-1,  0], // south
+            [ 0, +1], // east
+            [ 0, -1]  // west
+        ];
+
+        const bishopDirs: Array<[number, number]> = [
+            [+1, +1], // north-east
+            [+1, -1], // north-west
+            [-1, +1], // south-east
+            [-1, -1]  // south-west
+        ];
+
+        // looks outward in each rook/queen direction and checks if it can be taken by opposition
+        // returns true if so
+        // creates a Set containing two values:
+        if (this.rayAttacked(rank, file, byColour, rookDirs, new Set<PieceType>(["rook", "queen"]))) return true;
+        // looks outward in each bishop/queen direction and checks if it can be taken by opposition
+        // returns true if so
+        // creates a Set containing two values:
+        if (this.rayAttacked(rank, file, byColour, bishopDirs, new Set<PieceType>(["bishop", "queen"]))) return true;
+
+        return false;
+    }
+
+    // checks if any given square has been attacked by a sliding piece (rook, bishop, queen)
+    // along sliding piece directions
+    private rayAttacked(
+        rank: Rank,
+        file: File,
+        byColour: Colour,
+        dirs: Array<[number, number]>,
+        attackerTypes: ReadonlySet<PieceType> // a set of piece types that are allowed to attack:
+        // {rook, queen} for straight rays
+        // {bishop, queen} for diagonal rays
+        // this function doesn't accidentally mutate the set during refactors
+    ): boolean {
+        // The outer loop — one ray at a time, tracing outwards from the square
+        for (const [dr, df] of dirs) {
+            // start one square away from target square (pieces don't attack their own square!)
+            // atttacks originate from other squares
+            let r = rank + dr;
+            let f = file + df;
+
+            while (r >= 0 && r <= 7 && f >= 0 && f <= 7) { // checks if out of bounds
+                const p = this.getSquare(r as Rank, f as File).piece; // inspect current square
+
+                if (p) {
+                    // if piece belongs to attacking colour and its type is allowed on ray,
+                // then square is attacked:
+                    if (p.colour === byColour && attackerTypes.has(p.type)) return true;
+
+                // OR the wrong colour (i.e. fellow colour) piece blocks the ray
+                // or is the wrong type (i.e. not attacker type)
+                // (sliding pieces can't jump like bishops, for example)
+                break; 
+                
+                }
+
+                // otherwise, continue moving further along the ray
+                r += dr;
+                f += df;
+
+            }
+        }
+
+        return false;
     }
  
     private createEmptyBoard(): Square[][] { // private internal helper
