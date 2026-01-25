@@ -1,7 +1,8 @@
 import { Square } from "./Square.js";
 import { FILES, RANKS } from "../types/coords.js";
 import type { File, Rank } from "../types/coords.js";
-import { Piece, PieceType } from "../pieces/Piece.js";
+import { Piece } from "../pieces/Piece.js";
+import type { PieceType } from "../pieces/Piece.js";
 import type { Move } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
 import type { CastlingRights } from "../types/CastlingRights.js";
@@ -18,7 +19,6 @@ export class ChessBoard {
     //Type: 2D array of Square objects (8 rows x 8 columns)
     //private so that code outside the class cannot do board.squares
     private history: UndoRecord[] = []; // see notes in UndoRecord.ts
-    private undoStack: UndoRecord[] = [];
 
 
     private sideToMove: Colour = "white"; // white always moves first - that's the rules!
@@ -142,7 +142,9 @@ export class ChessBoard {
             case "queen":   return this.queenMoves(fromRank, fromFile, piece);
             case "king":    return this.kingMoves(fromRank, fromFile, piece);
         }
+        return [];
     }
+    
 
     // --------------------------------------------------------------------- 
 
@@ -363,7 +365,8 @@ export class ChessBoard {
         if (!piece) throw new Error("No piece on source square.");
         // enforces alternating turns
         if (piece.colour !== this.sideToMove) throw new Error("Not your turn.");
-
+    
+    
     
         //snapshot before changes - UndoRecord
         const undo: UndoRecord = { // starts building the undo snapshot that will allow reverting later
@@ -398,6 +401,7 @@ export class ChessBoard {
                 // that square becomes the en passant target:
                 this.enPassantTarget = { rank: midRank as Rank, file: move.fromFile };
             }
+        }
         
         // halfmove clock: resets to 0 on pawn move or capture
         const isCapture = undo.capturedPiece !== null;
@@ -416,7 +420,6 @@ export class ChessBoard {
         // commits move to the undo stack
         this.history.push(undo);
 
-        };
     }
 
     // ───────────────────────────────
@@ -534,7 +537,7 @@ export class ChessBoard {
 
         const rightFile = file + 1; // pawn takes opponent piece north-east direction
         if (rightFile <= 7) {
-            const p = this.getSquare(pawnRank as Rank, leftFile as File).piece;
+            const p = this.getSquare(pawnRank as Rank, rightFile as File).piece;
             if (p && p.colour === byColour && p.type === "pawn") return true;
         }
 
@@ -621,7 +624,7 @@ export class ChessBoard {
             [-1, -1]  // south-west
         ];
 
-        // looks outward in each rook/queen direction and checks if it can be taken by opposition
+        // looks outward in each rook/queen direction and checks if it can be attacked/controlled by opposition
         // returns true if so
         // creates a Set containing two values:
         if (this.rayAttacked(rank, file, byColour, rookDirs, new Set<PieceType>(["rook", "queen"]))) return true;
@@ -660,8 +663,7 @@ export class ChessBoard {
                 // then square is attacked:
                     if (p.colour === byColour && attackerTypes.has(p.type)) return true;
 
-                // OR the wrong colour (i.e. fellow colour) piece blocks the ray
-                // or is the wrong type (i.e. not attacker type)
+                // OR any piece blocks the ray
                 // (sliding pieces can't jump like bishops, for example)
                 break; 
                 
