@@ -15,7 +15,7 @@ export interface UndoRecord { // state delta recorder
     capturedPiece: Piece | null;  // stores which piece was captured (or en passant victim)
 
     // special-case squares
-    capturedSquare?: { rank: Rank, file: File } | null; // en passant capture only
+    capturedSquare?: { rank: Rank, file: File } | null; // stores what square was captured
     // stores where the captured pawn was 
     // Example: pawn moves e5 → d6 en passant; captured pawn is on d5, not d6
 
@@ -41,7 +41,7 @@ export interface UndoRecord { // state delta recorder
     // king's piece is not ambigious, so is not required here
     rookFrom?: { rank: Rank; file: File } | null;
     rookTo?: { rank: Rank; file: File } | null;
-    rookMove?: Piece | null;
+    rookPiece?: Piece | null;
 
     // for promotion (so undo can restore the pawn cleanly):
     promotedTo?: Piece | null;
