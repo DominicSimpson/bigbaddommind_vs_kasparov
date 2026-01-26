@@ -368,13 +368,15 @@ export class ChessBoard {
     
     
     
-        //snapshot before changes - UndoRecord
+        //snapshot before touching board
         const undo: UndoRecord = { // starts building the undo snapshot that will allow reverting later
             // This needs to happen before the board is touched
             move,
             movedPiece: piece, // the exact piece object that moved
-            capturedPiece: toSquare.piece ?? null, // stores what was on the destination square before move,
+            capturedPiece: null, // stores what was on the destination square before move,
             // if it is not null; otherwise use null
+            capturedSquare: null,
+
             sideToMoveBefore: this.sideToMove, // saves whose turn it was before move
             castlingRightsBefore: { ...this.castlingRights }, // copies castling rights object
             // spread operator is used to make shallow copy so that later mutations don't change saved snapshot
@@ -382,16 +384,66 @@ export class ChessBoard {
                 ? { ...this.enPassantTarget } // as above, copies it to avoid shared references
                 : null,
             halfmoveClockBefore: this.halfMoveClock, // read section of UndoRecord.ts for this
-            fullmoveNumberBefore: this.fullMoveNumber // saves these two counters
+            fullmoveNumberBefore: this.fullMoveNumber, // saves these two counters
+
+            rookFrom: null,
+            rookTo: null,
+            rookPiece: null,
+
+            promotedTo: null,
+
         };
 
+
         this.enPassantTarget = null; // clear en passant target by default
+        // set it again only on pawn double-step
+
+        
+        // // a) Capture handling (normal vs en passant) ---------------------------------
+
+        if (move.enPassant) {
+            // Destination square is empty; captured pawn is behind it
+            const capRank = 
+                (piece.colour === "white" ? (move.toRank -1) : (move.toRank + 1)) as Rank;
+
+            const capFile = move.toFile;
+            const capSquare = this.getSquare(capRank, capFile);
+
+            undo.capturedPiece = capSquare.piece ?? null;
+            undo.capturedSquare = { rank: capRank, file: capFile };
+
+            // remove the pawn being captured en passant
+            capSquare.piece = null;
+
+        } else {
+            // normal capture happens on the destination square (if any)
+            undo.capturedPiece = toSquare.piece ?? null;
+            // capturedSquare left as null, meaning "restore to toSquare" in undoMove()
+        }
+
+
+        // // b) Move the main piece (including promotion) ---------------------------------
 
         //move piece + capture
         fromSquare.piece = null; // original square that piece moved from is now unoccupied
-        toSquare.piece = piece; // piece is now recorded as in new destination square
 
-        //special move handling (promotion, castling, en passsant)
+        const isPromotion = 
+            piece.type === "pawn" &&
+            !!move.promotion && 
+            ((piece.colour === "white" && move.toRank === 7) ||
+                (piece.colour === "black" && move.toRank === 0));
+
+        if (isPromotion) {
+            const promoted = new Piece(move.promotion!, piece.colour);
+            undo.promotedTo = promoted;
+            toSquare.piece = promoted;
+        } else {
+            toSquare.piece = piece; // piece is now recorded as in new destination square
+        }
+
+
+        // // e) Set en passant target (pawn double-stop) ---------------------------------
+
         if (piece.type === "pawn") { // en passant can only be done with pawns
             const dr = move.toRank - move.fromRank;
             if (dr === 2 || dr === -2) { // dr === 2: white; dr === -2: black
@@ -403,6 +455,9 @@ export class ChessBoard {
             }
         }
         
+
+        // // f) Clocks + turn toggle + push undo ---------------------------------
+
         // halfmove clock: resets to 0 on pawn move or capture
         const isCapture = undo.capturedPiece !== null;
         const isPawnMove = piece.type === "pawn";
@@ -419,7 +474,52 @@ export class ChessBoard {
         // record undo - saves the snapshot so undoMove() can pop it and reverse everything
         // commits move to the undo stack
         this.history.push(undo);
+    }
 
+    public undoMove(): void {
+        if (!this.canUndo()) return;
+
+        const undo = this.history.pop()!;
+        const move = undo.move;
+
+        // restore meta-state first
+        this.sideToMove = undo.sideToMoveBefore;
+        this.castlingRights = { ...undo.castlingRightsBefore };
+        this.enPassantTarget = undo.enPassantTargetBefore ? { ...undo.enPassantTargetBefore } : null;
+        this.halfMoveClock = undo.halfmoveClockBefore;
+        this.fullMoveNumber = undo.fullmoveNumberBefore;
+
+        // squares involved
+        const fromSq = this.getSquare(move.fromRank, move.fromFile);
+        const toSq = this.getSquare(move.toRank, move.toFile);
+
+        // // a) Undo castling rook move (if castling has happpened)
+        // (Do this before restoring king piece to avoid confusion, though either order works)
+        if (undo.rookFrom && undo.rookTo) {
+            const rookFromSq = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
+            const rookToSq = this.getSquare(undo.rookTo.rank, undo.rookTo.file);
+
+            // Move rook back
+            rookToSq.piece = null;
+            rookFromSq.piece = undo.rookPiece ?? null;
+
+        // // b) Undo the main piece move (including promotion)
+        // If promotion happened, toSq currently has a promoted piece; we restore the pawn (movedPiece)
+        toSq.piece = null;
+        fromSq.piece = undo.movedPiece;
+
+        // // c) Restore captured piece (normal capture or en passant victim)
+        if (undo.capturedPiece) {
+            if (undo.capturedSquare) {
+                    // en passant (or any capture where captured square differs from 'to')
+                    const captSq = this.getSquare(undo.capturedSquare.rank, undo.capturedSquare.file);
+                    captSq.piece = undo.capturedPiece; 
+                } else {
+                    // normal capture: captured piece is on destination square
+                    toSq.piece = undo.capturedPiece;
+                }
+            }
+        }
     }
 
     // ───────────────────────────────
