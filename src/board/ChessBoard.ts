@@ -424,7 +424,7 @@ export class ChessBoard {
 
         // // b) Move the main piece (including promotion) ---------------------------------
 
-        //move piece + capture
+            //move piece + capture
         fromSquare.piece = null; // original square that piece moved from is now unoccupied
 
         const isPromotion = 
@@ -442,6 +442,76 @@ export class ChessBoard {
         }
 
 
+        // // c) Castling ---------------------------------
+
+        if (move.castle) {
+            const homeRank = (piece.colour === "white" ? 0 : 7) as Rank;
+
+            if (move.castle === "K") { //king-side castling
+                undo.rookFrom = { rank: homeRank, file: 7 as File }; // h-file
+                undo.rookTo = { rank: homeRank, file: 5 as File }; // f-file
+            } else {
+                //queen-side castling ("Q")
+                undo.rookFrom = { rank: homeRank, file: 0 as File }; // a-file
+                undo.rookTo = { rank: homeRank, file: 3 as File}; // d-file
+            }
+
+            const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
+            const rookToSquare = this.getSquare(undo.rookTo.rank, undo.rookTo.file);
+
+            undo.rookPiece = rookFromSquare.piece ?? null;
+
+            rookFromSquare.piece = null;
+            rookToSquare.piece = undo.rookPiece;
+
+        }
+
+        
+        // // d) Set en passant target (pawn double-stop) ---------------------------------
+
+        const isA1 = (r: Rank, f: File) => r === 0 && f === 0;
+        const isH1 = (r: Rank, f: File) => r === 0 && f === 7;
+        const isA8 = (r: Rank, f: File) => r === 7 && f === 0;
+        const isH8 = (r: Rank, f: File) => r === 7 && f === 7;
+
+          // King moved => lose both rights for that colour
+        
+        if (piece.type === "king") {
+            if (piece.colour === "white") {
+                this.castlingRights.whiteK = false;
+                this.castlingRights.whiteQ = false;
+            } else {
+                this.castlingRights.blackK = false;
+                this.castlingRights.blackQ = false;
+            }
+        }
+            // Rook moved from its starting corner => lose that side
+        if (piece.type === "rook") {
+            if (piece.colour === "white") {
+                if (isH1(move.fromRank, move.fromFile)) this.castlingRights.whiteK = false;
+                if (isA1(move.fromRank, move.fromFile)) this.castlingRights.whiteQ = false;
+            } else {
+                if (isH8(move.fromFile, move.fromFile)) this.castlingRights.blackK = false;
+                if (isA8(move.fromRank, move.fromFile)) this.castlingRights.blackQ = false;
+            }
+        }
+
+            // Rook captured on its starting corner => lose that side
+            // (En passant cannot capture a rook, so capturedSquare will be null here anyway.)
+        if (undo.capturedPiece?.type === "rook") {
+            const r = move.toRank;
+            const f = move.toFile;
+
+            if (undo.capturedPiece.colour === "white") {
+                if (isH1(r, f)) this.castlingRights.whiteK = false;
+                if (isA1(r, f)) this.castlingRights.whiteQ = false;
+            } else {
+                if (isH8(r, f)) this.castlingRights.blackK = false;
+                if (isA8(r, f)) this.castlingRights.blackQ = false;
+            }
+        }
+
+
         // // e) Set en passant target (pawn double-stop) ---------------------------------
 
         if (piece.type === "pawn") { // en passant can only be done with pawns
@@ -456,25 +526,26 @@ export class ChessBoard {
         }
         
 
-        // // f) Clocks + turn toggle + push undo ---------------------------------
+        // // f) Clocks + turn toggle + push undo -----------------------------------------
 
-        // halfmove clock: resets to 0 on pawn move or capture
+            // halfmove clock: resets to 0 on pawn move or capture
         const isCapture = undo.capturedPiece !== null;
         const isPawnMove = piece.type === "pawn";
         this.halfMoveClock = (isPawnMove || isCapture) ? 0 : this.halfMoveClock + 1;
-        // otherwise it increments by 1
-        // This is used for the 50-move rule and for FEN.
+            // otherwise it increments by 1
+            // This is used for the 50-move rule and for FEN.
 
-        // fullmove number is complete and increments only after Black's move
+            // fullmove number is complete and increments only after Black's move
         if (this.sideToMove === "black") this.fullMoveNumber +=1;
             
-        // toggle whose turn it is
+            // toggle whose turn it is
         this.sideToMove = this.sideToMove === "white" ? "black": "white";
 
-        // record undo - saves the snapshot so undoMove() can pop it and reverse everything
-        // commits move to the undo stack
+            // record undo - saves the snapshot so undoMove() can pop it and reverse everything
+            // commits move to the undo stack
         this.history.push(undo);
     }
+
 
     public undoMove(): void {
         if (!this.canUndo()) return;
