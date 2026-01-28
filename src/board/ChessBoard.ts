@@ -386,11 +386,11 @@ export class ChessBoard {
             halfmoveClockBefore: this.halfMoveClock, // read section of UndoRecord.ts for this
             fullmoveNumberBefore: this.fullMoveNumber, // saves these two counters
 
-            rookFrom: null,
+            rookFrom: null, // initial state of rook before it's used
             rookTo: null,
             rookPiece: null,
 
-            promotedTo: null,
+            promotedTo: null, // initial default state of promotion
 
         };
 
@@ -402,14 +402,20 @@ export class ChessBoard {
         // // a) Capture handling (normal vs en passant) ---------------------------------
 
         if (move.enPassant) {
-            // Destination square is empty; captured pawn is behind it
-            const capRank = 
+            // Destination square is empty; captured pawn is behind it:
+            const capRank = // calculates rank of pawn of being captured
                 (piece.colour === "white" ? (move.toRank -1) : (move.toRank + 1)) as Rank;
+                // as Rank is Typescript cast due to function expecting a Rank type
 
+            // captured pawn is on the same file as the destination square
+            // Example: e5 > d6 captures the pawn on d5 (file d, same as destination file d):
             const capFile = move.toFile;
+            // Grabs Square object where captured pawn actually sits (e.g. d5):
             const capSquare = this.getSquare(capRank, capFile);
-
+            // Stores captured pawn in the undo record; if piece is undefined for any reason,
+            // ?? stores null instead:
             undo.capturedPiece = capSquare.piece ?? null;
+            // Stores where captured piece was removed from (not toSquare)
             undo.capturedSquare = { rank: capRank, file: capFile };
 
             // remove the pawn being captured en passant
@@ -419,6 +425,7 @@ export class ChessBoard {
             // normal capture happens on the destination square (if any)
             undo.capturedPiece = toSquare.piece ?? null;
             // capturedSquare left as null, meaning "restore to toSquare" in undoMove()
+            // (restore captured piece back onto the destination square)
         }
 
 
@@ -427,18 +434,20 @@ export class ChessBoard {
             //move piece + capture
         fromSquare.piece = null; // original square that piece moved from is now unoccupied
 
-        const isPromotion = 
+        const isPromotion = // calculates if move is a pawn promotion
             piece.type === "pawn" &&
-            !!move.promotion && 
-            ((piece.colour === "white" && move.toRank === 7) ||
-                (piece.colour === "black" && move.toRank === 0));
+            !!move.promotion && // !! converts move.promotion (in types/Move.ts) to strict boolean
+            ((piece.colour === "white" && move.toRank === 7) || // white promotes on rank 7 (top)
+                (piece.colour === "black" && move.toRank === 0)); // black promotes on rank 0 (bottom)
 
         if (isPromotion) {
-            const promoted = new Piece(move.promotion!, piece.colour);
-            undo.promotedTo = promoted;
-            toSquare.piece = promoted;
+            const promoted = new Piece(move.promotion!, piece.colour); // promoted piece is converted
+            // via new Piece object
+            // move.promotion! uses non-null assertion operator
+            undo.promotedTo = promoted; // Stores the promoted piece in undo snapshot
+            toSquare.piece = promoted; // Puts promoted piece on destination square
         } else {
-            toSquare.piece = piece; // piece is now recorded as in new destination square
+            toSquare.piece = piece; // piece is not promotion, but now recorded as in new destination square
         }
 
 
@@ -456,12 +465,19 @@ export class ChessBoard {
                 undo.rookTo = { rank: homeRank, file: 3 as File}; // d-file
             }
 
+            // The square that the rook starts on (a1/h1/a8/h8):
             const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
+            // The square that the rook moves to when castling (d1/f1/d8/f8):
             const rookToSquare = this.getSquare(undo.rookTo.rank, undo.rookTo.file);
 
+            // Snapshots which rook is moving:
+            // if for some reason the square the rook starts on is empty, store null instead of undefined
+            // This mirrors what the king is already doing
             undo.rookPiece = rookFromSquare.piece ?? null;
 
+            // Remove the rook from its original square:
             rookFromSquare.piece = null;
+            // Place the rook onto its destination square:
             rookToSquare.piece = undo.rookPiece;
 
         }
@@ -474,7 +490,7 @@ export class ChessBoard {
         const isA8 = (r: Rank, f: File) => r === 7 && f === 0;
         const isH8 = (r: Rank, f: File) => r === 7 && f === 7;
 
-          // King moved => lose both rights for that colour
+          // If king moved => lose both castling rights for that colour
         
         if (piece.type === "king") {
             if (piece.colour === "white") {
@@ -485,7 +501,7 @@ export class ChessBoard {
                 this.castlingRights.blackQ = false;
             }
         }
-            // Rook moved from its starting corner => lose that side
+            // Rook moved from its starting corner => lose castling rights for that side
         if (piece.type === "rook") {
             if (piece.colour === "white") {
                 if (isH1(move.fromRank, move.fromFile)) this.castlingRights.whiteK = false;
@@ -496,7 +512,7 @@ export class ChessBoard {
             }
         }
 
-            // Rook captured on its starting corner => lose that side
+            // Rook captured on its starting corner => lose castling rights for that side
             // (En passant cannot capture a rook, so capturedSquare will be null here anyway.)
         if (undo.capturedPiece?.type === "rook") {
             const r = move.toRank;
@@ -550,7 +566,7 @@ export class ChessBoard {
     public undoMove(): void {
         if (!this.canUndo()) return;
 
-        const undo = this.history.pop()!;
+        const undo = this.history.pop()!; // undoes last movement by player
         const move = undo.move;
 
         // restore meta-state first

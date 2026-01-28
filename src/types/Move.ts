@@ -15,7 +15,7 @@ export interface Move {
     enPassant?: boolean; // special pawn capture that can happen only immediately
     // after a pawn makes a two-square advance from its starting rank
     // I can't remember ever doing this move in all my time playing chess, 
-    // but it does exist
+    // but it does exist!
       // optional convenience flag (optional)
     isCapture?: true;
 }
