@@ -173,16 +173,18 @@ export class ChessBoard {
         // f: the pawns' current file (0–7)
         const moves: Move[] = []; // creates empty array to store moves pawns will make
 
-        // if piece is white, white pawns move "positive" (up / north),
-        // otherwise pawn is black and therefore moves "negative" (down / south)
-        // (obviously assuming white pieces start at bottom of board and black on top, as conventional)
-        // ternary operator can be used because of type definition specifying only black or white:
+        // // 1) normal forward moves ---------------
+
+            // if piece is white, white pawns move "positive" (up / north),
+            // otherwise pawn is black and therefore moves "negative" (down / south)
+            // (obviously assuming white pieces start at bottom of board and black on top, as conventional)
+            // ternary operator can be used because of type definition specifying only black or white:
         const dir = piece.colour === "white" ? 1 : -1; // dir = direction
 
-        // starting position for both sets of pawns:
+            // starting position for both sets of pawns:
         const startRank = piece.colour === "white" ? 1 : 6;
 
-        // r for rank:
+            // r for rank:
         const oneStepR = r + dir; // logic for if pawn moves one square up (white) / down (black)
 
         if (this.inBounds(oneStepR, f) && this.isEmpty(oneStepR, f)) { // checks if move is valid
@@ -196,14 +198,39 @@ export class ChessBoard {
             }
         }
 
+        // // 2) normal diagonal captures ---------------
 
-        // accounts for pawn being able to capture opponent piece north-west / north-east
+            // accounts for pawn being able to capture opponent piece north-west / north-east:
         for (const df of [-1, +1]) {
             const capR = r + dir;
             const capF = f + df;
             if (this.isEnemy(capR, capF, piece.colour)) {
             // pushIfOk already checks enemy vs friendly and sets capture:true
                 this.pushIfOk(moves, r, f, capR, capF, piece.colour);
+            }
+        }
+
+        // // 3 ) en passant generation ---------------
+        if (this.enPassantTarget) {
+            const epRank = this.enPassantTarget.rank;
+            const epFile = this.enPassantTarget.file;
+
+            if (epRank === r + dir && Math.abs(epFile - f) === 1) { 
+                // f is pawn's current file; epFile is the en passant target file
+                // Math.abs is used instead of writing either diagonal direction for pawn capture
+                // (epFile - f === -1 || epFile - f === 1)
+                // and instead in short code confirms that the target file is exactly one square away,
+                // left OR right (or north-west / north-east)
+                // both directions are handled symmetrically
+                moves.push({ // moves array is accumulated step by step
+                    fromRank: r,
+                    fromFile: f,
+                    toRank: epRank,
+                    toFile: epFile,
+                    enPassant: true,
+                    isCapture: true,
+                });
+
             }
         }
         
@@ -507,7 +534,7 @@ export class ChessBoard {
                 if (isH1(move.fromRank, move.fromFile)) this.castlingRights.whiteK = false;
                 if (isA1(move.fromRank, move.fromFile)) this.castlingRights.whiteQ = false;
             } else {
-                if (isH8(move.fromFile, move.fromFile)) this.castlingRights.blackK = false;
+                if (isH8(move.fromRank, move.fromFile)) this.castlingRights.blackK = false;
                 if (isA8(move.fromRank, move.fromFile)) this.castlingRights.blackQ = false;
             }
         }
@@ -590,6 +617,8 @@ export class ChessBoard {
             rookToSq.piece = null;
             rookFromSq.piece = undo.rookPiece ?? null;
 
+        
+        }
         // // b) Undo the main piece move (including promotion)
         // If promotion happened, toSq currently has a promoted piece; we restore the pawn (movedPiece)
         toSq.piece = null;
@@ -607,7 +636,6 @@ export class ChessBoard {
                 }
             }
         }
-    }
 
     // ───────────────────────────────
         // 6. Low-level private helpers
