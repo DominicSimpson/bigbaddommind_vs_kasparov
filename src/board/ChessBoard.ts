@@ -7,6 +7,7 @@ import type { Move } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
 import type { CastlingRights } from "../types/CastlingRights.js";
 import type { UndoRecord } from "../types/UndoRecord.js";
+import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
 
 
 
@@ -95,6 +96,10 @@ export class ChessBoard {
 
     public getSideToMove(): Colour {
         return this.sideToMove;
+    }
+
+    public getLegalMoves(fromRank: Rank, fromFile: File): Move[] {
+        return LegalMoveFilter.getLegalMoves(this, fromRank, fromFile);
     }
 
     public canUndo(): boolean {
@@ -434,6 +439,9 @@ export class ChessBoard {
 
         if (move.enPassant) {
             // Destination square is empty; captured pawn is behind it:
+            if (toSquare.piece !== null) {
+                throw new Error("Invalid en passant: target square is not empty");
+            }
             const capRank = // calculates rank of pawn of being captured
                 (piece.colour === "white" ? (move.toRank -1) : (move.toRank + 1)) as Rank;
                 // as Rank is Typescript cast due to function expecting a Rank type
