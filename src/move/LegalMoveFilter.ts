@@ -1,27 +1,36 @@
 import type { Move } from "../types/Move.js";
-import type { Colour } from "../types/colour.js";
 import type { ChessBoard } from "../board/ChessBoard.js";
+import type { Rank, File } from "../types/coords.js";
 
 export class LegalMoveFilter {
-    static filter(
-        board: ChessBoard,
-        moves: Move[],
-        sideToMove: Colour
-    ): Move[] {
-        const legalMoves: Move[] = [];
+    public static getLegalMoves(board: ChessBoard, fromRank: Rank, fromFile: File): Move[] {
+        const fromSq = board.getSquare(fromRank, fromFile);
+        const piece = fromSq.piece;
 
-        for (const move of moves) {
-            board.makeMove(move);
+        if (!piece) return [];
+        if (piece.colour !== board.getSideToMove()) return [];
 
-            const kingInCheck = board.isKingInCheck(sideToMove);
+        const moverColour = piece.colour;
 
-            board.undoMove();
+        const pseudo = board.getPseudoLegalMoves(fromRank, fromFile);
+        const legal: Move[] = [];
 
-            if (!kingInCheck) {
-                legalMoves.push(move);
+        for (const move of pseudo) {
+            let moved = false;
+
+            try {            
+                board.makeMove(move);
+                moved = true;
+
+            // After makeMove, sideToMove has flipped, so check the mover's colour
+                const leavesKingInCheck = board.isKingInCheck(moverColour);
+            
+                if (!leavesKingInCheck) legal.push(move);
+            } finally {
+                if (moved) board.undoMove();
             }
         }
 
-        return legalMoves;
+        return legal;
     }
 }

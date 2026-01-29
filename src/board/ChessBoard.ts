@@ -215,22 +215,26 @@ export class ChessBoard {
             const epRank = this.enPassantTarget.rank;
             const epFile = this.enPassantTarget.file;
 
-            if (epRank === r + dir && Math.abs(epFile - f) === 1) { 
+            if (epRank === r + dir && Math.abs(epFile - f) === 1) {
+                // generate en passant moves only when it's fully legal
+                const victimRank = (piece.colour === "white" ? epRank - 1 : epRank + 1) as Rank;
+                const victimSq = this.getSquare(victimRank, epFile).piece; 
                 // f is pawn's current file; epFile is the en passant target file
                 // Math.abs is used instead of writing either diagonal direction for pawn capture
                 // (epFile - f === -1 || epFile - f === 1)
                 // and instead in short code confirms that the target file is exactly one square away,
                 // left OR right (or north-west / north-east)
                 // both directions are handled symmetrically
-                moves.push({ // moves array is accumulated step by step
-                    fromRank: r,
-                    fromFile: f,
-                    toRank: epRank,
-                    toFile: epFile,
-                    enPassant: true,
-                    isCapture: true,
-                });
-
+                if (victimSq && victimSq.type === "pawn" && victimSq.colour !== piece.colour) {
+                    moves.push({ // moves array is accumulated step by step
+                        fromRank: r,
+                        fromFile: f,
+                        toRank: epRank,
+                        toFile: epFile,
+                        enPassant: true,
+                        isCapture: true,
+                    });
+                }
             }
         }
         
@@ -439,9 +443,14 @@ export class ChessBoard {
             const capFile = move.toFile;
             // Grabs Square object where captured pawn actually sits (e.g. d5):
             const capSquare = this.getSquare(capRank, capFile);
-            // Stores captured pawn in the undo record; if piece is undefined for any reason,
-            // ?? stores null instead:
-            undo.capturedPiece = capSquare.piece ?? null;
+
+            // sanity check here:
+            const victim = capSquare.piece;
+            if (!victim || victim.type !=="pawn" || victim.colour === piece.colour) {
+                throw new Error("Invalid en passant: no enemy pawn to capture");
+            }
+
+            undo.capturedPiece = victim;
             // Stores where captured piece was removed from (not toSquare)
             undo.capturedSquare = { rank: capRank, file: capFile };
 
@@ -510,7 +519,7 @@ export class ChessBoard {
         }
 
         
-        // // d) Set en passant target (pawn double-stop) ---------------------------------
+        // // d) Set en passant target (pawn double-step) ---------------------------------
 
         const isA1 = (r: Rank, f: File) => r === 0 && f === 0;
         const isH1 = (r: Rank, f: File) => r === 0 && f === 7;
@@ -555,7 +564,7 @@ export class ChessBoard {
         }
 
 
-        // // e) Set en passant target (pawn double-stop) ---------------------------------
+        // // e) Set en passant target (pawn double-step) ---------------------------------
 
         if (piece.type === "pawn") { // en passant can only be done with pawns
             const dr = move.toRank - move.fromRank;
