@@ -143,7 +143,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
     private static addBishopMoves(
       board: ChessBoard,
       rank: Rank,
-      file: File,
+      file: File, 
       piece: Piece,
       moves: Move[]
     ): void {

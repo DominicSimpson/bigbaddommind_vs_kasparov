@@ -116,6 +116,15 @@ export class ChessBoard {
         return this.isSquareAttacked(kingPos.rank, kingPos.file, attacker);
     }
 
+    public canCastle(colour: Colour, side: "K" | "Q"): boolean {
+        if (colour === "white") return side === "K" ? this.castlingRights.whiteK : this.castlingRights.whiteQ;
+        return side === "K" ? this.castlingRights.blackK : this.castlingRights.blackQ;
+    }
+
+    public isSquareAttackedPublic(rank: Rank, file: File, byColour: Colour): boolean {
+        return this.isSquareAttacked(rank, file, byColour);
+    }
+
     // ───────────────────────────────
         // 4. Move generation (piece generators)
     // ───────────────────────────────
@@ -337,6 +346,55 @@ export class ChessBoard {
                 // after establishing that it is valid (i.e. not off board grid or if contains friendly piece)
             }
         }
+
+        // -- Castling (pseudo-legal structural checks + "through check/out of check" - checks are done in LegalMoveFilter)
+        // Only consider castling from e-file (file 4) on home rank (white: 0, black: 7)
+        const homeRank = (piece.colour === "white" ? 0 : 7) as Rank;
+        if (r === homeRank && f === (4 as File)) {
+            // King-side: e -> g, rook h -> f; squares f and g must be empty
+            if (this.canCastle(piece.colour, "K")) {
+            const fFile = 5 as File; // f
+            const gFile = 6 as File; // g
+            const rookFile = 7 as File; // h
+
+            const fSq = this.getSquare(homeRank, fFile);
+            const gSq = this.getSquare(homeRank, gFile);
+            const rookSq = this.getSquare(homeRank, rookFile);
+            
+            const rookOk = 
+                rookSq.piece &&
+                rookSq.piece.type === "rook" &&
+                rookSq.piece.colour === piece.colour;
+
+            if (!fSq.piece && !gSq.piece && rookOk) {
+                moves.push({ fromRank: r, fromFile: f, toRank: homeRank, toFile: gFile, castle: "K" });
+                }
+            }
+        }
+
+            // Queen-side: e -> c, rook a -> d; squares b, c, and d must be empty
+            if (this.canCastle(piece.colour, "Q")) {
+                const bFile = 1 as File; // b
+                const cFile = 2 as File; // c
+                const dFile = 3 as File; // d
+                const rookFile = 0 as File; // a
+
+                const bSq = this.getSquare(homeRank, bFile);
+                const cSq = this.getSquare(homeRank, cFile);
+                const dSq = this.getSquare(homeRank, dFile);
+                const rookSq = this.getSquare(homeRank, rookFile);
+
+                const rookOk = 
+                    rookSq.piece &&
+                    rookSq.piece.type === "rook" &&
+                    rookSq.piece.colour === piece.colour;
+
+                if (!bSq.piece && !cSq.piece && !dSq.piece && rookOk) {
+                    moves.push({ fromRank: r, fromFile: f, toRank: homeRank, toFile: cFile, castle: "Q" });
+                } 
+
+            }
+
         return moves;
     }
 
