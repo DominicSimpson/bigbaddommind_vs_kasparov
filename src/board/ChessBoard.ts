@@ -116,7 +116,7 @@ export class ChessBoard {
         return this.isSquareAttacked(kingPos.rank, kingPos.file, attacker);
     }
 
-    public canCastle(colour: Colour, side: "K" | "Q"): boolean {
+    public canCastle(colour: Colour, side: "K" | "Q"): boolean { // 'prepares' castling rights
         if (colour === "white") return side === "K" ? this.castlingRights.whiteK : this.castlingRights.whiteQ;
         return side === "K" ? this.castlingRights.blackK : this.castlingRights.blackQ;
     }
@@ -148,6 +148,7 @@ export class ChessBoard {
         const piece = square.piece;
         if (!piece) return [];
 
+        // switch statement for pieces
         switch (piece.type) {
             case "pawn":    return this.pawnMoves(fromRank, fromFile, piece);
             case "rook":    return this.rookMoves(fromRank, fromFile, piece);
@@ -175,8 +176,8 @@ export class ChessBoard {
     // f + 1: one file right (east)
     // f - 1: one file left (west)
 
-    // dr = delta rank - change in rank (first number)
-    // df = delta file - change in file (second number)
+    // df = delta file - change in file (first number)
+    // dr = delta rank - change in rank (second number)
 
     // ----------------------------------------------------------------------
 
@@ -337,9 +338,8 @@ export class ChessBoard {
         // (-1, 0): south
         // (-1, 1): south-east
         
-        // Starts an outer loop over delta rank (dr), i.e. vertical movement:
+        // Iterate over all delta-rank (dr) and delta-file (df) combinations
         for (let dr = -1; dr <= 1; dr++) { // -1: one rank down; +1: one rank up
-        // Starts an inner nested loop over delta file (df), i.e. horizontal movement:
             for (let df = -1; df <= 1; df++) {
                 if (dr === 0 && df === 0) continue; // (0,0): no move
                 this.pushIfOk(moves, r, f, r + dr, f + df, piece.colour) // computes candidate destination
@@ -349,24 +349,33 @@ export class ChessBoard {
 
         // -- Castling (pseudo-legal structural checks + "through check/out of check" - checks are done in LegalMoveFilter)
         // Only consider castling from e-file (file 4) on home rank (white: 0, black: 7)
-        const homeRank = (piece.colour === "white" ? 0 : 7) as Rank;
-        if (r === homeRank && f === (4 as File)) {
+        // (Castling cannot take place if king has "wondered off")
+        const homeRank = (piece.colour === "white" ? 0 : 7) as Rank; // identify the king's home rank
+        if (r === homeRank && f === (4 as File)) { // checks that king is on e1 (white) or e8 (black)
             // King-side: e -> g, rook h -> f; squares f and g must be empty
+            // Also, this is the "historical" rule: even if the king is on e1/e8 and the rook is on h1/h8,
+            // castling may still be illegal if the king or rook moved earlier and then moved back:
             if (this.canCastle(piece.colour, "K")) {
-            const fFile = 5 as File; // f
-            const gFile = 6 as File; // g
-            const rookFile = 7 as File; // h
+            // encodes fixed geometry of king-side castling:
+            const fFile = 5 as File; // file f
+            const gFile = 6 as File; // file g (king destination) 
+            const rookFile = 7 as File; // file h (rook start square)
 
-            const fSq = this.getSquare(homeRank, fFile);
-            const gSq = this.getSquare(homeRank, gFile);
-            const rookSq = this.getSquare(homeRank, rookFile);
+            // look up actual squares on board
+            const fSq = this.getSquare(homeRank, fFile); // fSq: f1 (white) or f8 (black)
+            const gSq = this.getSquare(homeRank, gFile); // gSq: g1 or g8
+            const rookSq = this.getSquare(homeRank, rookFile); // rookSq: h1 or h8
             
+            // very that rook is really a rook of the same colour, on the correct rook square:
             const rookOk = 
                 rookSq.piece &&
                 rookSq.piece.type === "rook" &&
                 rookSq.piece.colour === piece.colour;
-
+            
+            // check there are no pieces between king and rook, i.e. inbetween squares are empty
             if (!fSq.piece && !gSq.piece && rookOk) {
+                // emit a castling move (pseudo-legal)
+                // still has to be 'verified' by LegalMoveFilter() and executed by makeMove()
                 moves.push({ fromRank: r, fromFile: f, toRank: homeRank, toFile: gFile, castle: "K" });
                 }
             }
@@ -407,11 +416,11 @@ export class ChessBoard {
     // Bishop → diagonals
     // Queen → straight lines + diagonals
 
-    // dr = delta rank - change in rank (first number)
-    // df = delta file - change in file (second number)
+    // df = delta file - change in file (first number)
+    // dr = delta rank - change in rank (second number)
     private rayMoves(r: Rank, f: File, piece: Piece, directions: Array<[number, number]>): Move[] {
-        // r: the piece's current rank (0–7)
         // f: the piece's current file (0–7)
+        // r: the piece's current rank (0–7)
         const moves: Move[] = []; // creates empty array to store moves pieces will make
 
         for (const[dr, df] of directions) { // Loops over each direction the piece can move in
@@ -558,6 +567,13 @@ export class ChessBoard {
         if (move.castle) {
             const homeRank = (piece.colour === "white" ? 0 : 7) as Rank;
 
+            const expectedToFile = (move.castle === "K" ? 6 : 2) as File;
+
+            if (move.fromRank !== homeRank || move.fromFile !== (4 as File) ||
+                move.toRank !== homeRank || move.toFile !== expectedToFile) {
+                    throw new Error("Invalid castling: incorrect king coordinates for castle move");    
+            }
+
             if (move.castle === "K") { //king-side castling
                 undo.rookFrom = { rank: homeRank, file: 7 as File }; // h-file
                 undo.rookTo = { rank: homeRank, file: 5 as File }; // f-file
@@ -599,40 +615,27 @@ export class ChessBoard {
             // If king moved => lose both castling rights for that colour
         
         if (piece.type === "king") {
-            if (piece.colour === "white") {
-                this.castlingRights.whiteK = false;
-                this.castlingRights.whiteQ = false;
-            } else {
-                this.castlingRights.blackK = false;
-                this.castlingRights.blackQ = false;
-            }
+            this.clearCastlingRights(piece.colour);
         }
             // Rook moved from its starting corner => lose castling rights for that side
         if (piece.type === "rook") {
-            if (piece.colour === "white") {
-                if (isH1(move.fromRank, move.fromFile)) this.castlingRights.whiteK = false;
-                if (isA1(move.fromRank, move.fromFile)) this.castlingRights.whiteQ = false;
-            } else {
-                if (isH8(move.fromRank, move.fromFile)) this.castlingRights.blackK = false;
-                if (isA8(move.fromRank, move.fromFile)) this.castlingRights.blackQ = false;
-            }
+                if (isH1(move.fromRank, move.fromFile)) this.clearCastlingSide("white", "K");
+                if (isA1(move.fromRank, move.fromFile)) this.clearCastlingSide("white", "Q");
+                if (isH8(move.fromRank, move.fromFile)) this.clearCastlingSide("black", "K");
+                if (isA8(move.fromRank, move.fromFile)) this.clearCastlingSide("black", "Q");
         }
 
             // Rook captured on its starting corner => lose castling rights for that side
-            // (En passant cannot capture a rook, so capturedSquare will be null here anyway.)
+            // (En passant cannot capture a rook, so capturedSquare will be null here anyway)
         if (undo.capturedPiece?.type === "rook") {
-            const r = move.toRank;
-            const f = move.toFile;
+            const capRank = undo.capturedSquare ? undo.capturedSquare.rank : move.toRank;
+            const capFile = undo.capturedSquare ? undo.capturedSquare.file : move.toFile;
 
-            if (undo.capturedPiece.colour === "white") {
-                if (isH1(r, f)) this.castlingRights.whiteK = false;
-                if (isA1(r, f)) this.castlingRights.whiteQ = false;
-            } else {
-                if (isH8(r, f)) this.castlingRights.blackK = false;
-                if (isA8(r, f)) this.castlingRights.blackQ = false;
-            }
+            if (isH1(capRank, capFile)) this.clearCastlingSide("white", "K");
+            if (isA1(capRank, capFile)) this.clearCastlingSide("white", "Q");
+            if (isH8(capRank, capFile)) this.clearCastlingSide("black", "K");
+            if (isA8(capRank, capFile)) this.clearCastlingSide("black", "Q");
         }
-
 
         // // e) Set en passant target (pawn double-step) ---------------------------------
 
@@ -806,8 +809,8 @@ export class ChessBoard {
     // f + 1: one file right (east)
     // f - 1: one file left (west)
 
-    // dr = delta rank - change in rank (first number)
-    // df = delta file - change in file (second number)
+    // df = delta file - change in file (first number)
+    // dr = delta rank - change in rank (second number)
 
     // ----------------------------------------------------------------------
 
@@ -971,6 +974,32 @@ export class ChessBoard {
         }
 
         return false;
+    }
+
+    // clears both castling rights for the given colour
+    private clearCastlingRights(colour: Colour): void {
+        if (colour === "white") {
+            this.castlingRights.whiteK = false;
+            this.castlingRights.whiteQ = false;
+        } else {
+            this.castlingRights.blackK = false;
+            this.castlingRights.blackQ = false;
+        }
+    }
+
+    // disables one castling right for one colour
+    private clearCastlingSide(colour: Colour, side: "K" | "Q"): void {
+        if (colour === "white") {
+            // white can no longer castle king-side:
+            if (side === "K") this.castlingRights.whiteK = false;
+            // white can no longer castle queen-side:
+            else this.castlingRights.whiteQ = false;
+        } else {
+            // black can no longer castle king-side:
+            if (side === "K") this.castlingRights.blackK = false;
+            // black can no longer castle queen-side:
+            else this.castlingRights.blackQ = false;
+        }
     }
  
     private createEmptyBoard(): Square[][] { // private internal helper

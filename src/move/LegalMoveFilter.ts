@@ -21,15 +21,19 @@ export class LegalMoveFilter {
             // Castling extra rules: can't castle out of check or through check
             if (move.castle) {
                 
-                // Can't castle while king is in check
+                // Can't castle while king is in check, so skip move
                 if (board.isKingInCheck(moverColour)) continue;
 
+                // enemy here is colour of opponent's piece
+                // If moving king is white, then moverColour = "white": enemy = "black", and vice-versa
+                // Ensures that a king may not castle through a square that is under attack by an enemy piece:
                 const enemy = moverColour === "white" ? "black" : "white";
 
                 // Can't castle THROUGH check: the square the king crosses must not be attacked
                 // K-side crosses f-file (5), Q-side crosses d-file (3)
                 const throughFile = (move.castle === "K" ? 5 : 3) as File;
 
+                // Castling move is illegal, so skip move only and go on to the next move in loop:
                 if (board.isSquareAttackedPublic(move.fromRank, throughFile, enemy)) continue;
             }
 

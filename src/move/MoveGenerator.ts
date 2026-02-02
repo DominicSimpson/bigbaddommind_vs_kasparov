@@ -51,9 +51,9 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
   // -------------------------
     // Piece-specific helpers
   // -------------------------
-
-    // dr = delta rank - change in rank (first number)
-    // df = delta file - change in file (second number)
+    
+    // df = delta file - change in file (first number) left/right
+    // dr = delta rank - change in rank (second number) down/up
     // // Array of 2-element tuples below <[number, number]>:
     // first number → delta file (df)
     // second number → delta rank (dr)
@@ -87,6 +87,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         // if potential destination square is not on board, skip it
         if (!this.isOnBoard(capRank, capFile)) continue;
 
+        // capture of opponent piece
         const capSq = board.getSquare(capRank as Rank, capFile as File);
         if (capSq.piece && capSq.piece.colour !== piece.colour) {
           moves.push(this.makeMove(board, fromRank, fromFile, capRank as Rank, capFile as File));
@@ -181,15 +182,21 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       ];
 
       for (const [df, dr] of deltas) {
-        const toFile = file + df;
+        // compute destination square
+        const toFile = file + df; 
         const toRank = rank + dr;
 
-        // if potential destination square is not on board, skip it
+        // if potential destination square is not on board, skip it:
         if (!this.isOnBoard(toRank, toFile)) continue;
 
+        // look at what's on destination square:
         const toSquare = board.getSquare(toRank as Rank, toFile as File);
-        if (toSquare.piece && toSquare.piece.colour === piece.colour) continue;
 
+        // if destination square contains piece of the same colour, skip it:
+        if (toSquare.piece && toSquare.piece.colour === piece.colour) continue;
+        
+        // record the move as a pseudo-legal move in moves array
+        // (legality filtering happens in LegalMoveFilter())
         moves.push(this.makeMove(board, rank, file, toRank as Rank, toFile as File));
       }
     }
