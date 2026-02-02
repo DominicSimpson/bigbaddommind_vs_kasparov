@@ -573,26 +573,30 @@ export class ChessBoard {
             const rookToSquare = this.getSquare(undo.rookTo.rank, undo.rookTo.file);
 
             // Snapshots which rook is moving:
+            const rook = rookFromSquare.piece;
             // if for some reason the square the rook starts on is empty, store null instead of undefined
             // This mirrors what the king is already doing
-            undo.rookPiece = rookFromSquare.piece ?? null;
+            if (!rook || rook.type !== "rook" || rook.colour !== piece.colour) {
+                throw new Error("Invalid castling: rook missing or wrong colour/type")
+            }
+            undo.rookPiece = rook;
 
             // Remove the rook from its original square:
             rookFromSquare.piece = null;
             // Place the rook onto its destination square:
-            rookToSquare.piece = undo.rookPiece;
+            rookToSquare.piece = rook;
 
         }
-
-        
-        // // d) Set en passant target (pawn double-step) ---------------------------------
 
         const isA1 = (r: Rank, f: File) => r === 0 && f === 0;
         const isH1 = (r: Rank, f: File) => r === 0 && f === 7;
         const isA8 = (r: Rank, f: File) => r === 7 && f === 0;
         const isH8 = (r: Rank, f: File) => r === 7 && f === 7;
 
-          // If king moved => lose both castling rights for that colour
+        
+        // // d) Set en passant target (pawn double-step) ---------------------------------
+
+            // If king moved => lose both castling rights for that colour
         
         if (piece.type === "king") {
             if (piece.colour === "white") {

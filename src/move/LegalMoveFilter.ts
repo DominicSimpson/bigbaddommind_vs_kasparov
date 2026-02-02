@@ -17,6 +17,22 @@ export class LegalMoveFilter {
 
         // iterates over pseudo-legal moves, i.e. by movement alone without checking if king is left in check
         for (const move of pseudo) {
+
+            // Castling extra rules: can't castle out of check or through check
+            if (move.castle) {
+                
+                // Can't castle while king is in check
+                if (board.isKingInCheck(moverColour)) continue;
+
+                const enemy = moverColour === "white" ? "black" : "white";
+
+                // Can't castle THROUGH check: the square the king crosses must not be attacked
+                // K-side crosses f-file (5), Q-side crosses d-file (3)
+                const throughFile = (move.castle === "K" ? 5 : 3) as File;
+
+                if (board.isSquareAttackedPublic(move.fromRank, throughFile, enemy)) continue;
+            }
+
             let moved = false;
 
             // for each attempted move, inspect board and undo move before continuing
