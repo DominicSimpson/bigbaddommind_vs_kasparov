@@ -1,4 +1,5 @@
 import type { Rank, File } from "./coords.js";
+import type { PieceType } from "../pieces/Piece.js";
 
 export interface Move {
     fromRank: Rank;
@@ -8,9 +9,9 @@ export interface Move {
 
     // question marks denote "optional" - this property may exist
     // but it doesn't have to; forcing these to exist on every move would be wrong
-    promotion?: "queen" | "rook" | "bishop" | "knight"; // promotion is when a 
-    // pawn manages to reach the other end of the board and is promoted to another piece
-    // (usually a queen in my case, as is usual)
+    promotion?: PieceType; // queen | rook | bishop | knight; 
+    // // promotion is when a pawn manages to reach the other end of the board and is promoted to another piece
+    // (usually a queen)
     castle?: "K" | "Q"; //castling (either king-side or queen-side)
     enPassant?: boolean; // special pawn capture that can happen only immediately
     // after a pawn makes a two-square advance from its starting rank

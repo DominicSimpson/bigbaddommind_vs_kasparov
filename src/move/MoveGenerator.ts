@@ -3,6 +3,7 @@ import type { Move } from "../types/Move.js";
 import { Piece } from "../pieces/Piece.js";
 import { FILES, RANKS } from "../types/coords.js";
 import type { File, Rank } from "../types/coords.js";
+import { PieceType } from "../pieces/Piece.js";
 
 
 export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
@@ -59,7 +60,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
     // second number → delta rank (dr)
 
     
-    // pawn movement
+    // Pawn movement
     private static addPawnMoves(
       board: ChessBoard,
       fromRank: Rank,
@@ -67,20 +68,47 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       piece: Piece,
       moves: Move[]
     ): void {
-      
+
       // basic pawn support
       const dir = piece.colour === "white" ? 1: -1;
       const oneStepRank = fromRank + dir;
 
-      // 1. Forward movement
+      // a. Promotion
+      // Definitions in all caps are fixed chess geometry and should never change: 
+      const PROMO_TYPES: PieceType[] = [
+        "queen", 
+        "rook", 
+        "bishop", 
+        "knight"
+      ];
+
+      const isPromotionRank = (toRank: Rank): boolean =>
+        piece.colour === "white" ? toRank === 7 : toRank === 0;
+      
+      // b. Forward movement
       if (this.isOnBoard(oneStepRank, fromFile)) {
         const fwdSq = board.getSquare(oneStepRank as Rank, fromFile);
+        
         if (!fwdSq.piece) {
-          moves.push(this.makeMove(board, fromRank, fromFile, oneStepRank as Rank, fromFile));
+          if (isPromotionRank(oneStepRank as Rank)) {
+            for (const promo of PROMO_TYPES) {
+            moves.push({
+              fromRank, 
+              fromFile,
+              toRank: oneStepRank as Rank,
+              toFile: fromFile,
+              promotion: promo,
+            });
+          }
+        } else {
+          moves.push(
+            this.makeMove(board, fromRank, fromFile, oneStepRank as Rank, fromFile)
+          );
         }
       }
-
-      // 2. Captures (diagonals left or right)
+    }
+    
+      // c. Captures (diagonals left or right)
       for (const df of [-1, 1]) {
         const capFile = fromFile + df;
         const capRank = fromRank + dir;
@@ -89,13 +117,31 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
 
         // capture of opponent piece
         const capSq = board.getSquare(capRank as Rank, capFile as File);
+
+        // for promotion
         if (capSq.piece && capSq.piece.colour !== piece.colour) {
-          moves.push(this.makeMove(board, fromRank, fromFile, capRank as Rank, capFile as File));
+          if (isPromotionRank(capRank as Rank)) {
+            for (const promo of PROMO_TYPES) {
+              moves.push({
+                fromRank,
+                fromFile,
+                toRank: capRank as Rank,
+                toFile: capFile as File,
+                isCapture: true,
+                promotion: promo,
+            });
+          }
+        } else {
+          moves.push(
+            this.makeMove(board, fromRank, fromFile, capRank as Rank, capFile as File)
+          );
         }
       }
     }
+  }
   
-    // rook movement
+
+    // Rook movement
     private static addRookMoves(
       board: ChessBoard,
       rank: Rank,
@@ -105,6 +151,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
     ): void {
       this.addSlidingMoves(board, rank, file, piece, moves, ROOK_DIRS);
     }
+
 
     // knight movement
     private static addKnightMoves(
@@ -140,6 +187,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       }
     }
     
+
     // bishop movement
     private static addBishopMoves(
       board: ChessBoard,
@@ -151,6 +199,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       this.addSlidingMoves(board, rank, file, piece, moves, BISHOP_DIRS);
     }
 
+
     // queen movement
     private static addQueenMoves(
       board: ChessBoard,
@@ -161,6 +210,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
     ): void {
       this.addSlidingMoves(board, rank, file, piece, moves, QUEEN_DIRS);
     }
+
 
     // king movement
     private static addKingMoves(
@@ -266,7 +316,6 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       return move;
     };
     
-
     private static isOnBoard(rank: number, file: number): boolean {
       return rank >= 0 && rank <= 7 && file >= 0 && file <= 7;
     }
@@ -274,7 +323,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
 }
 
 // These constants encode the geometry of how a piece is allowed to move,
-// independently of the board. They are fixed and should never change. 
+// independently of the board. They are fixed and should never change (signified by all caps). 
 // Each entry is a direction vector [df, dr] = delta file, delta rank
 
 const ROOK_DIRS: Array <[number, number]> = [
