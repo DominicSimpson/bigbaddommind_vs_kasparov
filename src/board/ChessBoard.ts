@@ -458,24 +458,24 @@ export class ChessBoard {
     // ───────────────────────────────
 
     public makeMove(move: Move): void { // returns void because it mutates board state rather than
-        // producing a value
+            // producing a value
         const fromSquare = this.getSquare(move.fromRank, move.fromFile); // where the piece is moving from
         const toSquare = this.getSquare(move.toRank, move.toFile); // where the piece is moving to
 
-        const piece = fromSquare.piece; // takes piece currently on fromSquare
+        const movingPiece = fromSquare.piece; // takes piece currently on fromSquare
 
-        // if a piece is not occupying a square
-        if (!piece) throw new Error("No piece on source square.");
+            // if a piece is not occupying a square
+        if (!movingPiece) throw new Error("No piece on source square.");
         // enforces alternating turns
-        if (piece.colour !== this.sideToMove) throw new Error("Not your turn.");
+        if (movingPiece.colour !== this.sideToMove) throw new Error("Not your turn.");
     
-    
-    
-        //snapshot before touching board
+        // --- (a) Build undo record BEFORE mutating board -----------------------------------------------------
+          // Store whatever you already store: castling rights, ep square, halfmove, etc.
+          // i.e., snapshot before touching board
         const undo: UndoRecord = { // starts building the undo snapshot that will allow reverting later
             // This needs to happen before the board is touched
             move,
-            movedPiece: piece, // the exact piece object that moved
+            movedPiece: movingPiece, // the exact piece object that moved
             capturedPiece: null, // stores what was on the destination square before move,
             // if it is not null; otherwise use null
             capturedSquare: null,
@@ -499,79 +499,99 @@ export class ChessBoard {
 
 
         this.enPassantTarget = null; // clear en passant target by default
-        // set it again only on pawn double-step
+                // set it again only on pawn double-step
 
         
-        // // a) Capture handling (normal vs en passant) ---------------------------------
+
+        // --- b) Capture handling (normal vs en passant): ------------------------------------------------------
+            // Handle captures that are NOT "toSq.piece" (i.e. en passant)
+
 
         if (move.enPassant) {
             // Destination square is empty; captured pawn is behind it:
             if (toSquare.piece !== null) {
                 throw new Error("Invalid en passant: target square is not empty");
             }
+
             const capRank = // calculates rank of pawn of being captured
-                (piece.colour === "white" ? (move.toRank -1) : (move.toRank + 1)) as Rank;
+                (movingPiece.colour === "white" ? (move.toRank -1) : (move.toRank + 1)) as Rank;
                 // as Rank is Typescript cast due to function expecting a Rank type
 
-            // captured pawn is on the same file as the destination square
-            // Example: e5 > d6 captures the pawn on d5 (file d, same as destination file d):
+                // captured pawn is on the same file as the destination square
+                // Example: e5 > d6 captures the pawn on d5 (file d, same as destination file d):
             const capFile = move.toFile;
-            // Grabs Square object where captured pawn actually sits (e.g. d5):
+                // Grabs Square object where captured pawn actually sits (e.g. d5):
             const capSquare = this.getSquare(capRank, capFile);
 
-            // sanity check here:
+                // sanity check here:
             const victim = capSquare.piece;
-            if (!victim || victim.type !=="pawn" || victim.colour === piece.colour) {
+            if (!victim || victim.type !=="pawn" || victim.colour === movingPiece.colour) {
                 throw new Error("Invalid en passant: no enemy pawn to capture");
             }
 
             undo.capturedPiece = victim;
-            // Stores where captured piece was removed from (not toSquare)
+                // Stores where captured piece was removed from (not toSquare)
             undo.capturedSquare = { rank: capRank, file: capFile };
 
-            // remove the pawn being captured en passant
+                // remove the pawn being captured en passant
             capSquare.piece = null;
 
         } else {
-            // normal capture happens on the destination square (if any)
+                // normal capture happens on the destination square (if any)
             undo.capturedPiece = toSquare.piece ?? null;
-            // capturedSquare left as null, meaning "restore to toSquare" in undoMove()
-            // (restore captured piece back onto the destination square)
+                // capturedSquare left as null, meaning "restore to toSquare" in undoMove()
+                // (restore captured piece back onto the destination square)
         }
 
 
-        // // b) Move the main piece (including promotion) ---------------------------------
+        // c) --- Move the main piece (including promotion) off from-square ------------------------------------
 
             //move piece + capture
         fromSquare.piece = null; // original square that piece moved from is now unoccupied
 
-        const isPromotion = // calculates if move is a pawn promotion
-            piece.type === "pawn" &&
-            !!move.promotion && // !! converts move.promotion (in types/Move.ts) to strict boolean
-            ((piece.colour === "white" && move.toRank === 7) || // white promotes on rank 7 (top)
-                (piece.colour === "black" && move.toRank === 0)); // black promotes on rank 0 (bottom)
+        // d) --- Place piece on to-square (promotion hook is here) --------------------------------------------
 
-        if (isPromotion) {
-            const promoted = new Piece(move.promotion!, piece.colour); // promoted piece is converted
+        const reachedLastRank = // calculates if move is a pawn promotion
+
+            movingPiece.type === "pawn" && // promotion can only happen if piece is pawn
+             // !! converts move.promotion (in types/Move.ts) to strict boolean
+                ((movingPiece.colour === "white" && move.toRank === 7) || // white promotes on rank 7 (top)
+                (movingPiece.colour === "black" && move.toRank === 0)); // black promotes on rank 0 (bottom)
+
+        if (move.promotion && movingPiece.type !== "pawn") {
+            throw new Error("Invalid promotion: only pawns can promote.");
+        }
+
+          // Optional strictness: if a pawn reaches last rank, promotion must be specified
+        if (reachedLastRank && !move.promotion) {
+            throw new Error("Pawn reached last rank without promotion choice.");
+            // OR: default instead:
+            // move.promotion = "queen";
+        } 
+
+        if (reachedLastRank && move.promotion) {
+            const promoted = new Piece(move.promotion, movingPiece.colour); // promoted piece is converted
             // via new Piece object
             // move.promotion! uses non-null assertion operator
             undo.promotedTo = promoted; // Stores the promoted piece in undo snapshot
             toSquare.piece = promoted; // Puts promoted piece on destination square
         } else {
-            toSquare.piece = piece; // piece is not promotion, but now recorded as in new destination square
+            toSquare.piece = movingPiece; // piece is not promotion, but now recorded as in new destination square
         }
 
 
-        // // c) Castling ---------------------------------
+        // --- e) Castling ---------------------------------
 
         if (move.castle) {
-            const homeRank = (piece.colour === "white" ? 0 : 7) as Rank;
-
+            const homeRank = (movingPiece.colour === "white" ? 0 : 7) as Rank;
             const expectedToFile = (move.castle === "K" ? 6 : 2) as File;
 
-            if (move.fromRank !== homeRank || move.fromFile !== (4 as File) ||
-                move.toRank !== homeRank || move.toFile !== expectedToFile) {
-                    throw new Error("Invalid castling: incorrect king coordinates for castle move");    
+            if (move.fromRank !== homeRank || 
+                move.fromFile !== (4 as File) ||
+                move.toRank !== homeRank || 
+                move.toFile !== expectedToFile
+            ) {
+                throw new Error("Invalid castling: incorrect king coordinates for castle move");    
             }
 
             if (move.castle === "K") { //king-side castling
@@ -592,9 +612,10 @@ export class ChessBoard {
             const rook = rookFromSquare.piece;
             // if for some reason the square the rook starts on is empty, store null instead of undefined
             // This mirrors what the king is already doing
-            if (!rook || rook.type !== "rook" || rook.colour !== piece.colour) {
+            if (!rook || rook.type !== "rook" || rook.colour !== movingPiece.colour) {
                 throw new Error("Invalid castling: rook missing or wrong colour/type")
             }
+
             undo.rookPiece = rook;
 
             // Remove the rook from its original square:
@@ -604,21 +625,22 @@ export class ChessBoard {
 
         }
 
+          // Helpers for corner squares (castling rights updates)
         const isA1 = (r: Rank, f: File) => r === 0 && f === 0;
         const isH1 = (r: Rank, f: File) => r === 0 && f === 7;
         const isA8 = (r: Rank, f: File) => r === 7 && f === 0;
         const isH8 = (r: Rank, f: File) => r === 7 && f === 7;
 
         
-        // // d) Set en passant target (pawn double-step) ---------------------------------
+        // // f) Update castling rights based on king/rook moves & rook captures ---
 
             // If king moved => lose both castling rights for that colour
         
-        if (piece.type === "king") {
-            this.clearCastlingRights(piece.colour);
+        if (movingPiece.type === "king") {
+            this.clearCastlingRights(movingPiece.colour);
         }
             // Rook moved from its starting corner => lose castling rights for that side
-        if (piece.type === "rook") {
+        if (movingPiece.type === "rook") {
                 if (isH1(move.fromRank, move.fromFile)) this.clearCastlingSide("white", "K");
                 if (isA1(move.fromRank, move.fromFile)) this.clearCastlingSide("white", "Q");
                 if (isH8(move.fromRank, move.fromFile)) this.clearCastlingSide("black", "K");
@@ -628,8 +650,8 @@ export class ChessBoard {
             // Rook captured on its starting corner => lose castling rights for that side
             // (En passant cannot capture a rook, so capturedSquare will be null here anyway)
         if (undo.capturedPiece?.type === "rook") {
-            const capRank = undo.capturedSquare ? undo.capturedSquare.rank : move.toRank;
-            const capFile = undo.capturedSquare ? undo.capturedSquare.file : move.toFile;
+            const capRank = move.toRank;
+            const capFile = move.toFile;
 
             if (isH1(capRank, capFile)) this.clearCastlingSide("white", "K");
             if (isA1(capRank, capFile)) this.clearCastlingSide("white", "Q");
@@ -637,25 +659,25 @@ export class ChessBoard {
             if (isA8(capRank, capFile)) this.clearCastlingSide("black", "Q");
         }
 
-        // // e) Set en passant target (pawn double-step) ---------------------------------
+        // // g) Set en passant target (pawn double-step) ---------------------------------
 
-        if (piece.type === "pawn") { // en passant can only be done with pawns
+        if (movingPiece.type === "pawn") { // en passant can only be done with pawns
             const dr = move.toRank - move.fromRank;
             if (dr === 2 || dr === -2) { // dr === 2: white; dr === -2: black
                 // If it moved two squares, set en passant target;
                 // pawn double-step creates a square 'behind it' that can be captured en passant.
-                const midRank = (move.fromRank + move.toRank) / 2; //mid-rank is the rank inbetween from and to
+                const midRank = ((move.fromRank + move.toRank) / 2) as Rank; //mid-rank is the rank inbetween from and to
                 // that square becomes the en passant target:
-                this.enPassantTarget = { rank: midRank as Rank, file: move.fromFile };
+                this.enPassantTarget = { rank: midRank, file: move.fromFile };
             }
         }
         
 
-        // // f) Clocks + turn toggle + push undo -----------------------------------------
+        // // h) Clocks + turn toggle + push undo -----------------------------------------
 
             // halfmove clock: resets to 0 on pawn move or capture
         const isCapture = undo.capturedPiece !== null;
-        const isPawnMove = piece.type === "pawn";
+        const isPawnMove = movingPiece.type === "pawn";
         this.halfMoveClock = (isPawnMove || isCapture) ? 0 : this.halfMoveClock + 1;
             // otherwise it increments by 1
             // This is used for the 50-move rule and for FEN.

@@ -12,7 +12,7 @@ export interface UndoRecord { // state delta recorder
 
     // pieces
     movedPiece: Piece; // the exact piece object that moved
-    capturedPiece: Piece | null;  // stores which piece was captured (or en passant victim)
+    capturedPiece: Piece | null;  // stores which piece was captured (or en passant victim, castling right, etc.)
 
     // special-case squares
     capturedSquare: { rank: Rank, file: File } | null; // stores what square was captured
