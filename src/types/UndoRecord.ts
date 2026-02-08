@@ -1,5 +1,5 @@
 import type { Move } from "./Move.js";
-import type { Piece } from "../pieces/Piece.js";
+import type { Piece, PieceType } from "../pieces/Piece.js";
 import type { Rank, File } from "./coords.js";
 import type { Colour } from "./colour.js";
 import type { CastlingRights } from "./CastlingRights.js";
@@ -44,5 +44,5 @@ export interface UndoRecord { // state delta recorder
     rookPiece: Piece | null;
 
     // for promotion (so undo can restore the pawn cleanly):
-    promotedTo: Piece | null;
+    promotedTo: PieceType | null;
 }
