@@ -89,24 +89,29 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       if (this.isOnBoard(oneStepRank, fromFile)) {
         const fwdSq = board.getSquare(oneStepRank as Rank, fromFile);
         
-        if (!fwdSq.piece) {
-          if (isPromotionRank(oneStepRank as Rank)) {
+        if (fwdSq.piece) {
+            // blocked
+        } else if (isPromotionRank(oneStepRank as Rank)) {
             for (const promo of PROMO_TYPES) {
-            moves.push({
-              fromRank, 
-              fromFile,
-              toRank: oneStepRank as Rank,
-              toFile: fromFile,
-              promotion: promo,
+              moves.push({
+                fromRank, 
+                fromFile,
+                toRank: oneStepRank as Rank,
+                toFile: fromFile,
+                promotion: promo,
             });
           }
         } else {
           moves.push(
-            this.makeMove(board, fromRank, fromFile, oneStepRank as Rank, fromFile)
+            this.makeMove(
+              board, 
+              fromRank, 
+              fromFile, 
+              oneStepRank as Rank, 
+              fromFile)
           );
         }
       }
-    }
     
       // c. Captures (diagonals left or right)
       for (const df of [-1, 1]) {
@@ -133,7 +138,12 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
           }
         } else {
           moves.push(
-            this.makeMove(board, fromRank, fromFile, capRank as Rank, capFile as File)
+            this.makeMove(
+              board, 
+              fromRank, 
+              fromFile, 
+              capRank as Rank, 
+              capFile as File)
           );
         }
       }
@@ -183,7 +193,12 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         const toSquare = board.getSquare(toRank as Rank, toFile as File);
         if (toSquare.piece && toSquare.piece.colour === piece.colour) continue;
 
-        moves.push(this.makeMove(board, fromRank, fromFile, toRank as Rank, toFile as File));
+        moves.push(this.makeMove(
+          board, 
+          fromRank, 
+          fromFile, 
+          toRank as Rank, 
+          toFile as File));
       }
     }
     
@@ -196,7 +211,13 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       piece: Piece,
       moves: Move[]
     ): void {
-      this.addSlidingMoves(board, rank, file, piece, moves, BISHOP_DIRS);
+      this.addSlidingMoves(
+        board, 
+        rank, 
+        file, 
+        piece, 
+        moves, 
+        BISHOP_DIRS);
     }
 
 
@@ -208,7 +229,13 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       piece: Piece,
       moves: Move[]
     ): void {
-      this.addSlidingMoves(board, rank, file, piece, moves, QUEEN_DIRS);
+      this.addSlidingMoves(
+        board, 
+        rank, 
+        file, 
+        piece, 
+        moves, 
+        QUEEN_DIRS);
     }
 
 
@@ -278,7 +305,13 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
           if (targetSquare.piece && targetSquare.piece.colour === piece.colour) break;
 
           // can move (empty or capture)
-          moves.push(this.makeMove(board, fromRank, fromFile, rank as Rank, file as File));
+          moves.push(this.makeMove(
+            board, 
+            fromRank, 
+            fromFile, 
+            rank as Rank, 
+            file as File
+          ));
 
             // capture blocks further sliding
           if (targetSquare.piece && targetSquare.piece.colour !== piece.colour) break;

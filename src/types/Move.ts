@@ -18,6 +18,6 @@ export interface Move {
     // I can't remember ever doing this move in all my time playing chess, 
     // but it does exist!
       // optional convenience flag (optional)
-    isCapture?: true;
+    isCapture?: boolean;
 }
 
