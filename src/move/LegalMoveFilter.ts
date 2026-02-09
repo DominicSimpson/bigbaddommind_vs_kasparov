@@ -35,6 +35,8 @@ export class LegalMoveFilter {
 
                 // Castling move is illegal, so skip move only and go on to the next move in loop:
                 if (board.isSquareAttackedPublic(move.fromRank, throughFile, enemy)) continue;
+                // destination square attack check:
+                if (board.isSquareAttackedPublic(move.fromRank, move.toFile, enemy)) continue;  
             }
 
             let moved = false;

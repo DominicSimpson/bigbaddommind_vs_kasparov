@@ -497,10 +497,7 @@ export class ChessBoard {
 
         };
 
-        this.enPassantTarget = null; // clear en passant target by default
-                // re-set it again only on pawn double-step
         
-
         // --- b) Capture discovery (no mutation yet except optional EP victim removal): ---------------------------------------
             // Handle captures that are NOT "toSq.piece" (i.e. en passant)
               
@@ -525,6 +522,7 @@ export class ChessBoard {
 
                 // sanity check here:
             const victim = capSquare.piece;
+
             if (!victim || victim.type !=="pawn" || victim.colour === movingPiece.colour) {
                 throw new Error("Invalid en passant: no enemy pawn to capture");
             }
@@ -533,7 +531,6 @@ export class ChessBoard {
                 // Stores where captured piece was removed from (not toSquare)
             undo.capturedSquare = { rank: capRank, file: capFile };
             enPassantVictimSquare = { rank: capRank, file: capFile };
-
         } else {
                 // normal capture happens on the destination square (if any)
             undo.capturedPiece = toSquare.piece ?? null;
@@ -546,23 +543,22 @@ export class ChessBoard {
 
             // promotion conditions:
         const reachedLastRank = // calculates if move is a pawn promotion
-
             movingPiece.type === "pawn" && // promotion can only happen if piece is pawn
              // !! converts move.promotion (in types/Move.ts) to strict boolean
-                ((movingPiece.colour === "white" && move.toRank === 7) || // white promotes on rank 7 (top)
-                (movingPiece.colour === "black" && move.toRank === 0)); // black promotes on rank 0 (bottom)
+            ((movingPiece.colour === "white" && move.toRank === 7) || // white promotes on rank 7 (top)
+            (movingPiece.colour === "black" && move.toRank === 0)); // black promotes on rank 0 (bottom)
 
         if (move.promotion && movingPiece.type !== "pawn") {
-            throw new Error("Invalid promotion: only pawns can promote.");
+            throw new Error("Invalid promotion: only pawns can promote");
         }
 
         if (move.promotion && !reachedLastRank) {
-            throw new Error("Invalid promotion: pawn did not reach last rank.");
+            throw new Error("Invalid promotion: pawn did not reach last rank");
         }
 
           // Optional strictness: if a pawn reaches last rank, promotion must be specified
         if (reachedLastRank && !move.promotion) {
-            throw new Error("Pawn reached last rank without promotion choice.");
+            throw new Error("Pawn reached last rank without promotion choice");
             // OR: default instead:
             // move.promotion = "queen";
         } 
@@ -583,10 +579,36 @@ export class ChessBoard {
         ) {
             throw new Error("Invalid castling: incorrect king coordinates for castle move");    
         }
-    }
+        
+            // Define rook from/to squares:
+        if (move.castle === "K") { //king-side castling
+            undo.rookFrom = { rank: homeRank, file: 7 as File }; // h-file
+            undo.rookTo = { rank: homeRank, file: 5 as File }; // f-file
+        } else {
+                //queen-side castling ("Q")
+            undo.rookFrom = { rank: homeRank, file: 0 as File }; // a-file
+            undo.rookTo = { rank: homeRank, file: 3 as File}; // d-file
+        }    
+        
+            // The square that the rook starts on (a1/h1/a8/h8):
+            const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
 
+            // Snapshots which rook is moving:
+            const rook = rookFromSquare.piece;
+            // if for some reason the square the rook starts on is empty, store null instead of undefined
+            // This mirrors what the king is already doing
+            if (!rook || rook.type !== "rook" || rook.colour !== movingPiece.colour) {
+                throw new Error("Invalid castling: rook missing or wrong colour/type")
+            }
 
+            undo.rookPiece = rook;
+        }
         // --- d) Mutation (move the main piece - board changes happen now) -----------------------------------------------------
+
+        try {
+        
+            // Clear EP target by default (only re-set on pawn double step):
+        this.enPassantTarget = null;
 
             // Remove missing piece from origin:
         fromSquare.piece = null;
@@ -605,39 +627,13 @@ export class ChessBoard {
             toSquare.piece = movingPiece;
         }
 
-            // Castling rook move (after king placed is fine):
-        if (move.castle) {
-            const homeRank = (movingPiece.colour === "white" ? 0 : 7) as Rank;
-
-            if (move.castle === "K") { //king-side castling
-                undo.rookFrom = { rank: homeRank, file: 7 as File }; // h-file
-                undo.rookTo = { rank: homeRank, file: 5 as File }; // f-file
-            } else {
-                //queen-side castling ("Q")
-                undo.rookFrom = { rank: homeRank, file: 0 as File }; // a-file
-                undo.rookTo = { rank: homeRank, file: 3 as File}; // d-file
-            }
-
-            // The square that the rook starts on (a1/h1/a8/h8):
+            // If castling, move rook (rookPiece already validated above)
+        if (move.castle && undo.rookFrom && undo.rookTo) {
             const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
-            // The square that the rook moves to when castling (d1/f1/d8/f8):
-            const rookToSquare = this.getSquare(undo.rookTo.rank, undo.rookTo.file);
+            const rookToSquare   = this.getSquare(undo.rookTo.rank, undo.rookTo.file);       
 
-            // Snapshots which rook is moving:
-            const rook = rookFromSquare.piece;
-            // if for some reason the square the rook starts on is empty, store null instead of undefined
-            // This mirrors what the king is already doing
-            if (!rook || rook.type !== "rook" || rook.colour !== movingPiece.colour) {
-                throw new Error("Invalid castling: rook missing or wrong colour/type")
-            }
-
-            undo.rookPiece = rook;
-
-            // Remove the rook from its original square:
             rookFromSquare.piece = null;
-            // Place the rook onto its destination square:
-            rookToSquare.piece = rook;
-
+            rookToSquare.piece   = undo.rookPiece!;
         }
 
 
@@ -654,6 +650,7 @@ export class ChessBoard {
         }
             // Rook moved from its starting corner => lose castling rights for that side:
         if (movingPiece.type === "rook") {
+
                 if (isH1(move.fromRank, move.fromFile)) this.clearCastlingSide("white", "K");
                 if (isA1(move.fromRank, move.fromFile)) this.clearCastlingSide("white", "Q");
                 if (isH8(move.fromRank, move.fromFile)) this.clearCastlingSide("black", "K");
@@ -702,8 +699,51 @@ export class ChessBoard {
             // record undo - saves the snapshot so undoMove() can pop it and reverse everything
             // commits move to the undo stack:
         this.history.push(undo);
+    } catch (err) {
+            // Roll back using the undo snapshot (WITHOUT depending on history)
+        this.rollBackFromUndoSnapshot(undo);
+        throw err;
+        }
     }
 
+    // Roll back board + meta state using the UndoRecord.
+    // // This must NOT pop history (it's used only for failed makeMove)
+    private rollBackFromUndoSnapshot(undo: UndoRecord): void {
+        
+        const move = undo.move;
+
+        // restore meta-state:
+        this.sideToMove = undo.sideToMoveBefore;
+        this.castlingRights = { ...undo.castlingRightsBefore };
+        this.enPassantTarget = undo.enPassantTargetBefore ? { ...undo.enPassantTargetBefore } : null;
+        this.halfMoveClock = undo.halfmoveClockBefore;
+        this.fullMoveNumber = undo.fullmoveNumberBefore;
+
+        const fromSquare = this.getSquare(move.fromRank, move.fromFile);
+        const toSquare   = this.getSquare(move.toRank, move.toFile);
+
+        // undo rook if it was moved:
+        if (undo.rookFrom && undo.rookTo) {
+            const rookFromSq = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
+            const rookToSq   = this.getSquare(undo.rookTo.rank, undo.rookTo.file);
+            rookToSq.piece = null;
+            rookFromSq.piece = undo.rookPiece ?? null;
+        }
+
+        // restore main piece:
+        toSquare.piece = null;
+        fromSquare.piece = undo.movedPiece;
+
+        // restore captured piece:
+        if (undo.capturedPiece) {
+            if (undo.capturedSquare) {
+                const captSq = this.getSquare(undo.capturedSquare.rank, undo.capturedSquare.file);
+                captSq.piece = undo.capturedPiece;
+            } else {
+                toSquare.piece = undo.capturedPiece;
+            }
+        }
+    }
 
     public undoMove(): void {
         if (!this.canUndo()) return;
