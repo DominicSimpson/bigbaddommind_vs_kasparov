@@ -19,8 +19,8 @@ export class LegalMoveFilter {
 
         // colour of piece being moved, used for king-safety checks and castling rules:
         const moverColour = piece.colour;
-
-        const pseudo = this.board.getPseudoLegalMoves(fromRank, fromFile);
+        
+        const pseudo = this.board._getPseudoLegalMovesForFiltering(fromRank, fromFile);
         const legal: Move[] = []; // only the subset of truly legal moves that passes the king-safety test
 
         // iterates over pseudo-legal moves one by one, i.e. by movement alone without checking if king is left in check:

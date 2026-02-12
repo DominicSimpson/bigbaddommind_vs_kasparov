@@ -99,7 +99,7 @@ export class ChessBoard {
     }
 
     public getLegalMoves(fromRank: Rank, fromFile: File): Move[] {
-        return LegalMoveFilter.getLegalMoves(this, fromRank, fromFile);
+        return new LegalMoveFilter(this).getLegalMoves(fromRank, fromFile);
     }
 
     public canUndo(): boolean {
@@ -142,8 +142,14 @@ export class ChessBoard {
         * Ranks increase from White's side towards Black's side.
     */
     
+    // Engine-internal: used by LegalMoveFilter. Not for UI use, i.e.
+    // public only for internal engine use — not part of the real public API.
+    /** @internal */
+    public _getPseudoLegalMovesForFiltering(fromRank: Rank, fromFile: File): Move[] {
+        return this.getPseudoLegalMoves(fromRank, fromFile);
+    }
 
-    public getPseudoLegalMoves(fromRank: Rank, fromFile: File): Move[] { // logic for piece movement
+    private getPseudoLegalMoves(fromRank: Rank, fromFile: File): Move[] { // logic for piece movement
         const square = this.getSquare(fromRank, fromFile);
         const piece = square.piece;
         if (!piece) return [];
