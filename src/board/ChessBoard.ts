@@ -106,23 +106,22 @@ export class ChessBoard {
         return this.history.length > 0;
     }
 
-    public isKingInCheck(colour: Colour): boolean {
-        const kingPos = this.findKing(colour); // the actual, current square position of each king
-        if (!kingPos) {
-            return false;
-        }
-
-        const attacker: Colour = colour === "white" ? "black": "white";
-        return this.isSquareAttacked(kingPos.rank, kingPos.file, attacker);
-    }
-
     public canCastle(colour: Colour, side: "K" | "Q"): boolean { // 'prepares' castling rights
         if (colour === "white") return side === "K" ? this.castlingRights.whiteK : this.castlingRights.whiteQ;
         return side === "K" ? this.castlingRights.blackK : this.castlingRights.blackQ;
     }
 
-    public isSquareAttackedPublic(rank: Rank, file: File, byColour: Colour): boolean {
+    public isSquareAttackedBy(rank: Rank, file: File, byColour: Colour): boolean {
         return this.isSquareAttacked(rank, file, byColour);
+    }
+
+    public isInCheck(colour: Colour): boolean {
+        const enemy: Colour = colour === "white" ? "black" : "white";
+
+        const kingsPosition = this.findKing(colour);
+        if (!kingsPosition) return false;
+
+        return this.isSquareAttacked(kingsPosition.rank, kingsPosition.file, enemy);
     }
 
     // ───────────────────────────────
@@ -856,6 +855,7 @@ export class ChessBoard {
         return null;
     }
 
+    
     private isSquareAttacked(rank: Rank, file: File, byColour: Colour): boolean {
         // 1. Pawn attacks
         if (this.isAttackedByPawn(rank, file, byColour)) return true;

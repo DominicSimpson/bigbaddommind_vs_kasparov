@@ -30,7 +30,7 @@ export class LegalMoveFilter {
             if (move.castle) {
                 
                 // Can't castle while king is in check, so skip move:
-                if (this.board.isKingInCheck(moverColour)) continue;
+                if (this.board.isInCheck(moverColour)) continue;
 
                 // enemy here is colour of opponent's piece
                 // If moving king is white, then moverColour = "white": enemy = "black", and vice-versa
@@ -44,9 +44,9 @@ export class LegalMoveFilter {
                 // Castling stays on same rank:
                 const rank = move.toRank;
                 // Castling move is illegal if the "through" square is attacked by an enemy piece, so skip move:
-                if (this.board.isSquareAttackedPublic(rank, throughFile, enemy)) continue;
+                if (this.board.isSquareAttackedBy(rank, throughFile, enemy)) continue;
                 // Castling move is illegal if the destination square is attacked by an enemy piece, so skip move:
-                if (this.board.isSquareAttackedPublic(rank, move.toFile, enemy)) continue;  
+                if (this.board.isSquareAttackedBy(rank, move.toFile, enemy)) continue;  
             }
 
             // Tracks whether makeMove actually ran, so only undoMove when needed:
@@ -63,7 +63,7 @@ export class LegalMoveFilter {
             // Core legality test in chess; if it's true, move is illegal
             
                 // if false (king is not in check), move is fully legal and can be added to move array:
-                if (!this.board.isKingInCheck(moverColour)) legal.push(move);
+                if (!this.board.isInCheck(moverColour)) legal.push(move);
             } finally {
                 if (moved) this.board.undoMove(); // add to undoMove record of moves
             }
