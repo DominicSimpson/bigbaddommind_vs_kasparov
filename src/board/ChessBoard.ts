@@ -14,7 +14,7 @@ import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
 export class ChessBoard {
 
     // ───────────────────────────────
-        // 1. Fields / state
+        // 1. Fields / state properties
     // ───────────────────────────────
     private squares: Square[][]; //declares private property called squares
     //Type: 2D array of Square objects (8 rows x 8 columns)
@@ -36,6 +36,8 @@ export class ChessBoard {
     private halfMoveClock = 0; // see UndoRecord.ts notes for more on this
     private fullMoveNumber = 1; // ditto
 
+    private legalMoveFilter: LegalMoveFilter; // instance of LegalMoveFilter to use for move generation and legality checks
+
     
     // ───────────────────────────────
         // 2. Constructor / setup
@@ -46,6 +48,8 @@ export class ChessBoard {
         // to freshly generated empty 8x8 board
         // and calls helper method createEmptyBoard below
         this.setupInitialPosition();
+
+        this.legalMoveFilter = new LegalMoveFilter(this); // initializes legal move filter with reference to this board
     }
     
     private setupInitialPosition(): void { 
@@ -99,7 +103,7 @@ export class ChessBoard {
     }
 
     public getLegalMoves(fromRank: Rank, fromFile: File): Move[] {
-        return new LegalMoveFilter(this).getLegalMoves(fromRank, fromFile);
+        return this.legalMoveFilter.getLegalMoves(fromRank, fromFile);
     }
 
     public canUndo(): boolean {
@@ -122,6 +126,11 @@ export class ChessBoard {
         if (!kingsPosition) return false;
 
         return this.isSquareAttacked(kingsPosition.rank, kingsPosition.file, enemy);
+    }
+
+    public isCheckmate(colour: Colour): boolean {
+        // If not in check, it's not checkmate:
+        return this.isInCheck(colour) && !this.legalMoveFilter.hasAnyLegalMoves(colour);
     }
 
     // ───────────────────────────────

@@ -76,8 +76,8 @@ export class LegalMoveFilter {
     public hasAnyLegalMoves(colour: Colour): boolean {
         for (const r of RANKS) {
             for (const f of FILES) {
-                const sq = this.board.getSquare(r, f);
-                const piece = sq.piece;
+                const square = this.board.getSquare(r, f);
+                const piece = square.piece;
 
                 // If no piece on square, or if piece is not of the colour to move, skip square:
                 if (!piece || piece.colour !== colour) continue;
