@@ -8,6 +8,7 @@ import type { Colour } from "../types/colour.js";
 import type { CastlingRights } from "../types/CastlingRights.js";
 import type { UndoRecord } from "../types/UndoRecord.js";
 import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
+import { GameResult } from "../types/GameResult.js";
 
 
 
@@ -131,6 +132,27 @@ export class ChessBoard {
     public isCheckmate(colour: Colour): boolean {
         // If not in check, it's not checkmate:
         return this.isInCheck(colour) && !this.legalMoveFilter.hasAnyLegalMoves(colour);
+    }
+
+    public isStalemate(colour: Colour): boolean {
+        return !this.isInCheck(colour) && !this.legalMoveFilter.hasAnyLegalMoves(colour);
+    }
+
+    public getGameResult(): GameResult {
+
+        const side = this.getSideToMove();
+
+        // no legal moves => either checkmate or stalemate:
+        const hasMoves = this.legalMoveFilter.hasAnyLegalMoves(side);
+        if (!hasMoves) {
+            if (this.isInCheck(side)) {
+                const winner: Colour = side === "white" ? "black" : "white";
+                return { status: "checkmate", winner };
+            }
+            return { status: "draw", reason: "stalemate" };
+        }
+
+        return { status: "ongoing" };
     }
 
     // ───────────────────────────────
