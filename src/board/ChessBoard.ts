@@ -1019,13 +1019,18 @@ export class ChessBoard {
         // add side to move:
         s += ` ${this.sideToMove} `;
 
-        // castling rights:
+        // build string representation of castling rights:
         const cr = 
+            // ternary operators check each castling right (the board can lie to you if 
+            // rook or king moved or were captured!), which are a property of the game's timeline,
+            // and add corresponding letter if true, // or empty string if false:
             (this.castlingRights.whiteK ? "K" : "") + 
             (this.castlingRights.whiteQ ? "Q" : "") + 
             (this.castlingRights.blackK ? "k" : "") + 
             (this.castlingRights.blackQ ? "q" : "");
         
+        // if castling rights exist, add string representation to position key; 
+        // otherwise add "-" to indicate no castling rights:
         s += ` ${cr || "-"}`;
 
         // en passant target:
@@ -1110,25 +1115,25 @@ export class ChessBoard {
     }
 
 
-    // --------------------------------------------------------------------- 
+    // ------------------------------------------------------------------------------ 
 
-    // The following logic applies to all the following isAttackedBy helpers:
-    // // Rank:
-        // moving down the board - negative
-        // moving up the board - positive
-    // // File:
-        // moving right - positive
-        // moving left - negative
+    // The following logic applies to all the following isAttackedBy helpers:       =
+    // // Rank:                                                                     =
+        // moving down the board - negative                                      
+        // moving up the board - positive                                           = 
+    // // File:                                                                     =
+        // moving right - positive                                                  =
+        // moving left - negative                                                   =
 
-    // r + 1: one rank up (north)
-    // r - 1: one rank down (south)
-    // f + 1: one file right (east)
-    // f - 1: one file left (west)
+    // r + 1: one rank up (north)                                                   =
+    // r - 1: one rank down (south)                                                 =   
+    // f + 1: one file right (east)                                                 
+    // f - 1: one file left (west)                                                  =
 
-    // df = delta file - change in file (first number)
-    // dr = delta rank - change in rank (second number)
+    // df = delta file - change in file (first number)                              =
+    // dr = delta rank - change in rank (second number)                             =   
 
-    // ----------------------------------------------------------------------
+    // ------------------------------------------------------------------------------
 
     // checks if any square has been attacked by a pawn
     private isAttackedByPawn(rank: Rank, file: File, byColour: Colour): boolean {
