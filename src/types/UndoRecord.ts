@@ -34,6 +34,8 @@ export interface UndoRecord { // state delta recorder
     fullmoveNumberBefore: number; // In chess notation, a full move means:
     // one move by white + one move by black
     // white move on its own or vice versa on its own doesn't increment full move number
+    positionKeyBefore: string; // FEN position key before makeMove() is applied, for verification that undo restores the exact same position
+    positionKeyAfter: string; // FEN position key after makeMove() is applied, for verification that undo restores the exact same position
 
     // // For castling rook move:
     // castling is two moves disguised as one, and this snapshots rook identity -

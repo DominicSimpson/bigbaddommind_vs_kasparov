@@ -9,6 +9,7 @@ import type { CastlingRights } from "../types/CastlingRights.js";
 import type { UndoRecord } from "../types/UndoRecord.js";
 import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
 import { GameResult } from "../types/GameResult.js";
+import { all } from "axios";
 
 
 
@@ -52,8 +53,10 @@ export class ChessBoard {
         // and calls helper method createEmptyBoard below
         this.setupInitialPosition();
 
-        // initialise repetition tracking with the starting position
-        this.bumpRepetition(this.getPositionKey());
+        // Initialise repetition tracking with the starting position.
+        // For threefold repetition detection, we need to track how many 
+        // times each position has occurred in the game history:
+        this.bumpRepitition(this.getPositionKey());
 
         this.legalMoveFilter = new LegalMoveFilter(this); // initializes legal move filter with reference to this board
     }
@@ -147,9 +150,11 @@ export class ChessBoard {
         return this.halfMoveClock >= 100; // 100 half moves = 50 full moves
     }
 
+    // In official chess moves, if the same position occurs three times with the same player to move 
+    // and all the same possible moves (including same legal possiblities such as castling and en passant rights), 
+    // then the game can be claimed as a draw by threefold repetition:
     private isDrawByThreefoldRepetition(): boolean {
-        // STILL TO DO: requires position-key tracking + repetition counts updated on make/undo
-        return false;
+        return (this.repetitionCounts.get(this.getPositionKey()) ?? 0) >= 3;
     }
 
     public isDrawByInsufficientMaterial(): boolean {
@@ -608,7 +613,7 @@ export class ChessBoard {
     }
 
     // ───────────────────────────────
-        // 5. Move execution (mutating)
+        // 5. Move execution (mutation)
     // ───────────────────────────────
 
     public makeMove(move: Move): void { // returns void because it mutates board state rather than
@@ -642,6 +647,8 @@ export class ChessBoard {
                 : null,
             halfmoveClockBefore: this.halfMoveClock, // read section of UndoRecord.ts for this
             fullmoveNumberBefore: this.fullMoveNumber, // saves these two counters
+            positionKeyBefore: this.getPositionKey(), // FEN position key before makeMove() is applied
+            positionKeyAfter: this.getPositionKey(), // FEN position key after makeMove() is applied
 
             rookFrom: null, // initial state of rook before it's used
             rookTo: null,
@@ -850,6 +857,10 @@ export class ChessBoard {
             // toggle whose turn it is:
         this.sideToMove = this.sideToMove === "white" ? "black": "white";
 
+            // repition bookkeeping (after state is fully updated):
+        const keyAfter = this.getPositionKey();
+        undo.positionKeyAfter = keyAfter;
+        this.bumpRepitition(keyAfter);
             // record undo - saves the snapshot so undoMove() can pop it and reverse everything
             // commits move to the undo stack:
         this.history.push(undo);
@@ -903,6 +914,7 @@ export class ChessBoard {
         if (!this.canUndo()) return;
 
         const undo = this.history.pop()!; // undoes last movement by player
+        this.unbumpRepitition(undo.positionKeyAfter); // unbumps repitition count for position we're leaving
         const move = undo.move;
 
         // restore meta-state first
@@ -946,10 +958,76 @@ export class ChessBoard {
             }
         }
 
-    // ───────────────────────────────
-        // 6. Low-level private helpers
-    // ───────────────────────────────
+    // ────────────────────────────────────────────────────────
+        // 6. Low-level private helpers (private mechanics)
+    // ────────────────────────────────────────────────────────
+    
+    // -------------------------
+        // FEN helpers
+    // -------------------------
 
+        // Forsyth-Edwards (FEN) / position key convention:
+        // different to albebraic notation which uses uppercase for all pieces and 
+        // doesn't have a letter for pawns. We are encoding board state, not move text.
+        // Example in FEN of starting chess position:
+            // ---------------------------------------------------------=
+            // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 =
+            // ---------------------------------------------------------=
+
+        // Comparisons between algebraic move notation (SAN) and FEN piece representation:
+            // ------------------------------------------------------
+                // Letter in algebraic move notation (SAN):
+            
+                // Piece
+                                                                    
+                // King	    K                                       =
+                // Queen	Q                                       =
+                // Rook	    R                                       =
+                // Bishop	B                                       =
+                // Knight	N                                       =      
+                // Pawn	[no letter]                                 =
+            // ------------------------------------------------------
+
+            // ------------------------------------------------------
+            // Piece represtation in board position notation (FEN):
+
+            // // Piece	    White	Black                           =
+
+            //    King	    K	    k                               =
+            //    Queen	    Q	    q                               =
+            //    Rook	    R	    r                               =
+            //    Bishop	B	    b                               =
+            //    Knight	N	    n                               =
+            //    Pawn	    P	    p                               =
+            // ------------------------------------------------------
+
+    
+    private squareToAlgebraic(rank: Rank, file: File): string {
+        return this.getSquare(rank, file).coord;
+    }
+
+    private algebraicToSquare(s: string): {rank: Rank; file: File } {
+        if (!/^[a-h][1-8]$/.test(s)) throw new Error(`Invalid square: ${s}`);
+        const file = (s.charCodeAt(0) - "a".charCodeAt(0)) as File; // converts file letter to number (0-7)
+        const rank = (Number(s[1]) - 1) as Rank; // "1" => 0
+        return { rank, file };
+    }
+
+        // Map pieces to unique letters (e.g. "p" for pawn, "r" for rook, etc.), 
+        // with uppercase for white and lowercase for black, using 
+        // Forsyth-Edwards (FEN) / position key convention:
+    private pieceToFenLetter(p: Piece): string {
+        const letter = 
+            p.type === "pawn"   ? "p" :
+            p.type === "rook"   ? "r" : 
+            p.type === "knight" ? "n" :
+            p.type === "bishop" ? "b" :
+            p.type === "queen"  ? "q" :
+            "k"; // king is "K" (default / fallback value case of ternary operators 
+                // after having been through all other pieces)
+        return p.colour === "white" ? letter.toUpperCase() : letter;
+    }
+            
     // This generates a unique string key for the current position, encoding all relevant information
     // and representing the current board position:
     private getPositionKey(): string {
@@ -959,65 +1037,8 @@ export class ChessBoard {
         for (let rank = 7; rank >= 0; rank--) {
             for (let file = 0; file < 8; file++) {
                 const p = this.getSquare(rank as Rank, file as File).piece;
-
-                // empty square represented by dot (".") in position key
-                if (!p) {
-                    s += ".";
-                    continue;
-                }
-
-                // Map pieces to unique letters (e.g. "p" for pawn, "r" for rook, etc.), 
-                // with uppercase for white and lowercase for black, using 
-                // Forsyth-Edwards (FEN) / position key convention
-                // (different to albebraic notation which uses uppercase for all pieces and 
-                // doesn't have a letter for pawns).
-                // We are encoding board state, not move text.
-                // Example in FEN of starting chess position:
-                // ---------------------------------------------------------=
-                // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 =
-                // ---------------------------------------------------------=
-
-                // Comparisons between algebraic move notation (SAN) and FEN piece representation:
-                // -------------------------------------------------=
-                // Piece	Letter in algebraic move notation (SAN):=
-                                                                    
-                // King	    K                                       =
-                // Queen	Q                                       =
-                // Rook	    R                                       =
-                // Bishop	B                                       =
-                // Knight	N                                       =      
-                // Pawn	[no letter]                                 =
-                // --------------------------------------------------
-
-                // --------------------------------------------------
-                // Piece represtation in board position notation (FEN):
-
-                // // Piece	    White	Black                        =
-
-                //    King	    K	    k                            =
-                //    Queen	    Q	    q                            =
-                //    Rook	    R	    r                            =
-                //    Bishop	B	    b                            =
-                //    Knight	N	    n                            =
-                //    Pawn	    P	    p                            =
-                // ---------------------------------------------------
-
-                const letter = 
-                    p.type === "pawn"   ? "p" :
-                    p.type === "rook"   ? "r" : 
-                    p.type === "knight" ? "n" :
-                    p.type === "bishop" ? "b" :
-                    p.type === "queen"  ? "q" :
-                    "k"; // king is "K" (default / fallback value case of ternary operators 
-                    // after having been through all other pieces)
-
-                s += p.colour === "white" ? letter.toUpperCase() : letter;
-            }
-            s += "/"; // rank separator
         }
-
-        // add side to move:
-        s += ` ${this.sideToMove} `;
+    }
 
         // build string representation of castling rights:
         const cr = 
@@ -1041,6 +1062,26 @@ export class ChessBoard {
         }
 
         return s;
+    }
+
+    // Following two methods maintain a counter (positive or negative)
+    // of how many times each position has occurred in the game history, 
+    // which allows for efficient threefold repetition detection:
+    private bumpRepitition(key: string): void { // increases count if position has occured before, 
+    // or initializes to 1 if it's the first time we see this position
+        this.repetitionCounts.set(
+            key, 
+            (this.repetitionCounts.get(key) ?? 0) + 1);
+    }
+
+    private unbumpRepitition(key: string): void {
+        const next = (this.repetitionCounts.get(key) ?? 0) - 1; // decrease count after undoing a move
+
+        if (next <= 0) {
+            this.repetitionCounts.delete(key);
+        } else {
+            this.repetitionCounts.set(key, next);
+        }
     }
 
     private pushIfOk( // add (push) a move to array if destination is valid
