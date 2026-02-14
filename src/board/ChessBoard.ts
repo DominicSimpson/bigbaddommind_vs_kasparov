@@ -138,6 +138,104 @@ export class ChessBoard {
         return !this.isInCheck(colour) && !this.legalMoveFilter.hasAnyLegalMoves(colour);
     }
 
+    private isDrawByFiftyMoveRule(): boolean {
+        return this.halfMoveClock >= 100; // 100 half moves = 50 full moves
+    }
+
+    private isDrawByThreefoldRepetition(): boolean {
+        // STILL TO DO: requires position-key tracking + repetition counts updated on make/undo
+        return false;
+    }
+
+    public isDrawByInsufficientMaterial(): boolean {
+        // A minor piece in chess is either a bishop or knight; a major piece is a rook or queen; 
+        // pawns are "other" pieces; kings are not classified as either minor or major pieces, OR "other" pieces, 
+        // because they cannot checkmate by themselves and are not relevant to insufficient material draws. 
+        let whiteMinors = 0; // bishops + knights
+        let blackMinors = 0;
+        let whiteMajors = 0; // rooks + queens
+        let blackMajors = 0;
+        let whitePawns = 0; // pawns
+        let blackPawns = 0;
+
+        // Track bishop square colours (for the K+B vs K+B same-colour case)
+        let whiteBishopSquareColours: number[] = [];
+        let blackBishopSquareColours: number[] = [];
+
+        for (let r = 0; r < 8; r++) {
+            for (let f = 0; f < 8; f++) {
+                const piece = this.getSquare(r as Rank, f as File).piece;
+                if (!piece) continue;
+                if (piece.type === "king") continue; 
+
+                // pawns
+                if (piece.type === "pawn") {
+                    if (piece.colour === "white") whitePawns++;
+                    else blackPawns++;
+                    continue;
+                }
+
+                // majors
+                if (piece.type === "rook" || piece.type === "queen") {
+                    if (piece.colour === "white") whiteMajors++;
+                    else blackMajors++;
+                    continue;
+                }
+
+                // minors
+                if (piece.type === "bishop" || piece.type === "knight") {
+                    if (piece.colour === "white") whiteMinors++;
+                    else blackMinors++;
+                    // special handling for bishops
+                    // unlike knights, bishops never change square colour during game, 
+                    // so we can track the colour of the square they start on to determine if same-colour 
+                    // bishop endgames are K+B vs K+B or K+B vs K:
+                    if (piece.type === "bishop") {
+                        // calculate square colour using rank and file indices (0-7):
+                        const squareColour = (r + f) % 2; // 0 for light squares, 1 for dark squares
+                        if (piece.colour === "white") whiteBishopSquareColours.push(squareColour);
+                        else blackBishopSquareColours.push(squareColour);
+                    }
+                }
+            }
+        }
+
+        // Any pawns/rooks/queens => can still lead to checkmate, therefore:
+        if (whitePawns > 0  || blackPawns > 0 || whiteMajors > 0 || blackMajors > 0) return false;
+
+        // Chess shorthand (algebraic notation):
+        // // K = King
+        // // Q = Queen
+        // // R = Rook
+        // // B = Bishop
+        // // N = Knight (confusing!)
+        // // (Pawns usually aren’t written as a letter)
+
+        //Therefore:
+
+        // // K v K is a draw:
+        if (whiteMinors === 0 && blackMinors === 0) return true;
+
+        // // K+N vs K OR K+B vs K:
+        if ((whiteMinors === 1 && blackMinors === 0) || (whiteMinors === 0 && blackMinors === 1)) {
+            return true;
+        }
+
+        // // K+B vs K+B where both sides have exactly one bishop, and both bishops are on same colour squares:
+        if (
+            whiteMinors === 1 && 
+            blackMinors === 1 &&
+            whiteBishopSquareColours.length === 1 && 
+            blackBishopSquareColours.length === 1 &&
+            whiteBishopSquareColours[0] === blackBishopSquareColours[0]
+        ) {
+            return true;
+        }
+    
+
+        return false;
+    }
+
     public getGameResult(): GameResult {
 
         const side = this.getSideToMove();
@@ -150,6 +248,18 @@ export class ChessBoard {
                 return { status: "checkmate", winner };
             }
             return { status: "draw", reason: "stalemate" };
+        }
+
+        if (this.isDrawByFiftyMoveRule()) {
+            return { status: "draw", reason: "fiftyMove" };
+        }
+
+        if (this.isDrawByThreefoldRepetition()) {
+            return { status: "draw", reason: "threefold" };
+        }
+
+        if (this.isDrawByInsufficientMaterial()) {
+            return { status: "draw", reason: "insufficientMaterial" };
         }
 
         return { status: "ongoing" };
