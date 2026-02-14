@@ -37,6 +37,8 @@ export class ChessBoard {
     private halfMoveClock = 0; // see UndoRecord.ts notes for more on this
     private fullMoveNumber = 1; // ditto
 
+    private repetitionCounts = new Map<string, number>();
+
     private legalMoveFilter: LegalMoveFilter; // instance of LegalMoveFilter to use for move generation and legality checks
 
     
@@ -49,6 +51,9 @@ export class ChessBoard {
         // to freshly generated empty 8x8 board
         // and calls helper method createEmptyBoard below
         this.setupInitialPosition();
+
+        // initialise repetition tracking with the starting position
+        this.bumpRepetition(this.getPositionKey());
 
         this.legalMoveFilter = new LegalMoveFilter(this); // initializes legal move filter with reference to this board
     }
@@ -203,13 +208,16 @@ export class ChessBoard {
         // Any pawns/rooks/queens => can still lead to checkmate, therefore:
         if (whitePawns > 0  || blackPawns > 0 || whiteMajors > 0 || blackMajors > 0) return false;
 
-        // Chess shorthand (algebraic notation):
-        // // K = King
-        // // Q = Queen
-        // // R = Rook
-        // // B = Bishop
-        // // N = Knight (confusing!)
-        // // (Pawns usually aren’t written as a letter)
+            // -------------------------------------------------=
+                // Piece	Letter in algebraic move notation (SAN):=
+                                                                    
+                // King	    K                                       =
+                // Queen	Q                                       =
+                // Rook	    R                                       =
+                // Bishop	B                                       =
+                // Knight	N (confusing!)                          =      
+                // Pawn	[no letter]                                 =
+                // --------------------------------------------------
 
         //Therefore:
 
@@ -941,6 +949,94 @@ export class ChessBoard {
     // ───────────────────────────────
         // 6. Low-level private helpers
     // ───────────────────────────────
+
+    // This generates a unique string key for the current position, encoding all relevant information
+    // and representing the current board position:
+    private getPositionKey(): string {
+        let s = ""; // creates empty string to build position key
+
+        // encode piece placement by scanning entire board square-by-square:
+        for (let rank = 7; rank >= 0; rank--) {
+            for (let file = 0; file < 8; file++) {
+                const p = this.getSquare(rank as Rank, file as File).piece;
+
+                // empty square represented by dot (".") in position key
+                if (!p) {
+                    s += ".";
+                    continue;
+                }
+
+                // Map pieces to unique letters (e.g. "p" for pawn, "r" for rook, etc.), 
+                // with uppercase for white and lowercase for black, using 
+                // Forsyth-Edwards (FEN) / position key convention
+                // (different to albebraic notation which uses uppercase for all pieces and 
+                // doesn't have a letter for pawns).
+                // We are encoding board state, not move text.
+                // Example in FEN of starting chess position:
+                // ---------------------------------------------------------=
+                // rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 =
+                // ---------------------------------------------------------=
+
+                // Comparisons between algebraic move notation (SAN) and FEN piece representation:
+                // -------------------------------------------------=
+                // Piece	Letter in algebraic move notation (SAN):=
+                                                                    
+                // King	    K                                       =
+                // Queen	Q                                       =
+                // Rook	    R                                       =
+                // Bishop	B                                       =
+                // Knight	N                                       =      
+                // Pawn	[no letter]                                 =
+                // --------------------------------------------------
+
+                // --------------------------------------------------
+                // Piece represtation in board position notation (FEN):
+
+                // // Piece	    White	Black                        =
+
+                //    King	    K	    k                            =
+                //    Queen	    Q	    q                            =
+                //    Rook	    R	    r                            =
+                //    Bishop	B	    b                            =
+                //    Knight	N	    n                            =
+                //    Pawn	    P	    p                            =
+                // ---------------------------------------------------
+
+                const letter = 
+                    p.type === "pawn"   ? "p" :
+                    p.type === "rook"   ? "r" : 
+                    p.type === "knight" ? "n" :
+                    p.type === "bishop" ? "b" :
+                    p.type === "queen"  ? "q" :
+                    "k"; // king is "K" (default / fallback value case of ternary operators 
+                    // after having been through all other pieces)
+
+                s += p.colour === "white" ? letter.toUpperCase() : letter;
+            }
+            s += "/"; // rank separator
+        }
+
+        // add side to move:
+        s += ` ${this.sideToMove} `;
+
+        // castling rights:
+        const cr = 
+            (this.castlingRights.whiteK ? "K" : "") + 
+            (this.castlingRights.whiteQ ? "Q" : "") + 
+            (this.castlingRights.blackK ? "k" : "") + 
+            (this.castlingRights.blackQ ? "q" : "");
+        
+        s += ` ${cr || "-"}`;
+
+        // en passant target:
+        if (this.enPassantTarget) {
+            s += ` ep:${this.enPassantTarget.rank},${this.enPassantTarget.file}`;
+        } else {
+            s += " ep:-";
+        }
+
+        return s;
+    }
 
     private pushIfOk( // add (push) a move to array if destination is valid
         moves: Move[], 
