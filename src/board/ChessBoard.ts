@@ -1013,32 +1013,137 @@ export class ChessBoard {
         return { rank, file };
     }
 
-        // Map pieces to unique letters (e.g. "p" for pawn, "r" for rook, etc.), 
-        // with uppercase for white and lowercase for black, using 
-        // Forsyth-Edwards (FEN) / position key convention:
-    private pieceToFenLetter(p: Piece): string {
+    private pieceToFenLetter(piece: Piece): string {
         const letter = 
-            p.type === "pawn"   ? "p" :
-            p.type === "rook"   ? "r" : 
-            p.type === "knight" ? "n" :
-            p.type === "bishop" ? "b" :
-            p.type === "queen"  ? "q" :
-            "k"; // king is "K" (default / fallback value case of ternary operators 
-                // after having been through all other pieces)
-        return p.colour === "white" ? letter.toUpperCase() : letter;
+            piece.type === "pawn" ? "p" :
+            piece.type === "rook" ? "r" :
+            piece.type === "knight" ? "n" :
+            piece.type === "bishop" ? "b" :
+            piece.type === "queen" ? "q" :
+            "k";
+    
+        return piece.colour === "white" ? letter.toUpperCase() : letter;
     }
-            
-    // This generates a unique string key for the current position, encoding all relevant information
+
+        // This converts a FEN letter to a Piece object, which is used 
+        // when parsing FEN strings to set up the board position:    
+    private fenLetterToPiece(letter: string): Piece {
+        const isUpper = letter === letter.toUpperCase();
+        const colour: Colour = isUpper ? "white" : "black";
+        const l = letter.toLowerCase();
+
+        const type: PieceType =
+            l === "p" ? "pawn" :
+            l === "r" ? "rook" :
+            l === "n" ? "knight" :
+            l === "b" ? "bishop" :
+            l === "q" ? "queen" :
+            l === "k" ? "king" :
+            (() => { throw new Error(`Invalid FEN piece: ${letter}`) })();
+
+        return new Piece(type, colour);
+    }
+
+    public toFEN(): string {
+        // 1) piece placement
+        const ranks: String[] = [];
+        for (let rank = 7; rank >= 0; rank--) {
+            let empties = 0;
+            let row = "";
+            for (let file = 0; file < 8; file++) {
+                const piece = this.getSquare(rank as Rank, file as File).piece;
+                if (!piece) {
+                    empties++;
+                } else {
+                    if (empties > 0) {
+                        row += String(empties);
+                        empties = 0;
+                    }
+                    row += this.pieceToFenLetter(piece);
+                }
+            }
+            if (empties > 0) row += String(empties);
+            ranks.push(row);
+        }
+
+        const piecePlacement = ranks.join("/");
+
+        // 2) side to move
+        const stm = this.sideToMove === "white" ? "w" : "b";
+
+        // 3) castling
+        const castling = 
+            (this.castlingRights.whiteK ? "K" : "") +
+            (this.castlingRights.whiteQ ? "Q" : "") +
+            (this.castlingRights.blackK ? "k" : "") +
+            (this.castlingRights.blackQ ? "q" : "") || "-";
+
+        // 4) en passant target
+        const ep = this.enPassantTarget
+            ? this.squareToAlgebraic(this.enPassantTarget.rank, this.enPassantTarget.file)
+            : "-";
+        
+        // 5) clocks
+        return `${piecePlacement} ${stm} ${castling} ${ep} ${this.halfMoveClock} ${this.fullMoveNumber}`;
+    }
+
+        // ----------------------------------------------
+            // Repetition key: first 4 FEN fields only
+        // ----------------------------------------------
+    
+        // This generates a unique string key for the current position, encoding all relevant information
     // and representing the current board position:
     private getPositionKey(): string {
-        let s = ""; // creates empty string to build position key
-
-        // encode piece placement by scanning entire board square-by-square:
-        for (let rank = 7; rank >= 0; rank--) {
-            for (let file = 0; file < 8; file++) {
-                const p = this.getSquare(rank as Rank, file as File).piece;
-        }
+        const fen = this.toFEN().split(" ");
+        return fen.slice(0, 4).join(" ");
     }
+
+        // -------------------------
+            // Load FEN into board
+        // -------------------------
+
+    public loadFEN(fen: string): void {
+        const parts = fen.trim().split(/\s+/);
+        if (parts.length !== 6) throw new Error(`FEN must have 6 fields, got ${parts.length}`);
+
+        const [piecePlacement, stm, castling, ep, halfMove, fullMove] = parts;
+
+        // Clear board:
+        for (let rank = 0; rank < 8; rank++) {
+            for (let file = 0; file < 8; file++) {
+                this.squares[rank][file].piece = null;
+            }
+        }
+    
+        // Place pieces:
+        const rows = piecePlacement.split("/");
+        if (rows.length !== 8) throw new Error(`FEN placement must have 8 ranks`);
+
+        for (let fenRank = 0; fenRank < 8; fenRank++) {
+            const row = rows[fenRank];
+            let file = 0;
+        
+        // fenRank 0 is rank 8 => internal rank 7
+            const internalRank = (7 - fenRank) as Rank;
+
+            for (const char of row) {
+                if (/[1-8]/.test(char)) {  
+                    file += Number(char); // skip empty squares
+                } else {
+                    if (file >= 7) throw new Error(`FEN row overflow`);
+                    this.squares[internalRank][file as File].piece = this.fenLetterToPiece(char);
+                    file++;
+                }
+            }
+
+            if (file !== 8) throw new Error(`FEN row does not sum to 8 files`);
+        }
+
+        // Side to move:
+        if (stm !== "w" && stm !== "b") throw new Error(`Invalid side to move: ${stm}`);
+        this.sideToMove = stm === "w" ? "white" : "black";
+
+
 
         // build string representation of castling rights:
         const cr = 
