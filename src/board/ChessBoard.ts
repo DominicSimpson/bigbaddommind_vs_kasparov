@@ -1143,30 +1143,28 @@ export class ChessBoard {
         if (stm !== "w" && stm !== "b") throw new Error(`Invalid side to move: ${stm}`);
         this.sideToMove = stm === "w" ? "white" : "black";
 
-
-
         // build string representation of castling rights:
-        const cr = 
             // ternary operators check each castling right (the board can lie to you if 
             // rook or king moved or were captured!), which are a property of the game's timeline,
             // and add corresponding letter if true, // or empty string if false:
-            (this.castlingRights.whiteK ? "K" : "") + 
-            (this.castlingRights.whiteQ ? "Q" : "") + 
-            (this.castlingRights.blackK ? "k" : "") + 
-            (this.castlingRights.blackQ ? "q" : "");
-        
-        // if castling rights exist, add string representation to position key; 
-        // otherwise add "-" to indicate no castling rights:
-        s += ` ${cr || "-"}`;
 
-        // en passant target:
-        if (this.enPassantTarget) {
-            s += ` ep:${this.enPassantTarget.rank},${this.enPassantTarget.file}`;
-        } else {
-            s += " ep:-";
+        this.castlingRights = {
+            whiteK: castling.includes("K"),
+            whiteQ: castling.includes("Q"),
+            blackK: castling.includes("k"),
+            blackQ: castling.includes("q"),
+        };
+
+        if (castling === "-") {
+            this.castlingRights.whiteK = false; 
+            this.castlingRights.whiteQ = false; 
+            this.castlingRights.blackK = false; 
+            this.castlingRights.blackQ = false;
         }
+        
+        // en passant:
+        this.enPassantTarget = ep === "-" ? null : this.algebraicToSquare(ep);
 
-        return s;
     }
 
     // Following two methods maintain a counter (positive or negative)
