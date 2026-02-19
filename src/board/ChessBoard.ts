@@ -1007,9 +1007,13 @@ export class ChessBoard {
     }
 
     private algebraicToSquare(s: string): {rank: Rank; file: File } {
-        if (!/^[a-h][1-8]$/.test(s)) throw new Error(`Invalid square: ${s}`);
+        if (!/^[a-h][1-8]$/.test(s)) {
+            throw new Error(`Invalid square: ${s}`);
+        }
+
         const file = (s.charCodeAt(0) - "a".charCodeAt(0)) as File; // converts file letter to number (0-7)
         const rank = (Number(s[1]) - 1) as Rank; // "1" => 0
+        
         return { rank, file };
     }
 
@@ -1080,7 +1084,10 @@ export class ChessBoard {
 
         // 4) en passant target
         const ep = this.enPassantTarget
-            ? this.squareToAlgebraic(this.enPassantTarget.rank, this.enPassantTarget.file)
+            ? this.getSquare(
+                this.enPassantTarget.rank, 
+                this.enPassantTarget.file
+            ).coord
             : "-";
         
         // 5) clocks
@@ -1164,6 +1171,21 @@ export class ChessBoard {
         
         // en passant:
         this.enPassantTarget = ep === "-" ? null : this.algebraicToSquare(ep);
+
+        // Clocks:
+        const hm = Number(halfMove);
+        const fm = Number(fullMove);
+
+        if (!Number.isInteger(hm) || hm < 0) throw new Error(`Invalid halfmove clockL ${halfMove}`);
+        if (!Number.isInteger(fm) || fm < 1) throw new Error(`Invalid fullmove clockL ${fullMove}`);
+ 
+        this.halfMoveClock = hm;
+        this.fullMoveNumber = fm;
+
+        // Reset history + repetition to match new position:
+        this.history = [];
+        this.repetitionCounts.clear();
+        this.bumpRepitition(this.getPositionKey());
 
     }
 
