@@ -1006,6 +1006,7 @@ export class ChessBoard {
         return this.getSquare(rank, file).coord;
     }
 
+    // for parsing FEN input:
     private algebraicToSquare(s: string): {rank: Rank; file: File } {
         if (!/^[a-h][1-8]$/.test(s)) {
             throw new Error(`Invalid square: ${s}`);
@@ -1017,6 +1018,8 @@ export class ChessBoard {
         return { rank, file };
     }
 
+    // This converts a Piece object to a FEN letter, which is used when 
+    // generating FEN strings to represent the board position:
     private pieceToFenLetter(piece: Piece): string {
         const letter = 
             piece.type === "pawn" ? "p" :
@@ -1047,9 +1050,10 @@ export class ChessBoard {
 
         return new Piece(type, colour);
     }
-
+    // This generates a FEN string representing the current board position, 
+    // which can be used for saving, sharing, or position comparison:
     public toFEN(): string {
-        // 1) piece placement
+        // 1) piece placement:
         const ranks: String[] = [];
         for (let rank = 7; rank >= 0; rank--) {
             let empties = 0;
@@ -1132,17 +1136,17 @@ export class ChessBoard {
         
         // fenRank 0 is rank 8 => internal rank 7
             const internalRank = (7 - fenRank) as Rank;
-
+        // Loop through each character in the FEN row string:
             for (const char of row) {
                 if (/[1-8]/.test(char)) {  
                     file += Number(char); // skip empty squares
                 } else {
-                    if (file >= 7) throw new Error(`FEN row overflow`);
+                    if (file >= 7) throw new Error(`FEN row overflow`); // too many pieces in this rank
                     this.squares[internalRank][file as File].piece = this.fenLetterToPiece(char);
                     file++;
                 }
             }
-
+            // After processing the row, file should be exactly 8 (0-7) if FEN is correct:
             if (file !== 8) throw new Error(`FEN row does not sum to 8 files`);
         }
 
@@ -1161,7 +1165,7 @@ export class ChessBoard {
             blackK: castling.includes("k"),
             blackQ: castling.includes("q"),
         };
-
+        // If castling field is "-", it means no castling rights for either side, so just set them all to false:
         if (castling === "-") {
             this.castlingRights.whiteK = false; 
             this.castlingRights.whiteQ = false; 
@@ -1175,9 +1179,9 @@ export class ChessBoard {
         // Clocks:
         const hm = Number(halfMove);
         const fm = Number(fullMove);
-
-        if (!Number.isInteger(hm) || hm < 0) throw new Error(`Invalid halfmove clockL ${halfMove}`);
-        if (!Number.isInteger(fm) || fm < 1) throw new Error(`Invalid fullmove clockL ${fullMove}`);
+        // FEN requires these to be integers, and fullmove must be at least 1:
+        if (!Number.isInteger(hm) || hm < 0) throw new Error(`Invalid halfmove clock: ${halfMove}`);
+        if (!Number.isInteger(fm) || fm < 1) throw new Error(`Invalid fullmove clock: ${fullMove}`);
  
         this.halfMoveClock = hm;
         this.fullMoveNumber = fm;
@@ -1198,10 +1202,11 @@ export class ChessBoard {
             key, 
             (this.repetitionCounts.get(key) ?? 0) + 1);
     }
-
+    // decreases count for position we're leaving, and deletes it if count reaches 0 (never seen again in history):
     private unbumpRepitition(key: string): void {
         const next = (this.repetitionCounts.get(key) ?? 0) - 1; // decrease count after undoing a move
-
+        // if count reaches 0, delete key from the map to 
+        // save memory and indicate that this position is no longer in the history at all:
         if (next <= 0) {
             this.repetitionCounts.delete(key);
         } else {
@@ -1219,7 +1224,7 @@ export class ChessBoard {
     ): void {
           // Bounds check first (because toRank/toFile are just numbers here)
         if (toRank < 0 || toRank > 7 || toFile < 0 || toFile > 7) return;
-
+        // If in bounds, safely cast to Rank/File types:
         const tr = toRank as Rank;
         const tf = toFile as File;
 
