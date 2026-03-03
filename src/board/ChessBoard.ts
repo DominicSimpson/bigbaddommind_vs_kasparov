@@ -137,11 +137,16 @@ export class ChessBoard {
     }
 
     public isCheckmate(colour: Colour): boolean {
-        // If not in check, it's not checkmate:
+        // Only the side whose turn it is can be checkmated:
+        if (colour !== this.sideToMove) return false;
+        // Checkmate = in check + no legal moves to get out of check
         return this.isInCheck(colour) && !this.legalMoveFilter.hasAnyLegalMoves(colour);
     }
 
     public isStalemate(colour: Colour): boolean {
+        // Only the side whose turn it is can be stalemated:
+        if (colour !== this.sideToMove) return false;
+        // Stalemate = not in check + no legal moves:
         return !this.isInCheck(colour) && !this.legalMoveFilter.hasAnyLegalMoves(colour);
     }
 
@@ -333,9 +338,9 @@ export class ChessBoard {
     // r - 1: one rank down (south)
     // f + 1: one file right (east)
     // f - 1: one file left (west)
-
-    // df = delta file - change in file (first number)
-    // dr = delta rank - change in rank (second number)
+    
+    // dr = delta rank - change in rank (first number)
+    // df = delta file - change in file (second number)
 
     // ----------------------------------------------------------------------
 
@@ -574,11 +579,11 @@ export class ChessBoard {
     // Bishop → diagonals
     // Queen → straight lines + diagonals
 
-    // df = delta file - change in file (first number)
-    // dr = delta rank - change in rank (second number)
+    // dr = delta rank - change in rank (first number)
+    // df = delta file - change in file (second number)
     private rayMoves(r: Rank, f: File, piece: Piece, directions: Array<[number, number]>): Move[] {
-        // f: the piece's current file (0–7)
         // r: the piece's current rank (0–7)
+        // f: the piece's current file (0–7)
         const moves: Move[] = []; // creates empty array to store moves pieces will make
 
         for (const[dr, df] of directions) { // Loops over each direction the piece can move in
@@ -738,7 +743,7 @@ export class ChessBoard {
             move.toFile !== expectedToFile
         ) {
             throw new Error("Invalid castling: incorrect king coordinates for castle move");    
-        }
+        }   
         
             // Define rook from/to squares:
         if (move.castle === "K") { //king-side castling
@@ -768,105 +773,105 @@ export class ChessBoard {
         try {
         
             // Clear EP target by default (only re-set on pawn double step):
-        this.enPassantTarget = null;
+            this.enPassantTarget = null;
 
             // Remove missing piece from origin:
-        fromSquare.piece = null;
+            fromSquare.piece = null;
 
             // If en passant, remove victim pawn now:
-        if (enPassantVictimSquare) {
-            const vm = this.getSquare(enPassantVictimSquare.rank, enPassantVictimSquare.file);
-            vm.piece = null;
-        }
+            if (enPassantVictimSquare) {
+                const vm = this.getSquare(enPassantVictimSquare.rank, enPassantVictimSquare.file);
+                vm.piece = null;
+            }
 
             // Place moving piece (or promoted piece) on destination
-        if (reachedLastRank && move.promotion) {
-            toSquare.piece = new Piece(move.promotion, movingPiece.colour);
-            undo.promotedTo = move.promotion;
-        } else {
+            if (reachedLastRank && move.promotion) {
+                toSquare.piece = new Piece(move.promotion, movingPiece.colour);
+                undo.promotedTo = move.promotion;
+            } else {
             toSquare.piece = movingPiece;
-        }
+            }
 
             // If castling, move rook (rookPiece already validated above)
-        if (move.castle && undo.rookFrom && undo.rookTo) {
-            const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
-            const rookToSquare   = this.getSquare(undo.rookTo.rank, undo.rookTo.file);       
+            if (move.castle && undo.rookFrom && undo.rookTo) {
+                const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
+                const rookToSquare   = this.getSquare(undo.rookTo.rank, undo.rookTo.file);       
 
-            rookFromSquare.piece = null;
-            rookToSquare.piece   = undo.rookPiece!;
-        }
+                rookFromSquare.piece = null;
+                rookToSquare.piece   = undo.rookPiece!;
+            }
 
 
         // --- e) Update castling rights / EP target / clocks / turn -------------------------------------
 
-        const isA1 = (r: Rank, f: File) => r === 0 && f === 0;
-        const isH1 = (r: Rank, f: File) => r === 0 && f === 7;
-        const isA8 = (r: Rank, f: File) => r === 7 && f === 0;
-        const isH8 = (r: Rank, f: File) => r === 7 && f === 7;
+            const isA1 = (r: Rank, f: File) => r === 0 && f === 0;
+            const isH1 = (r: Rank, f: File) => r === 0 && f === 7;
+            const isA8 = (r: Rank, f: File) => r === 7 && f === 0;
+            const isH8 = (r: Rank, f: File) => r === 7 && f === 7;
 
             // If king moved => lose both castling rights for that colour:        
-        if (movingPiece.type === "king") {
-            this.clearCastlingRights(movingPiece.colour);
-        }
+            if (movingPiece.type === "king") {
+                this.clearCastlingRights(movingPiece.colour);
+            }
             // Rook moved from its starting corner => lose castling rights for that side:
-        if (movingPiece.type === "rook") {
+            if (movingPiece.type === "rook") {
 
                 if (isH1(move.fromRank, move.fromFile)) this.clearCastlingSide("white", "K");
                 if (isA1(move.fromRank, move.fromFile)) this.clearCastlingSide("white", "Q");
                 if (isH8(move.fromRank, move.fromFile)) this.clearCastlingSide("black", "K");
                 if (isA8(move.fromRank, move.fromFile)) this.clearCastlingSide("black", "Q");
-        }
+            }
 
             // Rook captured on its starting corner => lose castling rights for that side
             // (En passant cannot capture a rook, so capturedSquare will be null here anyway):
-        if (undo.capturedPiece?.type === "rook") {
-            const capRank = move.toRank;
-            const capFile = move.toFile;
+            if (undo.capturedPiece?.type === "rook") {
+                const capRank = move.toRank;
+                const capFile = move.toFile;
 
-            if (isH1(capRank, capFile)) this.clearCastlingSide("white", "K");
-            if (isA1(capRank, capFile)) this.clearCastlingSide("white", "Q");
-            if (isH8(capRank, capFile)) this.clearCastlingSide("black", "K");
-            if (isA8(capRank, capFile)) this.clearCastlingSide("black", "Q");
-        }
+                if (isH1(capRank, capFile)) this.clearCastlingSide("white", "K");
+                if (isA1(capRank, capFile)) this.clearCastlingSide("white", "Q");
+                if (isH8(capRank, capFile)) this.clearCastlingSide("black", "K");
+                if (isA8(capRank, capFile)) this.clearCastlingSide("black", "Q");
+            }
 
-        if (movingPiece.type === "pawn") { // en passant can only be done with pawns
-            const dr = move.toRank - move.fromRank;
-            if (dr === 2 || dr === -2) { // dr === 2: white; dr === -2: black
+            if (movingPiece.type === "pawn") { // en passant can only be done with pawns
+                const dr = move.toRank - move.fromRank;
+                if (dr === 2 || dr === -2) { // dr === 2: white; dr === -2: black
                 // If it moved two squares, set en passant target;
                 // pawn double-step creates a square 'behind it' that can be captured en passant.
-                const midRank = ((move.fromRank + move.toRank) / 2) as Rank; //mid-rank is the rank inbetween from and to
+                    const midRank = ((move.fromRank + move.toRank) / 2) as Rank; //mid-rank is the rank inbetween from and to
                 // that square becomes the en passant target:
-                this.enPassantTarget = { rank: midRank, file: move.fromFile };
+                    this.enPassantTarget = { rank: midRank, file: move.fromFile };
+                }
             }
-        }
         
 
         // --- f) Clocks + turn toggle + push undo -----------------------------------------
 
             // halfmove clock: resets to 0 on pawn move or capture:
-        const isCapture = undo.capturedPiece !== null;
-        const isPawnMove = movingPiece.type === "pawn";
-        this.halfMoveClock = (isPawnMove || isCapture) ? 0 : this.halfMoveClock + 1;
+            const isCapture = undo.capturedPiece !== null;
+            const isPawnMove = movingPiece.type === "pawn";
+            this.halfMoveClock = (isPawnMove || isCapture) ? 0 : this.halfMoveClock + 1;
             // otherwise it increments by 1
             // This is used for the 50-move rule and for FEN.
 
             // fullmove number is complete and increments only after Black's move:
-        if (this.sideToMove === "black") this.fullMoveNumber +=1;
+            if (this.sideToMove === "black") this.fullMoveNumber +=1;
             
             // toggle whose turn it is:
-        this.sideToMove = this.sideToMove === "white" ? "black": "white";
+            this.sideToMove = this.sideToMove === "white" ? "black": "white";
 
             // repition bookkeeping (after state is fully updated):
-        const keyAfter = this.getPositionKey();
-        undo.positionKeyAfter = keyAfter;
-        this.bumpRepitition(keyAfter);
+            const keyAfter = this.getPositionKey();
+            undo.positionKeyAfter = keyAfter;
+            this.bumpRepitition(keyAfter);
             // record undo - saves the snapshot so undoMove() can pop it and reverse everything
             // commits move to the undo stack:
-        this.history.push(undo);
-    } catch (err) {
+            this.history.push(undo);
+        } catch (err) {
             // Roll back using the undo snapshot (WITHOUT depending on history)
-        this.rollBackFromUndoSnapshot(undo);
-        throw err;
+            this.rollBackFromUndoSnapshot(undo);
+            throw err;
         }
     }
 
@@ -1168,7 +1173,6 @@ export class ChessBoard {
             // ternary operators check each castling right (the board can lie to you if 
             // rook or king moved or were captured!), which are a property of the game's timeline,
             // and add corresponding letter if true, // or empty string if false:
-
         this.castlingRights = {
             whiteK: castling.includes("K"),
             whiteQ: castling.includes("Q"),
@@ -1311,8 +1315,8 @@ export class ChessBoard {
     // f + 1: one file right (east)                                                 
     // f - 1: one file left (west)                                                  =
 
-    // df = delta file - change in file (first number)                              =
-    // dr = delta rank - change in rank (second number)                             =   
+    // dr = delta rank - change in rank (first number)                             =   
+    // df = delta file - change in file (second number)                              =
 
     // ------------------------------------------------------------------------------
 
@@ -1513,7 +1517,7 @@ export class ChessBoard {
             const row: Square[] = [];
 
         for (const file of FILES) { //inner nested loop, builds vertical columns (files)
-            row.push(new Square(file, rank, null)); // creates new Square instance
+            row.push(new Square(rank, file, null)); // creates new Square instance
             }
 
         board.push(row); // add completed row to board

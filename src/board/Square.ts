@@ -3,8 +3,8 @@ import { Piece } from "../pieces/Piece.js";
 
 export class Square { // Square representation
     constructor(
-        public file: File, // columns 0-7 internally (maps to a-h for display) (left ↔ right)
         public rank: Rank, // rows 0-7 internally (maps to rows 1-8 for display) (bottom ↔ top)
+        public file: File, // columns 0-7 internally (maps to a-h for display) (left ↔ right)
     // Together, file and rank can name a square (e.g. D4)
         public piece: Piece | null = null // the chess piece currently sitting on a given square
     ) {}
@@ -12,6 +12,11 @@ export class Square { // Square representation
     get isOccupied(): boolean { //square returns not null if occupied by a piece
         return this.piece !== null;
     }
+
+    // Next two getter methods are for rendering the board with alternating light and dark squares, 
+    // and for converting internal coordinates to standard algebraic notation (e.g. a1, d4, h8)
+    // hence why file is listed before ranks in these methods, to match the standard notation of file before rank (e.g. a1, not 1a)
+    // in algebraic notation
 
     get isLight(): boolean { // 
         return (this.file + this.rank) % 2 === 1;

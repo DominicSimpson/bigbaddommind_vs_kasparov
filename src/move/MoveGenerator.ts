@@ -1,9 +1,9 @@
 import { ChessBoard } from "../board/ChessBoard.js";
 import type { Move } from "../types/Move.js";
-import { Piece } from "../pieces/Piece.js";
 import { FILES, RANKS } from "../types/coords.js";
 import type { File, Rank } from "../types/coords.js";
-import { PieceType } from "../pieces/Piece.js";
+import type { Piece, PieceType } from "../pieces/Piece.js";
+import type { PromotionPiece } from "../types/Move.js";
 
 
 export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
@@ -53,11 +53,11 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
     // Piece-specific helpers
   // -------------------------
     
-    // df = delta file - change in file (first number) left/right
-    // dr = delta rank - change in rank (second number) down/up
+    // dr = delta rank - change in rank (first number) down/up
+    // df = delta file - change in file (second number) left/right
     // // Array of 2-element tuples below <[number, number]>:
-    // first number → delta file (df)
-    // second number → delta rank (dr)
+    // first number → delta rank (dr)
+    // second number → delta file (df)
 
     
     // Pawn movement
@@ -98,7 +98,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
                 fromFile,
                 toRank: oneStepRank as Rank,
                 toFile: fromFile,
-                promotion: promo,
+                promotion: promo as PromotionPiece,
             });
           }
         } else {
@@ -115,8 +115,8 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
     
       // c. Captures (diagonals left or right)
       for (const df of [-1, 1]) {
-        const capFile = fromFile + df;
         const capRank = fromRank + dir;
+        const capFile = fromFile + df;
         // if potential destination square is not on board, skip it
         if (!this.isOnBoard(capRank, capFile)) continue;
 
@@ -133,7 +133,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
                 toRank: capRank as Rank,
                 toFile: capFile as File,
                 isCapture: true,
-                promotion: promo,
+                promotion: promo as PromotionPiece,
             });
           }
         } else {
@@ -182,9 +182,9 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         [-1, +2]  // one rank down, two files right
       ];
 
-      for (const [df, dr] of deltas) {
-        const toFile = fromFile + df;
+      for (const [dr, df] of deltas) {
         const toRank = fromRank + dr;
+        const toFile = fromFile + df;
 
         // if potential destination square is not on board, skip it
         if (!this.isOnBoard(toRank, toFile)) continue;
@@ -258,10 +258,10 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         [+1, +1]  // north-east
       ];
 
-      for (const [df, dr] of deltas) {
+      for (const [dr, df] of deltas) {
         // compute destination square
-        const toFile = file + df; 
         const toRank = rank + dr;
+        const toFile = file + df; 
 
         // if potential destination square is not on board, skip it:
         if (!this.isOnBoard(toRank, toFile)) continue;
@@ -294,9 +294,10 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       moves: Move[],
       directions: Array<[number, number]>
     ): void {
-      for (const [df, dr] of directions) {
-        let file = fromFile + df;
+      for (const [dr, df] of directions) {
         let rank = fromRank + dr;
+        let file = fromFile + df;
+        
 
         while (this.isOnBoard(rank, file)) {
           const targetSquare = board.getSquare(rank as Rank, file as File);
@@ -316,8 +317,8 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
             // capture blocks further sliding
           if (targetSquare.piece && targetSquare.piece.colour !== piece.colour) break;
 
-          file += df;
           rank += dr;
+          file += df;
         }
       }
     }
@@ -357,7 +358,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
 
 // These constants encode the geometry of how a piece is allowed to move,
 // independently of the board. They are fixed and should never change (signified by all caps). 
-// Each entry is a direction vector [df, dr] = delta file, delta rank
+// Each entry is a direction vector [dr, df] = delta rank, delta file
 
 const ROOK_DIRS: Array <[number, number]> = [
   [+1,  0], // north
