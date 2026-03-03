@@ -1,6 +1,8 @@
 import type { Rank, File } from "./coords.js";
 import type { PieceType } from "../pieces/Piece.js";
 
+export type PromotionPiece = Exclude<PieceType, "pawn" | "king">; // a promotion piece can be any piece except a pawn or king
+
 export interface Move {
     fromRank: Rank;
     fromFile: File;
@@ -9,7 +11,7 @@ export interface Move {
 
     // question marks denote "optional" - this property may exist
     // but it doesn't have to; forcing these to exist on every move would be wrong
-    promotion?: PieceType; // queen | rook | bishop | knight; 
+    promotion?: PromotionPiece; // queen | rook | bishop | knight
     // // promotion is when a pawn manages to reach the other end of the board and is promoted to another piece
     // (usually a queen)
     castle?: "K" | "Q"; //castling (either king-side or queen-side)

@@ -9,7 +9,6 @@ import type { CastlingRights } from "../types/CastlingRights.js";
 import type { UndoRecord } from "../types/UndoRecord.js";
 import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
 import { GameResult } from "../types/GameResult.js";
-import { all } from "axios";
 
 
 
@@ -1008,6 +1007,7 @@ export class ChessBoard {
 
     // for parsing FEN input:
     private algebraicToSquare(s: string): {rank: Rank; file: File } {
+        // RegEx validates that the input string is in correct algebraic format (e.g. "e4")
         if (!/^[a-h][1-8]$/.test(s)) {
             throw new Error(`Invalid square: ${s}`);
         }
@@ -1028,11 +1028,11 @@ export class ChessBoard {
             piece.type === "bishop" ? "b" :
             piece.type === "queen" ? "q" :
             "k";
-    
+        // Uppercase for white, lowercase for black:
         return piece.colour === "white" ? letter.toUpperCase() : letter;
     }
 
-        // This converts a FEN letter to a Piece object, which is used 
+        // Converts a FEN letter to a Piece object, which is used 
         // when parsing FEN strings to set up the board position:    
     private fenLetterToPiece(letter: string): Piece {
         const isUpper = letter === letter.toUpperCase();
@@ -1050,16 +1050,22 @@ export class ChessBoard {
 
         return new Piece(type, colour);
     }
-    // This generates a FEN string representing the current board position, 
-    // which can be used for saving, sharing, or position comparison:
+        // Generates a FEN string representing the current board position, 
+        // which can be used for saving, sharing, or position comparison:
     public toFEN(): string {
         // 1) piece placement:
-        const ranks: String[] = [];
+        const ranks: string[] = [];
+        // FEN starts from rank 8 (top) to rank 1 (bottom), which corresponds to internal ranks 7 to 0:
         for (let rank = 7; rank >= 0; rank--) {
+            // For each rank, build a string that represents the pieces and empty squares:
             let empties = 0;
+            // row string will accumulate the FEN characters for this rank:
             let row = "";
+            // Loop through files a to h (0 to 7):
             for (let file = 0; file < 8; file++) {
                 const piece = this.getSquare(rank as Rank, file as File).piece;
+                // If there's no piece, increment empties count; if there is a piece, 
+                // add the count of empties (if any) followed by the piece letter:
                 if (!piece) {
                     empties++;
                 } else {
@@ -1067,13 +1073,16 @@ export class ChessBoard {
                         row += String(empties);
                         empties = 0;
                     }
+                    // Add the FEN letter for the piece:
                     row += this.pieceToFenLetter(piece);
                 }
             }
+            // After processing all files in the rank, if there are trailing empties, 
+            // add that count to the row:
             if (empties > 0) row += String(empties);
             ranks.push(row);
         }
-
+        // Join the ranks with "/" to form the piece placement part of the FEN:
         const piecePlacement = ranks.join("/");
 
         // 2) side to move
@@ -1140,8 +1149,9 @@ export class ChessBoard {
             for (const char of row) {
                 if (/[1-8]/.test(char)) {  
                     file += Number(char); // skip empty squares
+                    if (file > 8) throw new Error(`FEN row overflow`); // too many squares in this rank
                 } else {
-                    if (file >= 7) throw new Error(`FEN row overflow`); // too many pieces in this rank
+                    if (file >= 8) throw new Error(`FEN row overflow`); 
                     this.squares[internalRank][file as File].piece = this.fenLetterToPiece(char);
                     file++;
                 }
@@ -1202,7 +1212,7 @@ export class ChessBoard {
             key, 
             (this.repetitionCounts.get(key) ?? 0) + 1);
     }
-    // decreases count for position we're leaving, and deletes it if count reaches 0 (never seen again in history):
+    // decreases count for leaving position, and deletes it if count reaches 0 (never seen again in history):
     private unbumpRepitition(key: string): void {
         const next = (this.repetitionCounts.get(key) ?? 0) - 1; // decrease count after undoing a move
         // if count reaches 0, delete key from the map to 
@@ -1503,7 +1513,7 @@ export class ChessBoard {
             const row: Square[] = [];
 
         for (const file of FILES) { //inner nested loop, builds vertical columns (files)
-            row.push(new Square(rank, file, null)); // creates new Square instance
+            row.push(new Square(file, rank, null)); // creates new Square instance
             }
 
         board.push(row); // add completed row to board
