@@ -2,8 +2,10 @@ import { ChessBoard } from "../board/ChessBoard.js";
 import type { Move } from "../types/Move.js";
 import { FILES, RANKS } from "../types/coords.js";
 import type { File, Rank } from "../types/coords.js";
-import type { Piece, PieceType } from "../pieces/Piece.js";
+import { Piece } from "../pieces/Piece.js";
+import type { PieceType } from "../pieces/Piece.js";
 import type { PromotionPiece } from "../types/Move.js";
+import type { Delta } from "../types/delta.js";
 
 
 export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
@@ -55,7 +57,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
     
     // dr = delta rank - change in rank (first number) down/up
     // df = delta file - change in file (second number) left/right
-    // // Array of 2-element tuples below <[number, number]>:
+    // // Array of 2-element tuples below - Delta: [number, number]:
     // first number → delta rank (dr)
     // second number → delta file (df)
 
@@ -108,7 +110,8 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
               fromRank, 
               fromFile, 
               oneStepRank as Rank, 
-              fromFile)
+              fromFile
+            )
           );
         }
       }
@@ -123,8 +126,10 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         // capture of opponent piece
         const capSq = board.getSquare(capRank as Rank, capFile as File);
 
+        if (!capSq.piece) continue; // must have a piece to capture
+        if (capSq.piece.colour === piece.colour) continue; // must be enemy piece to capture
+
         // for promotion
-        if (capSq.piece && capSq.piece.colour !== piece.colour) {
           if (isPromotionRank(capRank as Rank)) {
             for (const promo of PROMO_TYPES) {
               moves.push({
@@ -137,15 +142,16 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
             });
           }
         } else {
+          // normal capture (non-promotion)
           moves.push(
             this.makeMove(
               board, 
               fromRank, 
               fromFile, 
               capRank as Rank, 
-              capFile as File)
-          );
-        }
+              capFile as File
+          )
+        )
       }
     }
   }
@@ -159,7 +165,13 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       piece: Piece,
       moves: Move[]
     ): void {
-      this.addSlidingMoves(board, rank, file, piece, moves, ROOK_DIRS);
+      this.addSlidingMoves(
+        board, 
+        rank, 
+        file, 
+        piece, 
+        moves, 
+        ROOK_DIRS);
     }
 
 
@@ -171,9 +183,9 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       piece: Piece,
       moves: Move[]
     ): void {
-      const deltas: Array<[number, number]> = [
+      const deltas: readonly Delta[] = [
         [+1, +2], // one rank up, two files right 
-        [+2, +1], // two ranks up, one file right
+        [+2, +1], // two ranks up, one  file right
         [+2, -1], // two ranks up, one file left
         [+1, -2], // one rank up, two files left 
         [-1, -2], // one rank down, two files left
@@ -247,7 +259,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       piece: Piece,
       moves: Move[]
     ): void {
-      const deltas: Array<[number, number]> = [
+      const deltas: readonly Delta[] = [
         [-1, -1], // south-west
         [ 0, -1], // west
         [+1, -1], // north-west
@@ -277,7 +289,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         moves.push(this.makeMove(board, rank, file, toRank as Rank, toFile as File));
       }
     }
-
+    
 
     // // //Helper function for ray-based sliding logic:
     // pieces that move by repeated steps in a straight line until something stops them
@@ -292,7 +304,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       fromFile: File,
       piece: Piece,
       moves: Move[],
-      directions: Array<[number, number]>
+      directions: readonly Delta[]
     ): void {
       for (const [dr, df] of directions) {
         let rank = fromRank + dr;
@@ -360,14 +372,14 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
 // independently of the board. They are fixed and should never change (signified by all caps). 
 // Each entry is a direction vector [dr, df] = delta rank, delta file
 
-const ROOK_DIRS: Array <[number, number]> = [
+const ROOK_DIRS: readonly Delta[] = [
   [+1,  0], // north
   [-1,  0], // south
   [ 0, +1], // east
   [ 0, -1], // west
 ];
 
-const BISHOP_DIRS: Array <[number, number]> = [
+const BISHOP_DIRS: readonly Delta[] = [
   [+1, +1], // north-east
   [+1, -1], // north-west
   [-1, +1], // south-east
@@ -376,7 +388,7 @@ const BISHOP_DIRS: Array <[number, number]> = [
 
 // spread operator creates new array that contains (concatenates) all the elements of
 // ROOK_DIRS, followed by all the elements of BISHOP_DIRS
-const QUEEN_DIRS: Array<[number, number]> = [
+const QUEEN_DIRS: readonly Delta[] = [
   ...ROOK_DIRS,
   ...BISHOP_DIRS,
 ];
