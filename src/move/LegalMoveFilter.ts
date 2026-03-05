@@ -42,7 +42,7 @@ export class LegalMoveFilter {
                 const throughFile = (move.castle === "K" ? 5 : 3) as File;
 
                 // Castling stays on same rank:
-                const rank = move.toRank;
+                const rank = move.fromRank;
                 // Castling move is illegal if the "through" square is attacked by an enemy piece, so skip move:
                 if (this.board.isSquareAttackedBy(rank, throughFile, enemy)) continue;
                 // Castling move is illegal if the destination square is attacked by an enemy piece, so skip move:
