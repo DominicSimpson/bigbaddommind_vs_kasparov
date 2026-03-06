@@ -1190,26 +1190,69 @@ export class ChessBoard {
         if (stm !== "w" && stm !== "b") throw new Error(`Invalid side to move: ${stm}`);
         this.sideToMove = stm === "w" ? "white" : "black";
 
-        // build string representation of castling rights:
-            // ternary operators check each castling right (the board can lie to you if 
-            // rook or king moved or were captured!), which are a property of the game's timeline,
-            // and add corresponding letter if true, // or empty string if false:
+        // Validate castling field with RegEx (must be combination of KQkq or "-"):
+        if (castling !== "-" && !/^[KQkq]+$/.test(castling)) {
+            throw new Error(`Invalid castling field: ${castling}`);
+        }
+
+        // Set castling rights based on presence of letters in the castling field:
         this.castlingRights = {
             whiteK: castling.includes("K"),
             whiteQ: castling.includes("Q"),
             blackK: castling.includes("k"),
             blackQ: castling.includes("q"),
         };
-        // If castling field is "-", it means no castling rights for either side, so just set them all to false:
-        if (castling === "-") {
-            this.castlingRights.whiteK = false; 
-            this.castlingRights.whiteQ = false; 
-            this.castlingRights.blackK = false; 
-            this.castlingRights.blackQ = false;
+
+        // // En passant
+        // This validates + normalises en-passant field, in so doing 
+        // improving threefold repitition (part of "same position" definition:
+        // same side to move + same castling rights + same en-passant capture availability).
+        if (ep !== "-") {
+            this.enPassantTarget = null;
+        } else {
+            const sq = this.algebraicToSquare(ep);
+
+            // FEN en passant target must be on rank 3 or 6 (internal ranks 2 or 5)
+            if (sq.rank !== 2 && sq.rank !== 5) {
+                throw new Error(`Invalid en passant square in FEN: ${ep}`);
+            }
+
+            // Normalise EP: only keep it if an EP capture is auctually plausible.
+            // Side to move is the side that could capture en passant; the EP 
+            // target square is the square behind the pawn that just double-stepped:
+            const capturer: Colour = this.sideToMove;
+            const victim: Colour = capturer === "white" ? "black" : "white";
+            // direction the victim pawn would be in relative to EP target:
+            const dir = capturer === "white" ? -1 : 1; 
+            // The pawn that would be captured sits one rank behind the EP target square 
+            // in the direction of the victim (relative to capturer's movement):
+            const victimRank = (sq.rank - dir) as Rank;
+
+            let plausible = false;
+
+            // There must be a victim pawn on (victimRank, sq.file):
+            if (this.inBounds(victimRank, sq.file)) {
+                const v = this.getSquare(victimRank, sq.file).piece;
+
+                if (v && v.type === "pawn" && v.colour === victim) {
+                    // A capturer pawn of the correct colour must be in position to capture en passant
+                    // i.e. on one of the adjacent files on the capturer's current rank:
+                    for (const df of [-1, 1]) {
+                        const fromFile = (sq.file + df) as File;
+                        const fromRank = victimRank; // capturer pawn is on same rank as / beside victim pawn
+                        if (!this.inBounds(fromRank, fromFile)) continue;
+
+                        const p = this.getSquare(fromRank, fromFile).piece;
+                        if (p && p.type === "pawn" && p.colour === capturer) {
+                            plausible = true;
+                            break;
+                        }    
+                    }
+                }
+            }
+            // only set it if it's actually plausible, otherwise ignore EP target in FEN:
+            this.enPassantTarget = plausible ? sq : null; 
         }
-        
-        // en passant:
-        this.enPassantTarget = ep === "-" ? null : this.algebraicToSquare(ep);
 
         // Clocks:
         const hm = Number(halfMove);
