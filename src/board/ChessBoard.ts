@@ -166,57 +166,58 @@ export class ChessBoard {
         // A minor piece in chess is either a bishop or knight; a major piece is a rook or queen; 
         // pawns are "other" pieces; kings are not classified as either minor or major pieces, OR "other" pieces, 
         // because they cannot checkmate by themselves and are not relevant to insufficient material draws. 
-        let whiteMinors = 0; // bishops + knights
-        let blackMinors = 0;
-        let whiteMajors = 0; // rooks + queens
-        let blackMajors = 0;
-        let whitePawns = 0; // pawns
-        let blackPawns = 0;
 
-        // Track bishop square colours (for the K+B vs K+B same-colour case)
-        let whiteBishopSquareColours: number[] = [];
-        let blackBishopSquareColours: number[] = [];
+        type BishopInfo = {
+            colour: Colour;
+            squareColour: 0 | 1; // 0 for light squares, 1 for dark squares
+        }
 
-        for (let r = 0; r < 8; r++) {
-            for (let f = 0; f < 8; f++) {
-                const piece = this.getSquare(r as Rank, f as File).piece;
+        let whiteKnights = 0;
+        let blackKnights = 0;
+        const whiteBishops: BishopInfo[] = [];
+        const blackBishops: BishopInfo[] = [];
+
+        // // Any pawn, rook, or queen means mate is still possible in principle,
+        // so the position is not insufficient material.
+        for (let rank = 0; rank < 8; rank++) {
+            for (let file = 0; file < 8; file++) {
+                const piece = this.getSquare(rank as Rank, file as File).piece;
                 if (!piece) continue;
                 if (piece.type === "king") continue; 
 
-                // pawns
-                if (piece.type === "pawn") {
-                    if (piece.colour === "white") whitePawns++;
-                    else blackPawns++;
-                    continue;
-                }
-
-                // majors
-                if (piece.type === "rook" || piece.type === "queen") {
-                    if (piece.colour === "white") whiteMajors++;
-                    else blackMajors++;
-                    continue;
+                if (piece.type === "pawn" ||
+                    piece.type === "rook" ||
+                    piece.type === "queen" 
+                ) {
+                    return false;
                 }
 
                 // minors
-                if (piece.type === "bishop" || piece.type === "knight") {
-                    if (piece.colour === "white") whiteMinors++;
-                    else blackMinors++;
+                if (piece.type === "knight") {
+                    if (piece.colour === "white") whiteKnights++;
+                    else blackKnights++;
+                } 
                     // special handling for bishops
                     // unlike knights, bishops never change square colour during game, 
                     // so we can track the colour of the square they start on to determine if same-colour 
                     // bishop endgames are K+B vs K+B or K+B vs K:
                     if (piece.type === "bishop") {
-                        // calculate square colour using rank and file indices (0-7):
-                        const squareColour = (r + f) % 2; // 0 for light squares, 1 for dark squares
-                        if (piece.colour === "white") whiteBishopSquareColours.push(squareColour);
-                        else blackBishopSquareColours.push(squareColour);
-                    }
+                        const squareColour = (rank + file) % 2 as 0 | 1; // 0 for light squares, 1 for dark squares
+                        const info: BishopInfo = {
+                            colour: piece.colour,
+                            squareColour,
+                        };
+
+                        if (piece.colour === "white") whiteBishops.push(info);
+                        else blackBishops.push(info);
+                    
                 }
             }
         }
 
-        // Any pawns/rooks/queens => can still lead to checkmate, therefore:
-        if (whitePawns > 0  || blackPawns > 0 || whiteMajors > 0 || blackMajors > 0) return false;
+        const whiteMinorCount = whiteKnights + whiteBishops.length;
+        const blackMinorCount = blackKnights + blackBishops.length;
+        const totalMinorCount = whiteMinorCount + blackMinorCount;
 
             // -------------------------------------------------=
                 // Piece	Letter in algebraic move notation (SAN):=
@@ -229,37 +230,38 @@ export class ChessBoard {
                 // Pawn	[no letter]                                 =
                 // --------------------------------------------------
 
-        // // Therefore:
+        // // Draw permutations with insufficient material:
 
-        // K v K is a draw:
-        if (whiteMinors === 0 && blackMinors === 0) return true;
+        // K vs K
+        if (totalMinorCount === 0) return true;
 
-        // K+N vs K OR K+B vs K:
-        if ((whiteMinors === 1 && blackMinors === 0) || 
-            (whiteMinors === 0 && blackMinors === 1)) {
-            return true;
-        }
+        // K + single minor vs K (K+N vs K or K+B vs K):
+        if (totalMinorCount === 1) return true;
+        
 
-        // K+NN vs K is not automatically a draw in FIDE (Fédération Internationale des Échecs)
-        // rules, but in practice technically is (a common engine rule) because two knights cannot force
-        // checkmate without help from opponent king, and if opponent king helps, 
-        // it's not really a forced checkmate:
-        if ((whiteMinors === 2 && blackMinors === 0) ||
-            (whiteMinors === 0 && blackMinors === 2)) {
-            return true;
-        }
+        // // K + minor vs K + minor - with only one minor on each side, and no pawns/rooks/queens,
+        // checkmate is impossible:
+        // - K+N vs K+N
+        // - K+B vs K+N
+        // - K+B vs K+B
+        if (whiteMinorCount === 1 && blackMinorCount === 1) return true;
 
-        // K+B vs K+B where both sides have exactly one bishop, and both bishops are on same colour squares:
+        // K+Bs vs K+Bs where all bishops on the board live on the same square colour 
+        // (i.e. all on light squares or all on dark squares):
         if (
-            whiteMinors === 1 && 
-            blackMinors === 1 &&
-            whiteBishopSquareColours.length === 1 && 
-            blackBishopSquareColours.length === 1 &&
-            whiteBishopSquareColours[0] === blackBishopSquareColours[0]
+            whiteKnights === 0 && 
+            blackKnights === 0 &&
+            whiteBishops.length + blackBishops.length > 0
         ) {
-            return true;
+            const allBishops = [...whiteBishops, ...blackBishops];
+            const firstSquareColour = allBishops[0].squareColour;
+
+            const allSameSquareColour = allBishops.every(
+                bishop => bishop.squareColour === firstSquareColour
+            );
+
+            if (allSameSquareColour) return true;
         }
-    
 
         return false;
     }
@@ -1123,10 +1125,10 @@ export class ChessBoard {
 
         // 4) en passant target
         const ep = this.enPassantTarget
-            ? this.getSquare(
+            ? this.squareToAlgebraic(
                 this.enPassantTarget.rank, 
                 this.enPassantTarget.file
-            ).coord
+            )
             : "-";
         
         // 5) clocks
@@ -1154,16 +1156,27 @@ export class ChessBoard {
 
         const [piecePlacement, stm, castling, ep, halfMove, fullMove] = parts;
 
+        let whiteKings = 0;
+        let blackKings = 0;
+
         // Clear board:
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
-                this.squares[rank][file].piece = null;
+                const piece = this.squares[rank][file].piece;
+                if (!piece) continue;
+                if (piece.type === "king") {
+                    if (piece.colour === "white") whiteKings++;
+                    else blackKings++;
+                }
             }
         }
-    
+        
+        if (whiteKings !== 1 || blackKings !== 1) {
+            throw new Error("FEN must contain exactly one white king and one black king");
+        }
         // Place pieces:
         const rows = piecePlacement.split("/");
-        if (rows.length !== 8) throw new Error(`FEN placement must have 8 ranks`);
+        if (rows.length !== 8) throw new Error("FEN placement must have 8 ranks");
 
         for (let fenRank = 0; fenRank < 8; fenRank++) {
             const row = rows[fenRank];
@@ -1175,15 +1188,15 @@ export class ChessBoard {
             for (const char of row) {
                 if (/[1-8]/.test(char)) {  
                     file += Number(char); // skip empty squares
-                    if (file > 8) throw new Error(`FEN row overflow`); // too many squares in this rank
+                    if (file > 8) throw new Error("FEN row overflow"); // too many squares in this rank
                 } else {
-                    if (file >= 8) throw new Error(`FEN row overflow`); 
+                    if (file >= 8) throw new Error("FEN row overflow"); 
                     this.squares[internalRank][file as File].piece = this.fenLetterToPiece(char);
                     file++;
                 }
             }
             // After processing the row, file should be exactly 8 (0-7) if FEN is correct:
-            if (file !== 8) throw new Error(`FEN row does not sum to 8 files`);
+            if (file !== 8) throw new Error("FEN row does not sum to 8 files");
         }
 
         // Side to move:
@@ -1191,7 +1204,7 @@ export class ChessBoard {
         this.sideToMove = stm === "w" ? "white" : "black";
 
         // Validate castling field with RegEx (must be combination of KQkq or "-"):
-        if (castling !== "-" && !/^[KQkq]+$/.test(castling)) {
+        if (!/^(?:K?Q?k?q?|-)$/.test(castling)) {
             throw new Error(`Invalid castling field: ${castling}`);
         }
 
@@ -1203,11 +1216,11 @@ export class ChessBoard {
             blackQ: castling.includes("q"),
         };
 
-        // // En passant
+        // // En passant:
         // This validates + normalises en-passant field, in so doing 
         // improving threefold repitition (part of "same position" definition:
         // same side to move + same castling rights + same en-passant capture availability).
-        if (ep !== "-") {
+        if (ep === "-") {
             this.enPassantTarget = null;
         } else {
             const sq = this.algebraicToSquare(ep);
@@ -1238,11 +1251,13 @@ export class ChessBoard {
                     // A capturer pawn of the correct colour must be in position to capture en passant
                     // i.e. on one of the adjacent files on the capturer's current rank:
                     for (const df of [-1, 1]) {
-                        const fromFile = (sq.file + df) as File;
+                        const fromFile = (sq.file + df);
                         const fromRank = victimRank; // capturer pawn is on same rank as / beside victim pawn
+                        
                         if (!this.inBounds(fromRank, fromFile)) continue;
-
-                        const p = this.getSquare(fromRank, fromFile).piece;
+                        // Check if there's a capturer pawn of the correct colour on this square:
+                        const p = this.getSquare(fromRank as Rank, fromFile as File).piece;
+                        // If there is a piece here, it must be a pawn of the capturer's colour for EP to be plausible:
                         if (p && p.type === "pawn" && p.colour === capturer) {
                             plausible = true;
                             break;
