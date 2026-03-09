@@ -35,6 +35,7 @@ export class ChessBoard {
 
     private enPassantTarget: { rank: Rank, file: File} | null = null;
 
+
     private halfMoveClock = 0; // see UndoRecord.ts notes for more on this
     private fullMoveNumber = 1; // ditto
 
@@ -230,7 +231,15 @@ export class ChessBoard {
                 // Pawn	[no letter]                                 =
                 // --------------------------------------------------
 
-        // // Draw permutations with insufficient material:
+        
+        // // Not draw permutations:
+
+        // K+NN vs K
+        // K+B+N vs K
+        // Any position with a pawn, rook, or queen
+        // Any position where one side has enough material in principle to mate
+        
+        // // Draw permutations:
 
         // K vs K
         if (totalMinorCount === 0) return true;
@@ -647,14 +656,18 @@ export class ChessBoard {
             // producing a value
         const fromSquare = this.getSquare(move.fromRank, move.fromFile); // where the piece is moving from
         const toSquare = this.getSquare(move.toRank, move.toFile); // where the piece is moving to
-
+        
         const movingPiece = fromSquare.piece; // takes piece currently on fromSquare
 
             // if a piece is not occupying a square
         if (!movingPiece) throw new Error("No piece on source square.");
         // enforces alternating turns
         if (movingPiece.colour !== this.sideToMove) throw new Error("Not your turn.");
-    
+        
+        const legalMoves = this.getLegalMoves(move.fromRank, move.fromFile); // generates legal moves for piece on fromSquare
+        // checks if intended move is legal by comparing to legal moves list:
+        const isLegal = legalMoves.some(candidate => this.sameMove(candidate, move));
+        if (!isLegal) throw new Error("Illegal move.");
         // --- (a) Build undo record BEFORE mutating board -----------------------------------------------------
           // Store whatever you already store: castling rights, ep square, halfmove, etc.
           // i.e., snapshot before touching board
@@ -693,6 +706,12 @@ export class ChessBoard {
         let enPassantVictimSquare: { rank: Rank, file: File } | null = null;
 
         if (move.enPassant) {
+            if (!this.enPassantTarget ||
+                move.toRank !== this.enPassantTarget.rank ||
+                move.toFile !== this.enPassantTarget.file
+            ) {
+                throw new Error("Invalid en passant: destination is not the current en passant target");
+            }
             // Destination square is empty; captured pawn is behind it:
             if (toSquare.piece !== null) {
                 throw new Error("Invalid en passant: target square is not empty");
@@ -720,6 +739,9 @@ export class ChessBoard {
             undo.capturedSquare = { rank: capRank, file: capFile };
             enPassantVictimSquare = { rank: capRank, file: capFile };
         } else {
+            if (toSquare.piece && toSquare.piece.colour === movingPiece.colour) {
+                throw new Error("Invalid move: cannot capture your own piece");
+            }
                 // normal capture happens on the destination square (if any)
             undo.capturedPiece = toSquare.piece ?? null;
                 // capturedSquare left as null, meaning "restore to toSquare" in undoMove()
@@ -753,8 +775,12 @@ export class ChessBoard {
 
             // before rook moves:
         if (move.castle) {
-            if (movingPiece.type !== "king") {
-                throw new Error("Invalid castling: only king can castle");
+            if (!this.canCastle(movingPiece.colour, move.castle)) {
+                throw new Error("Invalid castling: castling rights not available");
+            }
+
+        if (movingPiece.type !== "king") {
+            throw new Error("Invalid castling: only king can castle");
         }
 
         const homeRank = (movingPiece.colour === "white" ? 0 : 7) as Rank;
@@ -819,9 +845,13 @@ export class ChessBoard {
             if (move.castle && undo.rookFrom && undo.rookTo) {
                 const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
                 const rookToSquare   = this.getSquare(undo.rookTo.rank, undo.rookTo.file);       
+                
+                if (!undo.rookPiece) {
+                    throw new Error("Invalid castling: rook snapshot missing");
+                }
 
                 rookFromSquare.piece = null;
-                rookToSquare.piece   = undo.rookPiece!;
+                rookToSquare.piece   = undo.rookPiece;
             }
 
 
@@ -879,7 +909,7 @@ export class ChessBoard {
             // This is used for the 50-move rule and for FEN.
 
             // fullmove number is complete and increments only after Black's move:
-            if (this.sideToMove === "black") this.fullMoveNumber +=1;
+            if (undo.sideToMoveBefore === "black") this.fullMoveNumber +=1;
             
             // toggle whose turn it is:
             this.sideToMove = this.sideToMove === "white" ? "black": "white";
@@ -1151,47 +1181,41 @@ export class ChessBoard {
         // -------------------------
 
     public loadFEN(fen: string): void {
+        // FEN string consists of 6 fields separated by spaces:
         const parts = fen.trim().split(/\s+/);
-        if (parts.length !== 6) throw new Error(`FEN must have 6 fields, got ${parts.length}`);
-
+        // Validate that we have exactly 6 fields:
+        if (parts.length !== 6) 
+            throw new Error(`FEN must have 6 fields, got ${parts.length}`);
+        // Destructure the fields for clarity:
         const [piecePlacement, stm, castling, ep, halfMove, fullMove] = parts;
-
-        let whiteKings = 0;
-        let blackKings = 0;
-
-        // Clear board:
-        for (let rank = 0; rank < 8; rank++) {
-            for (let file = 0; file < 8; file++) {
-                const piece = this.squares[rank][file].piece;
-                if (!piece) continue;
-                if (piece.type === "king") {
-                    if (piece.colour === "white") whiteKings++;
-                    else blackKings++;
-                }
-            }
-        }
-        
-        if (whiteKings !== 1 || blackKings !== 1) {
-            throw new Error("FEN must contain exactly one white king and one black king");
-        }
-        // Place pieces:
+        // Build a temporary board
+        const newSquares = this.createEmptyBoard();
+        // Parse piece placement:
         const rows = piecePlacement.split("/");
+        // FEN ranks go from 8 (top) to 1 (bottom), which corresponds to internal ranks 7 to 0:
         if (rows.length !== 8) throw new Error("FEN placement must have 8 ranks");
-
+        // Loop over each FEN rank and fill the corresponding internal rank on the board:
         for (let fenRank = 0; fenRank < 8; fenRank++) {
+            // fenRank goes from 0 to 7, where 0 is the top rank (rank 8 in FEN) 
+            // and 7 is the bottom rank (rank 1 in FEN):
             const row = rows[fenRank];
+            // File goes from 0 to 7 (a to h).
+            // Initialise file:
             let file = 0;
-        
-        // fenRank 0 is rank 8 => internal rank 7
+            // internalRank is the rank index in our board array that corresponds to the current FEN rank:
             const internalRank = (7 - fenRank) as Rank;
-        // Loop through each character in the FEN row string:
+            // Loop through each character in the FEN rank string:
             for (const char of row) {
+                // If it's a digit, it represents that many empty squares, so we increment the file by that number:
                 if (/[1-8]/.test(char)) {  
                     file += Number(char); // skip empty squares
                     if (file > 8) throw new Error("FEN row overflow"); // too many squares in this rank
                 } else {
                     if (file >= 8) throw new Error("FEN row overflow"); 
-                    this.squares[internalRank][file as File].piece = this.fenLetterToPiece(char);
+                    // Otherwise, it should be a piece letter. We convert it to a Piece object and place it on the board:
+                    newSquares[internalRank][file as File].piece = 
+                        this.fenLetterToPiece(char);
+
                     file++;
                 }
             }
@@ -1199,29 +1223,55 @@ export class ChessBoard {
             if (file !== 8) throw new Error("FEN row does not sum to 8 files");
         }
 
+        let whiteKings = 0;
+        let blackKings = 0;
+
+        for (let rank = 0; rank < 8; rank++) {
+            for (let file = 0; file < 8; file++) {
+                
+                const piece = newSquares[rank][file].piece;
+                
+                if (!piece) continue;
+                if (piece.type === "king") {
+                    if (piece.colour === "white") whiteKings++;
+                        else blackKings++;
+                }
+            }
+        }
+
+
+        if (whiteKings !== 1 || blackKings !== 1) {
+            throw new Error("FEN must contain exactly one white king and one black king");
+        }
+
         // Side to move:
         if (stm !== "w" && stm !== "b") throw new Error(`Invalid side to move: ${stm}`);
-        this.sideToMove = stm === "w" ? "white" : "black";
+        
 
         // Validate castling field with RegEx (must be combination of KQkq or "-"):
         if (!/^(?:K?Q?k?q?|-)$/.test(castling)) {
             throw new Error(`Invalid castling field: ${castling}`);
         }
 
+        const nextSideToMove: Colour = stm === "w" ? "white" : "black";
+
         // Set castling rights based on presence of letters in the castling field:
-        this.castlingRights = {
+        const nextCastlingRights: CastlingRights = {
             whiteK: castling.includes("K"),
             whiteQ: castling.includes("Q"),
             blackK: castling.includes("k"),
             blackQ: castling.includes("q"),
         };
 
+        let nextEnPassantTarget: { rank: Rank; file: File } | null = null;
+
+
         // // En passant:
         // This validates + normalises en-passant field, in so doing 
         // improving threefold repitition (part of "same position" definition:
         // same side to move + same castling rights + same en-passant capture availability).
         if (ep === "-") {
-            this.enPassantTarget = null;
+            nextEnPassantTarget = null;
         } else {
             const sq = this.algebraicToSquare(ep);
 
@@ -1233,20 +1283,24 @@ export class ChessBoard {
             // Normalise EP: only keep it if an EP capture is auctually plausible.
             // Side to move is the side that could capture en passant; the EP 
             // target square is the square behind the pawn that just double-stepped:
-            const capturer: Colour = this.sideToMove;
+            const capturer: Colour = nextSideToMove; 
             const victim: Colour = capturer === "white" ? "black" : "white";
             // direction the victim pawn would be in relative to EP target:
             const dir = capturer === "white" ? -1 : 1; 
             // The pawn that would be captured sits one rank behind the EP target square 
             // in the direction of the victim (relative to capturer's movement):
-            const victimRank = (sq.rank - dir) as Rank;
+            const victimRank = (
+                capturer === "white" ? sq.rank - 1 : sq.rank + 1
+            ) as Rank;
 
             let plausible = false;
+
+            nextEnPassantTarget = plausible ? sq : null;
 
             // There must be a victim pawn on (victimRank, sq.file):
             if (this.inBounds(victimRank, sq.file)) {
                 const v = this.getSquare(victimRank, sq.file).piece;
-
+                // If there is a piece here, it must be a pawn of the victim's colour for EP to be plausible:
                 if (v && v.type === "pawn" && v.colour === victim) {
                     // A capturer pawn of the correct colour must be in position to capture en passant
                     // i.e. on one of the adjacent files on the capturer's current rank:
@@ -1275,7 +1329,11 @@ export class ChessBoard {
         // FEN requires these to be integers, and fullmove must be at least 1:
         if (!Number.isInteger(hm) || hm < 0) throw new Error(`Invalid halfmove clock: ${halfMove}`);
         if (!Number.isInteger(fm) || fm < 1) throw new Error(`Invalid fullmove clock: ${fullMove}`);
- 
+        
+        this.squares = newSquares;
+        this.sideToMove = nextSideToMove;
+        this.castlingRights = nextCastlingRights;
+        this.enPassantTarget = nextEnPassantTarget;
         this.halfMoveClock = hm;
         this.fullMoveNumber = fm;
 
@@ -1585,6 +1643,23 @@ export class ChessBoard {
             // black can no longer castle queen-side:
             else this.castlingRights.blackQ = false;
         }
+    }
+
+    private sameMove(a: Move, b: Move): boolean {
+        // // Two moves are considered the same if they have the same from/to squares, 
+        // promotion piece (if any), castling type (if any), and capture/en passant flags. 
+        // This is used for move repetition detection, where we want to know if the same move 
+        // has been played before, regardless of the position it was played in:
+        return (
+            a.fromRank === b.fromRank &&
+            a.fromFile === b.fromFile &&
+            a.toRank === b.toRank &&
+            a.toFile === b.toFile &&
+            a.promotion === b.promotion &&
+            a.castle === b.castle &&
+            !!a.isCapture === !!b.isCapture &&
+            !!a.enPassant === !!b.enPassant
+        );
     }
  
     private createEmptyBoard(): Square[][] { // private internal helper
