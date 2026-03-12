@@ -2,7 +2,6 @@ import type { Delta } from "../types/delta.js";
 
 // // Direction permutations:
 
-
 // These constants encode the geometry of how a piece is allowed to move,
 // independently of the board. They are fixed and should never change (signified by all caps). 
 // Each entry is a direction vector [dr, df] = delta rank, delta file
@@ -16,14 +15,14 @@ import type { Delta } from "../types/delta.js";
 
 // A knight always moves in a 2 + 1 pattern, with exactly 8 permutations of movement:
 export const KNIGHT_DIRS: readonly Delta[] = [ // fixed jumps
-  [+2, +1],
-  [+2, -1],
-  [-2, +1],
-  [-2, -1],
-  [+1, +2],
-  [+1, -2],
-  [-1, +2],
-  [-1, -2],
+  [-2, -1], // two ranks down, one file left
+  [-2, +1], // two ranks down, one file right
+  [-1, -2], // one rank down, two files left
+  [-1, +2], // one rank down, two files right
+  [+1, -2], // one rank up, two files left 
+  [+1, +2], // one rank up, two files right  
+  [+2, -1], // two ranks up, one file left
+  [+2, +1]  // two ranks up, one file right
 ];
 
 export const KING_DIRS: readonly Delta[] = [ // fixed steps

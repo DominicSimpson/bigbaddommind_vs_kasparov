@@ -468,12 +468,7 @@ export class ChessBoard {
     // rook movement
 
     private rookMoves(r: Rank, f: File, piece: Piece): Move[] {
-        return this.rayMoves(r, f, piece, [
-            [+1,0], // up (north)
-            [-1,0], // down (south)
-            [0,+1], // right (east)
-            [0,-1]  // left (west)
-        ]);
+        return this.rayMoves(r, f, piece, ROOK_DIRS);
     }
    
     // knight movement
@@ -482,19 +477,8 @@ export class ChessBoard {
         // r: the knights' current rank (0–7)
         // f: the knights' current file (0–7)
         const moves: Move[] = []; // creates empty array to store moves knight will make
-        const jumps: Delta[] = [
-        // A knight always moves in a 2 + 1 pattern, with exactly 8 permutations of movement:
-            [-2, -1], // two ranks down, one file left
-            [-2, +1], // two ranks down, one file right
-            [-1, -2], // one rank down, two files left
-            [-1, +2], // one rank down, two files right
-            [+1, -2], // one rank up, two files left 
-            [+1, +2], // one rank up, two files right  
-            [+2, -1], // two ranks up, one file left
-            [+2, +1]  // two ranks up, one file right
-        ];
 
-        for (const [dr, df] of jumps) { // each pair of the above possible moves is:
+        for (const [dr, df] of KNIGHT_DIRS) {
             this.pushIfOk(moves, r, f, r + dr, f + df, piece.colour);
             //destination rank = r + dr
             //destination file = f + df
@@ -505,28 +489,15 @@ export class ChessBoard {
     // bishop movement
 
     private bishopMoves(r: Rank, f: File, piece: Piece): Move[] {
-        return this.rayMoves(r, f, piece, [
-            [+1, +1], // diagonal north-east
-            [+1, -1], // diagonal north-west
-            [-1, +1], // diagonal south-east
-            [-1, -1]  // diagonal south-west
-        ])
+        return this.rayMoves(r, f, piece, BISHOP_DIRS);
     }
     
     // queen movement
 
     private queenMoves(r: Rank, f: File, piece: Piece): Move[] {
-        return this.rayMoves(r, f, piece, [
-            [+1,  0], // north
-            [-1,  0], // south
-            [ 0, +1], // east
-            [ 0, -1], // west
-            [+1, +1], // diagonal north-east
-            [+1, -1], // diagonal north-west
-            [-1, +1], // diagonal south-east
-            [-1, -1]  // diagonal south-west
-        ]);
+        return this.rayMoves(r, f, piece, QUEEN_DIRS);
     }
+
 
     // king movement
     
@@ -534,31 +505,21 @@ export class ChessBoard {
         // r: the kings' current rank (0–7)
         // f: the kings' current file (0–7)
         const moves: Move[] = []; // creates empty array to store moves king will make
-        // // Movement permutations:
-        // ( 1,-1): north-west
-        // ( 1, 0): north
-        // ( 1, 1): north-east
-        // ( 0,-1): west
-        // ( 0, 0): no move
-        // ( 0, 1): east
-        // (-1,-1): south-west
-        // (-1, 0): south
-        // (-1, 1): south-east
+
         
         // Iterate over all delta-rank (dr) and delta-file (df) combinations
         // Normal king steps
-        for (let dr = -1; dr <= 1; dr++) { // -1: one rank down; +1: one rank up
-            for (let df = -1; df <= 1; df++) {
-                if (dr === 0 && df === 0) continue; // (0,0): no move
-                this.pushIfOk(moves, r, f, r + dr, f + df, piece.colour) // computes candidate destination
-                // after establishing that it is valid (i.e. not off board grid or if contains friendly piece)
-            }
+        for (const [dr, df] of KING_DIRS) { // -1: one rank down; +1: one rank up
+            this.pushIfOk(moves, r, f, r + dr, f + df, piece.colour) // computes candidate destination
+            // after establishing that it is valid (i.e. not off board grid or if contains friendly piece)
         }
 
         // -- Castling (pseudo-legal structural checks + "through check/out of check" - checks are done in LegalMoveFilter)
         // Only consider castling from e-file (file 4) on home rank (white: 0, black: 7)
-        // (Castling cannot take place if king has "wondered off")
+        // (Castling cannot take place if king has "wondered off", so to speak, from its original square, 
+        // even if it later returns to that square.)
         const homeRank = (piece.colour === "white" ? 0 : 7) as Rank; // identify the king's home rank
+        
         if (r === homeRank && f === (4 as File)) { // checks that king is on e1 (white) or e8 (black)
             // King-side: e -> g, rook h -> f; squares f and g must be empty
             // Also, this is the "historical" rule: even if the king is on e1/e8 and the rook is on h1/h8,
@@ -584,7 +545,12 @@ export class ChessBoard {
             if (fSq.piece === null && gSq.piece === null && rookOk) {
                 // emit a castling move (pseudo-legal)
                 // still has to be 'verified' by LegalMoveFilter() and executed by makeMove()
-                moves.push({ fromRank: r, fromFile: f, toRank: homeRank, toFile: gFile, castle: "K" });
+                moves.push({ 
+                    fromRank: r, 
+                    fromFile: f, 
+                    toRank: homeRank, 
+                    toFile: gFile, 
+                    castle: "K" });
                 }
             }
         
@@ -607,7 +573,13 @@ export class ChessBoard {
                     rookSq.piece.colour === piece.colour;
 
                 if (bSq.piece === null && cSq.piece === null && dSq.piece === null && rookOk) {
-                    moves.push({ fromRank: r, fromFile: f, toRank: homeRank, toFile: cFile, castle: "Q" });
+                    moves.push({ 
+                        fromRank: r, 
+                        fromFile: f, 
+                        toRank: homeRank, 
+                        toFile: cFile, 
+                        castle: "Q" 
+                    });
                 } 
             }
         }
@@ -626,7 +598,7 @@ export class ChessBoard {
 
     // dr = delta rank - change in rank (first number)
     // df = delta file - change in file (second number)
-    private rayMoves(r: Rank, f: File, piece: Piece, directions: Delta[]): Move[] {
+    private rayMoves(r: Rank, f: File, piece: Piece, directions: readonly Delta[]): Move[] {
         // r: the piece's current rank (0–7)
         // f: the piece's current file (0–7)
         const moves: Move[] = []; // creates empty array to store moves pieces will make
@@ -1397,6 +1369,9 @@ export class ChessBoard {
         // FEN requires these to be integers, and fullmove must be at least 1:
         if (!Number.isInteger(hm) || hm < 0) throw new Error(`Invalid halfmove clock: ${halfMove}`);
         if (!Number.isInteger(fm) || fm < 1) throw new Error(`Invalid fullmove clock: ${fullMove}`);
+
+        const whiteKing = this.findKingOnBoard(newSquares, "white");
+        const blackKing = this.findKingOnBoard(newSquares, "black");
         
         this.squares = newSquares;
         this.sideToMove = nextSideToMove;
@@ -1555,6 +1530,17 @@ export class ChessBoard {
         return false;   
     }
 
+    // This is the main helper for checking if a square is attacked on the current game board. 
+    // It simply calls the more general isSquareAttackedOnBoard (below) with the current board state:
+    private isSquareAttackedCurrent(
+        rank: Rank, 
+        file: File,
+        byColour: Colour
+    ): boolean {
+        return this.isSquareAttackedOnBoard(this.squares, rank, file, byColour);
+    }
+
+
     // if a square is attacked on a supplied board, not just the current game board:
     private isSquareAttackedOnBoard(
         squares: Square[][],
@@ -1584,18 +1570,15 @@ export class ChessBoard {
 
         // Knight attacks:
         {
-            for (let dr = -1; dr <= 1; dr++) {
-                for (let df = -1; df <= 1; df++) { 
-                    if (dr === 0 && df === 0) continue;
+            for (const [dr, df] of KNIGHT_DIRS) { 
                     const piece = getPiece(rank + dr, file + df);
                     if (piece && piece.colour === byColour && piece.type === "knight") return true;
                 }
-            }
         }
 
         // Sliding attacks:
         const rayHasAttacker = (
-            dirs: Delta[],
+            dirs: readonly Delta[],
             attackerTypes: ReadonlySet<PieceType>
         ): boolean => {
             for (const [dr, df] of dirs) {
@@ -1604,6 +1587,7 @@ export class ChessBoard {
 
                 while (this.inBounds(r, f)) {
                     const piece = squares[r][f].piece;
+
                     if (piece) {
                         if (piece.colour === byColour && attackerTypes.has(piece.type)) {
                             return true;
@@ -1619,15 +1603,15 @@ export class ChessBoard {
 
         if (
             rayHasAttacker(
-                ORTHOGONAL_DIRS, 
-                new Set(["rook", "queen"])
+                ROOK_DIRS, 
+                new Set<PieceType>(["rook", "queen"])
             )
         ) return true;
 
         if (
             rayHasAttacker(
-                DIAGONAL_DIRS, 
-                new Set(["bishop", "queen"])
+                BISHOP_DIRS,
+                new Set<PieceType>(["bishop", "queen"])
             )
         ) return true;
         
@@ -1685,7 +1669,7 @@ export class ChessBoard {
     private isAttackedByKnight(rank: Rank, file: File, byColour: Colour): boolean {
         // r: the knights' current rank (0–7)
         // f: the knights' current file (0–7)
-        const deltas: Delta[] = [
+        const deltas: readonly Delta[] = [
             // A knight always moves in a 2 + 1 pattern, with exactly 8 permutations of movement:
             [-2, -1], // two ranks down, one file left
             [-2, +1], // two ranks down, one file right
@@ -1747,14 +1731,14 @@ export class ChessBoard {
 
     private isAttackedBySlidingPieces(rank: Rank, file: File, byColour: Colour): boolean {
         // sliding pieces: rooks (straight lines), bishops (diagonals), queens (both)
-        const rookDirs: Delta[] = [
+        const rookDirs: readonly Delta[] = [
             [+1,  0], // north
             [-1,  0], // south
             [ 0, +1], // east
             [ 0, -1]  // west
         ];
 
-        const bishopDirs: Delta[] = [
+        const bishopDirs: readonly Delta[] = [
             [+1, +1], // north-east
             [+1, -1], // north-west
             [-1, +1], // south-east
@@ -1779,7 +1763,7 @@ export class ChessBoard {
         rank: Rank,
         file: File,
         byColour: Colour,
-        dirs: Delta[],
+        dirs: readonly Delta[],
         attackerTypes: ReadonlySet<PieceType> // a set of piece types that are allowed to attack:
         // {rook, queen} for straight rays
         // {bishop, queen} for diagonal rays

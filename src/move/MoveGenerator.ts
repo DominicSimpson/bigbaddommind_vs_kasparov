@@ -77,7 +77,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
 
       // a. Promotion
       // Definitions in all caps are fixed chess geometry and should never change: 
-      const PROMO_TYPES: PieceType[] = [
+      const PROMO_TYPES: readonly PieceType[] = [
         "queen", 
         "rook", 
         "bishop", 
@@ -171,7 +171,8 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         file, 
         piece, 
         moves, 
-        ROOK_DIRS);
+        ROOK_DIRS
+      );
     }
 
 
@@ -183,18 +184,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       piece: Piece,
       moves: Move[]
     ): void {
-      const deltas: readonly Delta[] = [
-        [+1, +2], // one rank up, two files right 
-        [+2, +1], // two ranks up, one  file right
-        [+2, -1], // two ranks up, one file left
-        [+1, -2], // one rank up, two files left 
-        [-1, -2], // one rank down, two files left
-        [-2, -1], // two ranks down, one file left
-        [-2, +1], // two ranks down, one file right
-        [-1, +2]  // one rank down, two files right
-      ];
-
-      for (const [dr, df] of deltas) {
+      for (const [dr, df] of KNIGHT_DIRS) {
         const toRank = fromRank + dr;
         const toFile = fromFile + df;
 
@@ -229,7 +219,8 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         file, 
         piece, 
         moves, 
-        BISHOP_DIRS);
+        BISHOP_DIRS
+      );
     }
 
 
@@ -259,18 +250,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       piece: Piece,
       moves: Move[]
     ): void {
-      const deltas: readonly Delta[] = [
-        [-1, -1], // south-west
-        [ 0, -1], // west
-        [+1, -1], // north-west
-        [-1,  0], // south
-        [+1,  0], // north
-        [-1, +1], // south-east
-        [ 0, +1], // east
-        [+1, +1]  // north-east
-      ];
-
-      for (const [dr, df] of deltas) {
+      for (const [dr, df] of KING_DIRS) {
         // compute destination square
         const toRank = rank + dr;
         const toFile = file + df; 
@@ -286,7 +266,13 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
         
         // record the move as a pseudo-legal move in moves array
         // (legality filtering happens in LegalMoveFilter())
-        moves.push(this.makeMove(board, rank, file, toRank as Rank, toFile as File));
+        moves.push(this.makeMove(
+          board, 
+          rank, 
+          file, 
+          toRank as Rank, 
+          toFile as File
+        ));
       }
     }
     
