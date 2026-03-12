@@ -6,7 +6,7 @@ import { Piece } from "../pieces/Piece.js";
 import type { PieceType } from "../pieces/Piece.js";
 import type { PromotionPiece } from "../types/Move.js";
 import type { Delta } from "../types/delta.js";
-
+import { KING_DIRS, KNIGHT_DIRS, ROOK_DIRS, BISHOP_DIRS, QUEEN_DIRS } from "../constants/directions.js";
 
 export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
   // but do not yet check whether king is in check/checkmate (obviously illegal in real chess)
@@ -367,28 +367,3 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
     }
 
 }
-
-// These constants encode the geometry of how a piece is allowed to move,
-// independently of the board. They are fixed and should never change (signified by all caps). 
-// Each entry is a direction vector [dr, df] = delta rank, delta file
-
-const ROOK_DIRS: readonly Delta[] = [
-  [+1,  0], // north
-  [-1,  0], // south
-  [ 0, +1], // east
-  [ 0, -1], // west
-];
-
-const BISHOP_DIRS: readonly Delta[] = [
-  [+1, +1], // north-east
-  [+1, -1], // north-west
-  [-1, +1], // south-east
-  [-1, -1], // south-west
-];
-
-// spread operator creates new array that contains (concatenates) all the elements of
-// ROOK_DIRS, followed by all the elements of BISHOP_DIRS
-const QUEEN_DIRS: readonly Delta[] = [
-  ...ROOK_DIRS,
-  ...BISHOP_DIRS,
-];

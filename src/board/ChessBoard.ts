@@ -11,33 +11,7 @@ import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
 import type { GameResult } from "../types/GameResult.js";
 import type { Delta } from "../types/delta.js";
 import { get } from "http";
-
-
- // -------------------------
-
-    // Constants
-
-//  -------------------------
-
-const ORTHOGONAL_DIRS: ReadonlyArray<Delta> = [
-    [ 0, +1], 
-    [ 0, -1], 
-    [-1, +0], 
-    [-1, +0]
-];
-
-const DIAGONAL_DIRS: ReadonlyArray<Delta> = [
-    [+1, +1], 
-    [+1, -1], 
-    [-1, +1], 
-    [-1, -1]
-];
-
-const QUEEN_DIRS: ReadonlyArray<Delta> = [
-    ...ORTHOGONAL_DIRS,
-    ...DIAGONAL_DIRS
-];
-
+import { KING_DIRS, KNIGHT_DIRS, ROOK_DIRS, BISHOP_DIRS, QUEEN_DIRS } from "../constants/directions.js";
 
 
 export class ChessBoard {
