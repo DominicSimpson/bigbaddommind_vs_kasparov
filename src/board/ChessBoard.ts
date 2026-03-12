@@ -3,13 +3,40 @@ import { FILES, RANKS } from "../types/coords.js";
 import type { File, Rank } from "../types/coords.js";
 import { Piece } from "../pieces/Piece.js";
 import type { PieceType } from "../pieces/Piece.js";
-import type { Move } from "../types/Move.js";
+import type { Move, PromotionPiece } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
 import type { CastlingRights } from "../types/CastlingRights.js";
 import type { UndoRecord } from "../types/UndoRecord.js";
 import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
-import { GameResult } from "../types/GameResult.js";
-import { Delta } from "../types/delta.js";
+import type { GameResult } from "../types/GameResult.js";
+import type { Delta } from "../types/delta.js";
+import { get } from "http";
+
+
+ // -------------------------
+
+    // Constants
+
+//  -------------------------
+
+const ORTHOGONAL_DIRS: ReadonlyArray<Delta> = [
+    [ 0, +1], 
+    [ 0, -1], 
+    [-1, +0], 
+    [-1, +0]
+];
+
+const DIAGONAL_DIRS: ReadonlyArray<Delta> = [
+    [+1, +1], 
+    [+1, -1], 
+    [-1, +1], 
+    [-1, -1]
+];
+
+const QUEEN_DIRS: ReadonlyArray<Delta> = [
+    ...ORTHOGONAL_DIRS,
+    ...DIAGONAL_DIRS
+];
 
 
 
@@ -393,18 +420,23 @@ export class ChessBoard {
             // starting position for both sets of pawns:
         const startRank = piece.colour === "white" ? 1 : 6;
 
-            // r for rank:
+        const promotionRank = (piece.colour === "white" ? 7 : 0) as Rank; // rank on which pawn promotes
+
+            // normal forward moves:
         const oneStepR = r + dir; // logic for if pawn moves one square up (white) / down (black)
-
+            // forward moves:
         if (this.inBounds(oneStepR, f) && this.isEmpty(oneStepR, f)) { // checks if move is valid
-            this.pushIfOk(moves, r, f, oneStepR, f, piece.colour);
-        
+            if (oneStepR === promotionRank) {
+                this.pushPromotionMoves(moves, r, f, oneStepR as Rank, f, false);
+            } else {
+                this.pushIfOk(moves, r, f, oneStepR, f, piece.colour);
 
-        const twoStepR = r + 2 * dir; // // logic for if pawn moves two squares up (white) / down (black)
-
-        if (r === startRank && this.isEmpty(twoStepR, f)) { // checks if move is valid
-            this.pushIfOk(moves, r, f, twoStepR, f, piece.colour);
-            }
+                const twoStepR = r + 2 * dir; // // logic for if pawn moves two squares up (white) / down (black)
+                
+                if (r === startRank && this.isEmpty(twoStepR, f)) { // checks if move is valid
+                    this.pushIfOk(moves, r, f, twoStepR, f, piece.colour);
+                }   
+            }        
         }
 
         // // 2) normal diagonal captures ---------------
@@ -413,8 +445,14 @@ export class ChessBoard {
         for (const df of [-1, +1]) {
             const capR = r + dir;
             const capF = f + df;
-            if (this.isEnemy(capR, capF, piece.colour)) {
-            // pushIfOk already checks enemy vs friendly and sets capture:true
+
+            if (!this.inBounds(capR, capF)) continue; // checks that target square is on board
+            if (!this.isEnemy(capR, capF, piece.colour)) continue; // checks that there is an enemy piece to capture
+
+            if (capR === promotionRank) {
+                this.pushPromotionMoves(moves, r, f, capR as Rank, capF as File, true);
+            } else {
+                // pushIfOk already checks enemy vs friendly and sets capture:true
                 this.pushIfOk(moves, r, f, capR, capF, piece.colour);
             }
         }
@@ -423,7 +461,8 @@ export class ChessBoard {
         if (this.enPassantTarget) {
             const epRank = this.enPassantTarget.rank;
             const epFile = this.enPassantTarget.file;
-
+            // en passant capture is only possible if the en passant target 
+            // square is exactly one rank ahead of the pawn (in the direction it moves)
             if (epRank === r + dir && Math.abs(epFile - f) === 1) {
                 // generate en passant moves only when it's fully legal
                 const victimRank = (piece.colour === "white" ? epRank - 1 : epRank + 1) as Rank;
@@ -633,7 +672,7 @@ export class ChessBoard {
                 if (target === null) { // confirms that square is empty, so piece can move here
                     moves.push({ fromRank: r, fromFile: f, toRank: tr, toFile: tf });
                 } else {
-                    if (target.colour !== piece.colour) { // confirms square is occupied by enemy
+                    if (target.colour !== piece.colour && target.type !== "king") { // confirms square is occupied by enemy
                         moves.push({ fromRank: r, fromFile: f, toRank: tr, toFile: tf, isCapture: true });
                     }
                     break; // ray stops either because square is friendly piece, or capture of enemy piece ends movement
@@ -704,7 +743,7 @@ export class ChessBoard {
               
             // Compute en-passant victim square if needed:
         let enPassantVictimSquare: { rank: Rank, file: File } | null = null;
-
+        // En passant capture is a special case because the captured piece is not on the destination square of the move:
         if (move.enPassant) {
             if (!this.enPassantTarget ||
                 move.toRank !== this.enPassantTarget.rank ||
@@ -729,7 +768,8 @@ export class ChessBoard {
 
                 // sanity check here:
             const victim = capSquare.piece;
-
+            // victim must be an enemy pawn, otherwise move is invalid (e.g. if victim is
+            // friendly piece, or if victim square is empty, or if victim is an enemy piece that is not a pawn)
             if (!victim || victim.type !=="pawn" || victim.colour === movingPiece.colour) {
                 throw new Error("Invalid en passant: no enemy pawn to capture");
             }
@@ -782,10 +822,10 @@ export class ChessBoard {
         if (movingPiece.type !== "king") {
             throw new Error("Invalid castling: only king can castle");
         }
-
+        // Castling move must have correct from/to squares for the king:
         const homeRank = (movingPiece.colour === "white" ? 0 : 7) as Rank;
         const expectedToFile = (move.castle === "K" ? 6 : 2) as File;
-
+        // checks that king is moving from e1/e8 to g1/g8 (king-side) or c1/c8 (queen-side):
         if (move.fromRank !== homeRank || 
             move.fromFile !== (4 as File) ||
             move.toRank !== homeRank || 
@@ -845,7 +885,7 @@ export class ChessBoard {
             if (move.castle && undo.rookFrom && undo.rookTo) {
                 const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
                 const rookToSquare   = this.getSquare(undo.rookTo.rank, undo.rookTo.file);       
-                
+                // sanity check before mutating rook squares:
                 if (!undo.rookPiece) {
                     throw new Error("Invalid castling: rook snapshot missing");
                 }
@@ -1020,7 +1060,9 @@ export class ChessBoard {
     // ────────────────────────────────────────────────────────
     
     // -------------------------
+
         // FEN helpers
+
     // -------------------------
 
         // Forsyth-Edwards (FEN) / position key convention:
@@ -1223,6 +1265,15 @@ export class ChessBoard {
             if (file !== 8) throw new Error("FEN row does not sum to 8 files");
         }
 
+        for (let file = 0; file < 8; file++) {
+            const rank1 = newSquares[0][file].piece;
+            const rank8 = newSquares[7][file].piece;
+
+            if (rank1?.type === "pawn" || rank8?.type === "pawn") {
+                throw new Error("FEN cannot contain a pawn on the first or eighth rank");
+            }
+        }
+
         let whiteKings = 0;
         let blackKings = 0;
 
@@ -1233,12 +1284,15 @@ export class ChessBoard {
                 
                 if (!piece) continue;
                 if (piece.type === "king") {
-                    if (piece.colour === "white") whiteKings++;
-                        else blackKings++;
+
+                    if (piece.colour === "white") {
+                        whiteKings++;
+                    } else {
+                        blackKings++;
+                    }
                 }
             }
         }
-
 
         if (whiteKings !== 1 || blackKings !== 1) {
             throw new Error("FEN must contain exactly one white king and one black king");
@@ -1247,7 +1301,6 @@ export class ChessBoard {
         // Side to move:
         if (stm !== "w" && stm !== "b") throw new Error(`Invalid side to move: ${stm}`);
         
-
         // Validate castling field with RegEx (must be combination of KQkq or "-"):
         if (!/^(?:K?Q?k?q?|-)$/.test(castling)) {
             throw new Error(`Invalid castling field: ${castling}`);
@@ -1263,10 +1316,55 @@ export class ChessBoard {
             blackQ: castling.includes("q"),
         };
 
-        let nextEnPassantTarget: { rank: Rank; file: File } | null = null;
+        // Cross-check castling rights against actual board state
+        const e1 = newSquares[0][4].piece;
+        const h1 = newSquares[0][7].piece;
+        const a1 = newSquares[0][0].piece;
 
+        const e8 = newSquares[7][4].piece;
+        const h8 = newSquares[7][7].piece;
+        const a8 = newSquares[7][0].piece;
+
+        // white king-side:
+        if (nextCastlingRights.whiteK) {
+            if (!e1 || e1.type !== "king" || e1.colour !== "white") {
+                throw new Error("Invalid FEN: white king-side castling correct but king not on e1");
+            }
+            if (!h1 || h1.type !== "rook" || h1.colour !== "white") {
+                throw new Error("Invalid FEN: white king-side castling correct but rook not on h1");
+            }
+        }
+        // white queen-side:
+        if (nextCastlingRights.whiteQ) {
+            if (!e1 || e1.type !== "king" || e1.colour !== "white") {
+                throw new Error("Invalid FEN: white queen-side castling correct but king not on e1");
+            }
+            if (!a1 || a1.type !== "rook" || a1.colour !== "white") {
+                throw new Error("Invalid FEN: white queen-side castling correct but rook not on a1");
+            }
+        }
+
+        // black king-side:
+        if (nextCastlingRights.blackK) {
+            if (!e8 || e8.type !== "king" || e8.colour !== "black") {
+                throw new Error("Invalid FEN: black king-side castling correct but king not on e8");
+            }
+            if (!h8 || h8.type !== "rook" || h8.colour !== "black") {
+                throw new Error("Invalid FEN: black king-side castling correct but rook not on h8");
+            }
+        }
+        // black queen-side:
+        if (nextCastlingRights.blackQ) {
+            if (!e8 || e8.type !== "king" || e8.colour !== "black") {
+                throw new Error("Invalid FEN: black queen-side castling correct but king not on e8");
+            }
+            if (!a8 || a8.type !== "rook" || a8.colour !== "black") {
+                throw new Error("Invalid FEN: black queen-side castling correct but rook not on a8");
+            }
+        }
 
         // // En passant:
+        let nextEnPassantTarget: { rank: Rank; file: File } | null = null;
         // This validates + normalises en-passant field, in so doing 
         // improving threefold repitition (part of "same position" definition:
         // same side to move + same castling rights + same en-passant capture availability).
@@ -1285,8 +1383,6 @@ export class ChessBoard {
             // target square is the square behind the pawn that just double-stepped:
             const capturer: Colour = nextSideToMove; 
             const victim: Colour = capturer === "white" ? "black" : "white";
-            // direction the victim pawn would be in relative to EP target:
-            const dir = capturer === "white" ? -1 : 1; 
             // The pawn that would be captured sits one rank behind the EP target square 
             // in the direction of the victim (relative to capturer's movement):
             const victimRank = (
@@ -1295,11 +1391,9 @@ export class ChessBoard {
 
             let plausible = false;
 
-            nextEnPassantTarget = plausible ? sq : null;
-
             // There must be a victim pawn on (victimRank, sq.file):
             if (this.inBounds(victimRank, sq.file)) {
-                const v = this.getSquare(victimRank, sq.file).piece;
+                const v = newSquares[victimRank][sq.file].piece;
                 // If there is a piece here, it must be a pawn of the victim's colour for EP to be plausible:
                 if (v && v.type === "pawn" && v.colour === victim) {
                     // A capturer pawn of the correct colour must be in position to capture en passant
@@ -1310,7 +1404,7 @@ export class ChessBoard {
                         
                         if (!this.inBounds(fromRank, fromFile)) continue;
                         // Check if there's a capturer pawn of the correct colour on this square:
-                        const p = this.getSquare(fromRank as Rank, fromFile as File).piece;
+                        const p = newSquares[fromRank as Rank][fromFile as File].piece;
                         // If there is a piece here, it must be a pawn of the capturer's colour for EP to be plausible:
                         if (p && p.type === "pawn" && p.colour === capturer) {
                             plausible = true;
@@ -1320,7 +1414,7 @@ export class ChessBoard {
                 }
             }
             // only set it if it's actually plausible, otherwise ignore EP target in FEN:
-            this.enPassantTarget = plausible ? sq : null; 
+            nextEnPassantTarget = plausible ? sq : null;
         }
 
         // Clocks:
@@ -1365,6 +1459,12 @@ export class ChessBoard {
         }
     }
 
+    // -------------------------
+
+        // Other helpers
+
+    // -------------------------
+
     private pushIfOk( // add (push) a move to array if destination is valid
         moves: Move[], 
         fromRank: Rank,
@@ -1383,7 +1483,7 @@ export class ChessBoard {
         
         if (target === null) {
             moves.push({ fromRank, fromFile, toRank: tr, toFile: tf });
-        } else if (target.colour !== colour) { // general capture logic if there is and it's an enemy piece
+        } else if (target.colour !== colour && target.type !== "king") { // general capture logic if there is and it's an enemy piece
             moves.push({ fromRank, fromFile, toRank: tr, toFile: tf, isCapture: true });
             }
     }
@@ -1404,7 +1504,13 @@ export class ChessBoard {
         return p !== null && p.colour !== colour;
     }
 
-    // locates where King is on board for each colour
+    // -------------------------
+
+        // Find the King
+
+    // -------------------------
+
+    // locates where King is on real game board for each colour:
     private findKing(colour: Colour): { rank: Rank; file: File } | null {
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
@@ -1419,6 +1525,45 @@ export class ChessBoard {
         return null;
     }
 
+    // finds the King on whatever board is provided, not necessarily the current game board:
+    private findKingOnBoard(
+        squares: Square[][], 
+        colour: Colour
+    ): { rank: Rank; file: File } | null {  
+        for (let rank = 0; rank < 8; rank++) {
+            for (let file = 0; file < 8; file++) {
+                const piece = squares[rank][file].piece;
+                if (piece !== null && piece.type === "king" && piece.colour === colour) {
+                    return { rank: rank as Rank, file: file as File };
+                }
+            }
+        }
+        return null;
+    }
+
+    private sameMove(a: Move, b: Move): boolean {
+        // // Two moves are considered the same if they have the same from/to squares, 
+        // promotion piece (if any), castling type (if any), and capture/en passant flags. 
+        // This is used for move repetition detection, where we want to know if the same move 
+        // has been played before, regardless of the position it was played in:
+        return (
+            a.fromRank === b.fromRank &&
+            a.fromFile === b.fromFile &&
+            a.toRank === b.toRank &&
+            a.toFile === b.toFile &&
+            a.promotion === b.promotion &&
+            a.castle === b.castle &&
+            !!a.isCapture === !!b.isCapture &&
+            !!a.enPassant === !!b.enPassant
+        );
+    }
+
+
+    // ------------------------------------------------------------------------------
+
+        // Is attacked by... 
+
+    // ------------------------------------------------------------------------------ 
     
     private isSquareAttacked(rank: Rank, file: File, byColour: Colour): boolean {
         // 1. Pawn attacks
@@ -1436,8 +1581,86 @@ export class ChessBoard {
         return false;   
     }
 
+    // if a square is attacked on a supplied board, not just the current game board:
+    private isSquareAttackedOnBoard(
+        squares: Square[][],
+        rank: Rank, 
+        file: File,
+        byColour: Colour
+    ): boolean {
+        // This helper is used for checking if a square is attacked on a hypothetical board state,
+        // such as when validating moves that could put the king in check. It takes a board as an argument 
+        // instead of using the current game board, allowing us to simulate different positions 
+        // without affecting the actual game state:
+        const getPiece = (r: number, f: number): Piece | null => {
+            if (!this.inBounds(r, f)) return null;
+            return squares[r][f].piece;
+        };
 
-    // ------------------------------------------------------------------------------ 
+        // Pawn attacks:
+        {
+            const pawnRank = byColour === "white" ? rank - 1 : rank + 1;
+            // Pawns attack diagonally forward, so we check the two squares diagonally in front of the target square:
+            const left = getPiece(pawnRank, file - 1);
+            if (left && left.colour === byColour && left.type === "pawn") return true;
+            // Check the right diagonal as well:
+            const right = getPiece(pawnRank, file + 1);
+            if (right && right.colour === byColour && right.type === "pawn") return true;
+        }
+
+        // Knight attacks:
+        {
+            for (let dr = -1; dr <= 1; dr++) {
+                for (let df = -1; df <= 1; df++) { 
+                    if (dr === 0 && df === 0) continue;
+                    const piece = getPiece(rank + dr, file + df);
+                    if (piece && piece.colour === byColour && piece.type === "knight") return true;
+                }
+            }
+        }
+
+        // Sliding attacks:
+        const rayHasAttacker = (
+            dirs: Delta[],
+            attackerTypes: ReadonlySet<PieceType>
+        ): boolean => {
+            for (const [dr, df] of dirs) {
+                let r = rank + dr;
+                let f = file + df;
+
+                while (this.inBounds(r, f)) {
+                    const piece = squares[r][f].piece;
+                    if (piece) {
+                        if (piece.colour === byColour && attackerTypes.has(piece.type)) {
+                            return true;
+                        }
+                        break; // blocked by any piece
+                    }
+                    r += dr;
+                    f += df;
+                }
+            }
+            return false;
+        };
+
+        if (
+            rayHasAttacker(
+                ORTHOGONAL_DIRS, 
+                new Set(["rook", "queen"])
+            )
+        ) return true;
+
+        if (
+            rayHasAttacker(
+                DIAGONAL_DIRS, 
+                new Set(["bishop", "queen"])
+            )
+        ) return true;
+        
+        return false;
+    }
+
+
 
     // The following logic applies to all the following isAttackedBy helpers:       =
     // // Rank:                                                                     =
@@ -1619,6 +1842,45 @@ export class ChessBoard {
         return false;
     }
 
+     // -------------------------
+
+        // Promotion helpers
+
+    //  -------------------------
+    
+    private pushPromotionMoves(
+        moves: Move[],
+        fromRank: Rank,
+        fromFile: File,
+        toRank: Rank,
+        toFile: File,
+        isCapture: boolean
+    ): void {
+        const promotionPieces: PromotionPiece[] = [
+            "queen", 
+            "rook", 
+            "bishop", 
+            "knight"
+        ];
+
+        for (const promotion of promotionPieces) {
+            moves.push({
+                fromRank,
+                fromFile,
+                toRank,
+                toFile,
+                promotion,
+                ...(isCapture ? { isCapture: true } : {}) // only include isCapture flag if it's a capture move
+            })
+        }
+    }
+
+    // -------------------------
+
+        // Castling helpers
+
+    // -------------------------
+
     // clears both castling rights for the given colour
     private clearCastlingRights(colour: Colour): void {
         if (colour === "white") {
@@ -1645,22 +1907,12 @@ export class ChessBoard {
         }
     }
 
-    private sameMove(a: Move, b: Move): boolean {
-        // // Two moves are considered the same if they have the same from/to squares, 
-        // promotion piece (if any), castling type (if any), and capture/en passant flags. 
-        // This is used for move repetition detection, where we want to know if the same move 
-        // has been played before, regardless of the position it was played in:
-        return (
-            a.fromRank === b.fromRank &&
-            a.fromFile === b.fromFile &&
-            a.toRank === b.toRank &&
-            a.toFile === b.toFile &&
-            a.promotion === b.promotion &&
-            a.castle === b.castle &&
-            !!a.isCapture === !!b.isCapture &&
-            !!a.enPassant === !!b.enPassant
-        );
-    }
+ 
+    // -------------------------
+
+        // Create empty board
+
+    //  -------------------------
  
     private createEmptyBoard(): Square[][] { // private internal helper
 
