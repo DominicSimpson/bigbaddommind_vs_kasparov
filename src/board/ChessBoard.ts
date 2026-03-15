@@ -10,7 +10,6 @@ import type { UndoRecord } from "../types/UndoRecord.js";
 import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
 import type { GameResult } from "../types/GameResult.js";
 import type { Delta } from "../types/delta.js";
-import { get } from "http";
 import { KING_DIRS, KNIGHT_DIRS, ROOK_DIRS, BISHOP_DIRS, QUEEN_DIRS } from "../constants/directions.js";
 
 
@@ -127,7 +126,7 @@ export class ChessBoard {
     }
 
     public isSquareAttackedBy(rank: Rank, file: File, byColour: Colour): boolean {
-        return this.isSquareAttacked(rank, file, byColour);
+        return this.isSquareAttacked(this.squares, rank, file, byColour);
     }
 
     public isInCheck(colour: Colour): boolean {
@@ -136,7 +135,7 @@ export class ChessBoard {
         const kingsPosition = this.findKing(colour);
         if (!kingsPosition) return false;
 
-        return this.isSquareAttacked(kingsPosition.rank, kingsPosition.file, enemy);
+        return this.isSquareAttacked(this.squares, kingsPosition.rank, kingsPosition.file, enemy);
     }
 
     public isCheckmate(colour: Colour): boolean {
@@ -637,7 +636,7 @@ export class ChessBoard {
         // 5. Move execution (mutation)
     // ───────────────────────────────
 
-    public makeMove(move: Move): void { // returns void because it mutates board state rather than
+    public makeMove(move: Move, skipLegalityCheck = false): void { // returns void because it mutates board state rather than
             // producing a value
         const fromSquare = this.getSquare(move.fromRank, move.fromFile); // where the piece is moving from
         const toSquare = this.getSquare(move.toRank, move.toFile); // where the piece is moving to
@@ -649,10 +648,12 @@ export class ChessBoard {
         // enforces alternating turns
         if (movingPiece.colour !== this.sideToMove) throw new Error("Not your turn.");
         
-        const legalMoves = this.getLegalMoves(move.fromRank, move.fromFile); // generates legal moves for piece on fromSquare
-        // checks if intended move is legal by comparing to legal moves list:
-        const isLegal = legalMoves.some(candidate => this.sameMove(candidate, move));
-        if (!isLegal) throw new Error("Illegal move.");
+        if (!skipLegalityCheck) {
+            const legalMoves = this.getLegalMoves(move.fromRank, move.fromFile); // generates legal moves for piece on fromSquare
+            // checks if intended move is legal by comparing to legal moves list:
+            const isLegal = legalMoves.some(candidate => this.sameMove(candidate, move));
+            if (!isLegal) throw new Error("Illegal move.");
+        }
         // --- (a) Build undo record BEFORE mutating board -----------------------------------------------------
           // Store whatever you already store: castling rights, ep square, halfmove, etc.
           // i.e., snapshot before touching board
@@ -1210,11 +1211,12 @@ export class ChessBoard {
             // After processing the row, file should be exactly 8 (0-7) if FEN is correct:
             if (file !== 8) throw new Error("FEN row does not sum to 8 files");
         }
-
+        // At this point, we've parsed the piece placement into newSquares. 
+        // Now we can validate the position and set the board state:
         for (let file = 0; file < 8; file++) {
             const rank1 = newSquares[0][file].piece;
             const rank8 = newSquares[7][file].piece;
-
+            // FEN cannot have pawns on the first or eighth rank:
             if (rank1?.type === "pawn" || rank8?.type === "pawn") {
                 throw new Error("FEN cannot contain a pawn on the first or eighth rank");
             }
@@ -1222,12 +1224,12 @@ export class ChessBoard {
 
         let whiteKings = 0;
         let blackKings = 0;
-
+        // Count kings and validate that there is exactly one of each colour:
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
-                
+                // Check each square for a king and count them:
                 const piece = newSquares[rank][file].piece;
-                
+                // If there's no piece, continue to next square:
                 if (!piece) continue;
                 if (piece.type === "king") {
 
@@ -1239,7 +1241,7 @@ export class ChessBoard {
                 }
             }
         }
-
+        // Validate that there is exactly one white king and one black king:
         if (whiteKings !== 1 || blackKings !== 1) {
             throw new Error("FEN must contain exactly one white king and one black king");
         }
@@ -1262,11 +1264,17 @@ export class ChessBoard {
             blackQ: castling.includes("q"),
         };
 
-        // Cross-check castling rights against actual board state
+        // Cross-check castling rights against actual board state;
+        // // king and rook(s) must be in correct position for castling rights to be valid
+
+        // // white king-side castling right (K) requires white king on e1 and rook on h1
+        // // white queen-side castling right (Q) requires white king on e1 and rook on a1
         const e1 = newSquares[0][4].piece;
         const h1 = newSquares[0][7].piece;
         const a1 = newSquares[0][0].piece;
 
+        // // black king-side castling right (k) requires black king on e8 and rook on h8
+        // // black queen-side castling right (q) requires black king on e8 and rook on a8
         const e8 = newSquares[7][4].piece;
         const h8 = newSquares[7][7].piece;
         const a8 = newSquares[7][0].piece;
@@ -1372,6 +1380,36 @@ export class ChessBoard {
 
         const whiteKing = this.findKingOnBoard(newSquares, "white");
         const blackKing = this.findKingOnBoard(newSquares, "black");
+
+        if (!whiteKing || !blackKing) {
+            throw new Error("FEN must contain exactly one white king and one black king");
+        }
+
+        const whiteInCheck = this.isSquareAttacked(
+            newSquares, 
+            whiteKing.rank, 
+            whiteKing.file, 
+            "black"
+        );
+
+        const blackInCheck = this.isSquareAttacked(
+            newSquares, 
+            blackKing.rank, 
+            blackKing.file, 
+            "white"
+        ); 
+        
+        if (whiteInCheck && blackInCheck) {
+            throw new Error("Invalid FEN: both kings are in check");
+        }
+
+        if (nextSideToMove === "white" && blackInCheck) {
+            throw new Error("Invalid FEN: black cannot be in check when it is white to move");
+        }
+
+        if (nextSideToMove === "black" && whiteInCheck) {
+            throw new Error("Invalid FEN: white cannot be in check when it is black to move");
+        }
         
         this.squares = newSquares;
         this.sideToMove = nextSideToMove;
@@ -1413,6 +1451,15 @@ export class ChessBoard {
         // Other helpers
 
     // -------------------------
+
+    // Helper that can read from any supplied board, then thread that board through the attack functions:
+    private getSquareFrom(
+        squares: Square[][], 
+        rank: Rank, 
+        file: File
+    ): Square {
+        return squares[rank][file];
+    }
 
     private pushIfOk( // add (push) a move to array if destination is valid
         moves: Move[], 
@@ -1481,7 +1528,7 @@ export class ChessBoard {
     ): { rank: Rank; file: File } | null {  
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
-                const piece = squares[rank][file].piece;
+                const piece = this.getSquareFrom(squares, rank as Rank, file as File).piece;
                 if (piece !== null && piece.type === "king" && piece.colour === colour) {
                     return { rank: rank as Rank, file: file as File };
                 }
@@ -1514,18 +1561,23 @@ export class ChessBoard {
 
     // ------------------------------------------------------------------------------ 
     
-    private isSquareAttacked(rank: Rank, file: File, byColour: Colour): boolean {
+    private isSquareAttacked(
+        squares: Square[][], 
+        rank: Rank, 
+        file: File, 
+        byColour: Colour
+    ): boolean {
         // 1. Pawn attacks
-        if (this.isAttackedByPawn(rank, file, byColour)) return true;
+        if (this.isAttackedByPawn(squares, rank, file, byColour)) return true;
 
         // 2. Knight attacks
-        if (this.isAttackedByKnight(rank, file, byColour)) return true;
+        if (this.isAttackedByKnight(squares, rank, file, byColour)) return true;
 
         // 3. King attacks (adjacent squares)
-        if (this.isAttackedByKing(rank, file, byColour)) return true;
+        if (this.isAttackedByKing(squares, rank, file, byColour)) return true;
 
         // 4. Sliding pieces (rook/bishop/queen rays) attack
-        if (this.isAttackedBySlidingPieces(rank, file, byColour)) return true;
+        if (this.isAttackedBySlidingPieces(squares, rank, file, byColour)) return true;
 
         return false;   
     }
@@ -1573,6 +1625,14 @@ export class ChessBoard {
             for (const [dr, df] of KNIGHT_DIRS) { 
                     const piece = getPiece(rank + dr, file + df);
                     if (piece && piece.colour === byColour && piece.type === "knight") return true;
+                }
+        }
+
+        // King attacks:
+        {
+            for (const [dr, df] of KING_DIRS) { 
+                    const piece = getPiece(rank + dr, file + df);
+                    if (piece && piece.colour === byColour && piece.type === "king") return true;
                 }
         }
 
@@ -1639,7 +1699,12 @@ export class ChessBoard {
     // ------------------------------------------------------------------------------
 
     // checks if any square has been attacked by a pawn
-    private isAttackedByPawn(rank: Rank, file: File, byColour: Colour): boolean {
+    private isAttackedByPawn(
+        squares: Square[][], 
+        rank: Rank, 
+        file: File, 
+        byColour: Colour
+    ): boolean {
         // r: the pawns' current rank (0–7)
         // f: the pawns' current file (0–7)
 
@@ -1652,13 +1717,13 @@ export class ChessBoard {
 
         const leftFile = file - 1; // pawn takes opponent piece north-west direction
         if (leftFile >= 0) {
-            const p = this.getSquare(pawnRank as Rank, leftFile as File).piece;
+            const p = this.getSquareFrom(squares, pawnRank as Rank, leftFile as File).piece;
             if (p !== null && p.colour === byColour && p.type === "pawn") return true;
         }
 
         const rightFile = file + 1; // pawn takes opponent piece north-east direction
         if (rightFile <= 7) {
-            const p = this.getSquare(pawnRank as Rank, rightFile as File).piece;
+            const p = this.getSquareFrom(squares, pawnRank as Rank, rightFile as File).piece;
             if (p !== null && p.colour === byColour && p.type === "pawn") return true;
         }
 
@@ -1666,29 +1731,23 @@ export class ChessBoard {
     }
 
     // checks if any square has been attacked by a knight
-    private isAttackedByKnight(rank: Rank, file: File, byColour: Colour): boolean {
+    private isAttackedByKnight(
+        squares: Square[][], 
+        rank: Rank, 
+        file: File, 
+        byColour: Colour
+    ): boolean {
         // r: the knights' current rank (0–7)
         // f: the knights' current file (0–7)
-        const deltas: readonly Delta[] = [
-            // A knight always moves in a 2 + 1 pattern, with exactly 8 permutations of movement:
-            [-2, -1], // two ranks down, one file left
-            [-2, +1], // two ranks down, one file right
-            [-1, -2], // one rank down, two files left
-            [-1, +2], // one rank down, two files right
-            [+1, -2], // one rank up, two files left 
-            [+1, +2], // one rank up, two files right  
-            [+2, -1], // two ranks up, one file left
-            [+2, +1]  // two ranks up, one file right
-        ]
 
-        for (const [dr, df] of deltas) { // each pair of the above possible moves is:
+        for (const [dr, df] of KNIGHT_DIRS) { 
             const r = rank + dr;
             const f = file + df;
             //destination rank = r + dr
             //destination file = f + df
             if (r < 0 || r > 7 || f < 0 || f > 7) continue;
 
-            const p = this.getSquare(r as Rank, f as File).piece;
+            const p = this.getSquareFrom(squares, r as Rank, f as File).piece;
 
             if (p !== null && p.colour === byColour && p.type === "knight") return true;
         }
@@ -1697,62 +1756,46 @@ export class ChessBoard {
     }
 
     // checks if any square has been attacked by a king
-    private isAttackedByKing(rank: Rank, file: File, byColour: Colour): boolean {
+    private isAttackedByKing(
+        squares: Square[][], 
+        rank: Rank, 
+        file: File, 
+        byColour: Colour
+    ): boolean {
         // r: the kings' current rank (0–7)
         // f: the kings' current file (0–7)
-         // // Movement permutations:
-        // ( 1,-1): north-west
-        // ( 1, 0): north
-        // ( 1, 1): north-east
-        // ( 0,-1): west
-        // ( 0, 0): no move
-        // ( 0, 1): east
-        // (-1,-1): south-west
-        // (-1, 0): south
-        // (-1, 1): south-east
 
-        // Starts an outer loop over delta rank (dr), i.e. vertical movement:
-        for (let dr = -1; dr <= 1; dr++) { // -1: one rank down; +1: one rank up
-        // Starts an inner nested loop over delta file (df), i.e. horizontal movement:
-            for (let df = -1; df <= 1; df++) {
-                if (dr === 0 && df === 0) continue; // (0,0): no move
+        for (const [dr, df] of KING_DIRS) { // -1: one rank down; +1: one rank up
+ 
+            const r = rank + dr;
+            const f = file + df;
+            
+            if (!this.inBounds(r, f)) continue; // checks if out of bounds
 
-                const r = rank + dr;
-                const f = file + df;
-                if (r < 0 || r > 7 || f < 0 || f > 7) continue; // out of bounds
-
-                const p = this.getSquare(r as Rank, f as File).piece;
-                if (p !== null && p.colour === byColour && p.type === "king") return true;
-            }
+            const p = this.getSquareFrom(squares, r as Rank, f as File).piece;
+            if (p !== null && p.colour === byColour && p.type === "king") return true;
+        
         }
-
+        
         return false;
     }
 
-    private isAttackedBySlidingPieces(rank: Rank, file: File, byColour: Colour): boolean {
+    private isAttackedBySlidingPieces(
+        squares: Square[][], 
+        rank: Rank, 
+        file: File, 
+        byColour: Colour
+    ): boolean {
         // sliding pieces: rooks (straight lines), bishops (diagonals), queens (both)
-        const rookDirs: readonly Delta[] = [
-            [+1,  0], // north
-            [-1,  0], // south
-            [ 0, +1], // east
-            [ 0, -1]  // west
-        ];
-
-        const bishopDirs: readonly Delta[] = [
-            [+1, +1], // north-east
-            [+1, -1], // north-west
-            [-1, +1], // south-east
-            [-1, -1]  // south-west
-        ];
 
         // looks outward in each rook/queen direction and checks if it can be attacked/controlled by opposition
         // returns true if so
         // creates a Set containing two values:
-        if (this.rayAttacked(rank, file, byColour, rookDirs, new Set<PieceType>(["rook", "queen"]))) return true;
+        if (this.rayAttacked(squares, rank, file, byColour, ROOK_DIRS, new Set<PieceType>(["rook", "queen"]))) return true;
         // looks outward in each bishop/queen direction and checks if it can be taken by opposition
         // returns true if so
         // creates a Set containing two values:
-        if (this.rayAttacked(rank, file, byColour, bishopDirs, new Set<PieceType>(["bishop", "queen"]))) return true;
+        if (this.rayAttacked(squares, rank, file, byColour, BISHOP_DIRS, new Set<PieceType>(["bishop", "queen"]))) return true;
 
         return false;
     }
@@ -1760,6 +1803,7 @@ export class ChessBoard {
     // checks if any given square has been attacked by a sliding piece (rook, bishop, queen)
     // along sliding piece directions
     private rayAttacked(
+        squares: Square[][],
         rank: Rank,
         file: File,
         byColour: Colour,
@@ -1777,7 +1821,7 @@ export class ChessBoard {
             let f = file + df;
 
             while (r >= 0 && r <= 7 && f >= 0 && f <= 7) { // checks if out of bounds
-                const p = this.getSquare(r as Rank, f as File).piece; // inspect current square
+                const p = this.getSquareFrom(squares, r as Rank, f as File).piece; // inspect current square
 
                 if (p !== null) {
                     // if piece belongs to attacking colour and its type is allowed on ray,

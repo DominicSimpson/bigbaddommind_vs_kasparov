@@ -55,7 +55,7 @@ export class LegalMoveFilter {
             // for each attempted move, inspect board and undo move before continuing
             // while legality of move is checked (i.e. if king is in check):
             try {            
-                this.board.makeMove(move); // temporarily apply candidate move to board
+                this.board.makeMove(move, true); // temporarily apply candidate move without re-entering legality checks
                 moved = true; // records if makeMove() succeeded and mutated the board
 
             // After makeMove, sideToMove has flipped, so check to see if player
