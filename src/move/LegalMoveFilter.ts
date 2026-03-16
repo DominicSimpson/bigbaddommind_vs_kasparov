@@ -19,8 +19,8 @@ export class LegalMoveFilter {
 
         // colour of piece being moved, used for king-safety checks and castling rules:
         const moverColour = piece.colour;
-        // get pseudo-legal moves for piece on square, then filter them for legality:
-        const pseudo = this.board._getPseudoLegalMovesForFiltering(fromRank, fromFile);
+        // get pseudo-legal moves for piece on square, then filter them for legality
+        const pseudo = this.board.generatePseudoLegalMovesForFiltering(fromRank, fromFile);
         const legal: Move[] = []; // only the subset of truly legal moves that passes the king-safety test
 
         // iterates over pseudo-legal moves one by one, i.e. by movement alone without checking if king is left in check:
@@ -42,7 +42,7 @@ export class LegalMoveFilter {
                 const throughFile = (move.castle === "K" ? 5 : 3) as File;
 
                 // Castling stays on same rank:
-                const rank = move.fromRank;
+                const rank = fromRank;
                 // Castling move is illegal if the "through" square is attacked by an enemy piece, so skip move:
                 if (this.board.isSquareAttackedBy(rank, throughFile, enemy)) continue;
                 // Castling move is illegal if the destination square is attacked by an enemy piece, so skip move:
@@ -64,8 +64,12 @@ export class LegalMoveFilter {
             
                 // if false (king is not in check), move is fully legal and can be added to move array:
                 if (!this.board.isInCheck(moverColour)) legal.push(move);
+            } catch (err) {
+                throw err; // if makeMove threw an error, re-throw it to be handled by caller (e.g. UI can show error message)
             } finally {
-                if (moved) this.board.undoMove(); // add to undoMove record of moves
+                if (moved) {
+                    this.board.undoMove(); // add to undoMove record of moves
+                }
             }
         }
 

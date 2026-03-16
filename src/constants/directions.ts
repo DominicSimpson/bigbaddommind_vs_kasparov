@@ -1,3 +1,4 @@
+import { PieceType } from "../pieces/Piece.js";
 import type { Delta } from "../types/delta.js";
 
 // // Direction permutations:
@@ -56,3 +57,12 @@ export const QUEEN_DIRS: readonly Delta[] = [ // queen is both orthogonal and di
   ...ROOK_DIRS,
   ...BISHOP_DIRS,
 ];
+
+export const ROOK_ATTACKERS: ReadonlySet<PieceType> =
+    new Set(["rook", "queen"]);
+
+export const BISHOP_ATTACKERS: ReadonlySet<PieceType> =
+    new Set(["bishop", "queen"]);
+
+export const QUEEN_ATTACKERS: ReadonlySet<PieceType> =
+    new Set(["queen"]);

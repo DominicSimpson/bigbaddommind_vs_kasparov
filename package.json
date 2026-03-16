@@ -6,10 +6,15 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
-    "dev": "tsc -w"
+    "dev": "tsc -w",
+    "test": "vitest",
+    "test:run": "vitest run"
+
   },
   "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@vitest/expect": "^4.1.0",
     "typescript": "^5.9.3",
-    "@types/node": "^22.0.0"
+    "vitest": "^3.2.4"
   }
 }

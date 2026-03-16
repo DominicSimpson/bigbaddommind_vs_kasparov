@@ -10,7 +10,16 @@ import type { UndoRecord } from "../types/UndoRecord.js";
 import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
 import type { GameResult } from "../types/GameResult.js";
 import type { Delta } from "../types/delta.js";
-import { KING_DIRS, KNIGHT_DIRS, ROOK_DIRS, BISHOP_DIRS, QUEEN_DIRS } from "../constants/directions.js";
+import { 
+    KING_DIRS, 
+    KNIGHT_DIRS, 
+    ROOK_DIRS, 
+    BISHOP_DIRS, 
+    QUEEN_DIRS, 
+    ROOK_ATTACKERS, 
+    BISHOP_ATTACKERS,
+    QUEEN_ATTACKERS
+ } from "../constants/directions.js";
 
 
 export class ChessBoard {
@@ -324,7 +333,7 @@ export class ChessBoard {
     // Engine-internal: used by LegalMoveFilter. Not for UI use, i.e.
     // public only for internal engine use — not part of the real public API.
     /** @internal */
-    public _getPseudoLegalMovesForFiltering(fromRank: Rank, fromFile: File): Move[] {
+    public generatePseudoLegalMovesForFiltering(fromRank: Rank, fromFile: File): Move[] {
         return this.getPseudoLegalMoves(fromRank, fromFile);
     }
 
@@ -646,7 +655,7 @@ export class ChessBoard {
             // if a piece is not occupying a square
         if (!movingPiece) throw new Error("No piece on source square.");
         // enforces alternating turns
-        if (movingPiece.colour !== this.sideToMove) throw new Error("Not your turn.");
+        if (!skipLegalityCheck && movingPiece.colour !== this.sideToMove) throw new Error("Not your turn.");
         
         if (!skipLegalityCheck) {
             const legalMoves = this.getLegalMoves(move.fromRank, move.fromFile); // generates legal moves for piece on fromSquare
@@ -997,10 +1006,10 @@ export class ChessBoard {
                     captSq.piece = undo.capturedPiece; 
                 } else {
                     // normal capture: captured piece is on destination square
-                    toSq.piece = undo.capturedPiece;
-                }
+                    toSq.piece = undo.capturedPiece;    
             }
         }
+    }
 
     // ────────────────────────────────────────────────────────
         // 6. Low-level private helpers (private mechanics)
@@ -1582,103 +1591,9 @@ export class ChessBoard {
         return false;   
     }
 
-    // This is the main helper for checking if a square is attacked on the current game board. 
-    // It simply calls the more general isSquareAttackedOnBoard (below) with the current board state:
-    private isSquareAttackedCurrent(
-        rank: Rank, 
-        file: File,
-        byColour: Colour
-    ): boolean {
-        return this.isSquareAttackedOnBoard(this.squares, rank, file, byColour);
-    }
 
 
-    // if a square is attacked on a supplied board, not just the current game board:
-    private isSquareAttackedOnBoard(
-        squares: Square[][],
-        rank: Rank, 
-        file: File,
-        byColour: Colour
-    ): boolean {
-        // This helper is used for checking if a square is attacked on a hypothetical board state,
-        // such as when validating moves that could put the king in check. It takes a board as an argument 
-        // instead of using the current game board, allowing us to simulate different positions 
-        // without affecting the actual game state:
-        const getPiece = (r: number, f: number): Piece | null => {
-            if (!this.inBounds(r, f)) return null;
-            return squares[r][f].piece;
-        };
-
-        // Pawn attacks:
-        {
-            const pawnRank = byColour === "white" ? rank - 1 : rank + 1;
-            // Pawns attack diagonally forward, so we check the two squares diagonally in front of the target square:
-            const left = getPiece(pawnRank, file - 1);
-            if (left && left.colour === byColour && left.type === "pawn") return true;
-            // Check the right diagonal as well:
-            const right = getPiece(pawnRank, file + 1);
-            if (right && right.colour === byColour && right.type === "pawn") return true;
-        }
-
-        // Knight attacks:
-        {
-            for (const [dr, df] of KNIGHT_DIRS) { 
-                    const piece = getPiece(rank + dr, file + df);
-                    if (piece && piece.colour === byColour && piece.type === "knight") return true;
-                }
-        }
-
-        // King attacks:
-        {
-            for (const [dr, df] of KING_DIRS) { 
-                    const piece = getPiece(rank + dr, file + df);
-                    if (piece && piece.colour === byColour && piece.type === "king") return true;
-                }
-        }
-
-        // Sliding attacks:
-        const rayHasAttacker = (
-            dirs: readonly Delta[],
-            attackerTypes: ReadonlySet<PieceType>
-        ): boolean => {
-            for (const [dr, df] of dirs) {
-                let r = rank + dr;
-                let f = file + df;
-
-                while (this.inBounds(r, f)) {
-                    const piece = squares[r][f].piece;
-
-                    if (piece) {
-                        if (piece.colour === byColour && attackerTypes.has(piece.type)) {
-                            return true;
-                        }
-                        break; // blocked by any piece
-                    }
-                    r += dr;
-                    f += df;
-                }
-            }
-            return false;
-        };
-
-        if (
-            rayHasAttacker(
-                ROOK_DIRS, 
-                new Set<PieceType>(["rook", "queen"])
-            )
-        ) return true;
-
-        if (
-            rayHasAttacker(
-                BISHOP_DIRS,
-                new Set<PieceType>(["bishop", "queen"])
-            )
-        ) return true;
-        
-        return false;
-    }
-
-
+    // ------------------------------------------------------------------------------
 
     // The following logic applies to all the following isAttackedBy helpers:       =
     // // Rank:                                                                     =
@@ -1791,11 +1706,36 @@ export class ChessBoard {
         // looks outward in each rook/queen direction and checks if it can be attacked/controlled by opposition
         // returns true if so
         // creates a Set containing two values:
-        if (this.rayAttacked(squares, rank, file, byColour, ROOK_DIRS, new Set<PieceType>(["rook", "queen"]))) return true;
+        if (this.rayAttacked(
+            squares, 
+            rank, 
+            file, 
+            byColour, 
+            ROOK_DIRS,
+            ROOK_ATTACKERS, 
+        )) return true;
         // looks outward in each bishop/queen direction and checks if it can be taken by opposition
         // returns true if so
         // creates a Set containing two values:
-        if (this.rayAttacked(squares, rank, file, byColour, BISHOP_DIRS, new Set<PieceType>(["bishop", "queen"]))) return true;
+        if (this.rayAttacked(
+            squares, 
+            rank, 
+            file, 
+            byColour, 
+            BISHOP_DIRS,
+            BISHOP_ATTACKERS, 
+        )) return true;
+        // looks outward in each queen direction and checks if it can be taken by opposition
+        // returns true if so
+        // creates a Set containing two values:
+        if (this.rayAttacked(
+            squares, 
+            rank, 
+            file, 
+            byColour, 
+            QUEEN_DIRS,
+            QUEEN_ATTACKERS, 
+        )) return true;
 
         return false;
     }
@@ -1820,18 +1760,18 @@ export class ChessBoard {
             let r = rank + dr;
             let f = file + df;
 
-            while (r >= 0 && r <= 7 && f >= 0 && f <= 7) { // checks if out of bounds
-                const p = this.getSquareFrom(squares, r as Rank, f as File).piece; // inspect current square
+            while (this.inBounds(r, f)) { // checks if out of bounds
+                const p = squares[r][f].piece; // inspect current square
 
                 if (p !== null) {
                     // if piece belongs to attacking colour and its type is allowed on ray,
                 // then square is attacked:
-                    if (p.colour === byColour && attackerTypes.has(p.type)) return true;
-
+                    if (p.colour === byColour && attackerTypes.has(p.type)) {
+                        return true;
+                    }
                 // OR any piece blocks the ray
                 // (sliding pieces can't jump like bishops, for example)
-                break; 
-                
+                    break;
                 }
 
                 // otherwise, continue moving further along the ray
