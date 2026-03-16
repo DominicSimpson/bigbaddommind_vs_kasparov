@@ -1515,35 +1515,27 @@ export class ChessBoard {
 
     // -------------------------
 
-    // locates where King is on real game board for each colour:
-    private findKing(colour: Colour): { rank: Rank; file: File } | null {
-        for (let rank = 0; rank < 8; rank++) {
-            for (let file = 0; file < 8; file++) {
-                const sq = this.getSquare(rank as Rank, file as File);
-                const p = sq.piece;
-                if (p !== null && p.type === "king" && p.colour === colour) {
-                    return { rank: rank as Rank, file: file as File}
-                }
-            }
-        }
-        
-        return null;
-    }
 
-    // finds the King on whatever board is provided, not necessarily the current game board:
+    // Finds the King on whatever board is provided, not necessarily the current game board:
     private findKingOnBoard(
         squares: Square[][], 
         colour: Colour
     ): { rank: Rank; file: File } | null {  
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
-                const piece = this.getSquareFrom(squares, rank as Rank, file as File).piece;
-                if (piece !== null && piece.type === "king" && piece.colour === colour) {
+                const piece = this.squares[rank][file].piece;
+                if (piece !== null && piece?.type === "king" && piece.colour === colour) {
                     return { rank: rank as Rank, file: file as File };
                 }
             }
         }
+      
         return null;
+    }
+
+    // Locates where King is on real game board for each colour:
+    private findKing(colour: Colour): { rank: Rank; file: File } | null {
+        return this.findKingOnBoard(this.squares, colour);    
     }
 
     private sameMove(a: Move, b: Move): boolean {
