@@ -133,38 +133,41 @@ describe('isInCheck', () => {
         });
     });
 
+    // next test here
+    describe('knight check detection', () => {
+        it.each([
+            [
+                'detects that a white knight on e6 checks a black king on d8',
+                '3k4/8/4N3/8/8/8/8/3K4 b - - 0 1',
+                'black',
+                true,
+            ],
+            [
+                'detects that a white knight on d6 does not check a black king on d8',
+                '3k4/8/3N4/8/8/8/8/3K4 b - - 0 1',
+                'black',
+                false,
+            ],
+            [
+                'detects that a black knight on c3 checks a white king on d1',
+                '3k4/8/8/8/8/2n5/8/3K4 w - - 0 1',
+                'white',
+                true,
+            ],
+            [
+                'detects that a black knight on d3 does not check a white king on d1',
+                '3k4/8/8/8/8/3n4/8/3K4 w - - 0 1',
+                'white',
+                false,
+            ],
+        ])('(%s', (_, fen, colour, expected) => {            
+            expectInCheck(fen, colour as 'white' | 'black', expected as boolean);
+        });
 
-
+        //next test here
 });
 
 
-
-describe('knight check detection', () => {
-
-    it('detects that a white knight on e6 checks a black king on d8', () => {
-        const board = new ChessBoard();
-        board.loadFEN('3k4/8/4N3/8/8/8/8/3K4 b - - 0 1');    
-        expect(board.isInCheck('black')).toBe(true);
-    });
-    it('detects that white knight on d6 does not check black king on d8', () => {
-        const board = new ChessBoard();
-        board.loadFEN('3k4/8/3N4/8/8/8/8/3K4 b - - 0 1');    
-        expect(board.isInCheck('black')).toBe(false);
-    });
-
-
-    it('detects that a black knight on c3 checks a white king on d1', () => {
-        const board = new ChessBoard();
-        board.loadFEN('3k4/8/8/8/8/2n5/8/3K4 w - - 0 1');    
-        expect(board.isInCheck('white')).toBe(true);
-    });
-    it('detects that black knight on d3 does not check white king on d1', () => {
-        const board = new ChessBoard();
-        board.loadFEN('3k4/8/8/8/8/3n4/8/3K4 w - - 0 1');    
-        expect(board.isInCheck('white')).toBe(false);
-    });
-
-});
 
 describe('pawn check detection', () => {
 
