@@ -1231,8 +1231,6 @@ export class ChessBoard {
             }
         }
 
-        let whiteKings = 0;
-        let blackKings = 0;
         let whiteKingSquare: { rank: Rank; file: File } | null = null;
         let blackKingSquare: { rank: Rank; file: File } | null = null;
         // Count kings and validate that there is exactly one of each colour:
