@@ -1233,6 +1233,8 @@ export class ChessBoard {
 
         let whiteKings = 0;
         let blackKings = 0;
+        let whiteKingSquare: { rank: Rank; file: File } | null = null;
+        let blackKingSquare: { rank: Rank; file: File } | null = null;
         // Count kings and validate that there is exactly one of each colour:
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
@@ -1240,19 +1242,21 @@ export class ChessBoard {
                 const piece = newSquares[rank][file].piece;
                 // If there's no piece, continue to next square:
                 if (!piece) continue;
-                if (piece.type === "king") {
 
+                if (piece.type === "king") {
                     if (piece.colour === "white") {
-                        whiteKings++;
+                        if (whiteKingSquare) {
+                            throw new Error("FEN must contain exactly one white king and one black king");
+                        } 
+                        whiteKingSquare = { rank: rank as Rank, file: file as File };
                     } else {
-                        blackKings++;
+                        if (blackKingSquare) {                             
+                            throw new Error("FEN must contain exactly one white king and one black king");
+                        }
+                        blackKingSquare = { rank: rank as Rank, file: file as File };
                     }
                 }
             }
-        }
-        // Validate that there is exactly one white king and one black king:
-        if (whiteKings !== 1 || blackKings !== 1) {
-            throw new Error("FEN must contain exactly one white king and one black king");
         }
 
         // Side to move:
@@ -1387,24 +1391,26 @@ export class ChessBoard {
         if (!Number.isInteger(hm) || hm < 0) throw new Error(`Invalid halfmove clock: ${halfMove}`);
         if (!Number.isInteger(fm) || fm < 1) throw new Error(`Invalid fullmove clock: ${fullMove}`);
 
-        const whiteKing = this.findKingOnBoard(newSquares, "white");
-        const blackKing = this.findKingOnBoard(newSquares, "black");
-
-        if (!whiteKing || !blackKing) {
+        // Validate that there is exactly one white king and one black king:
+        if (!whiteKingSquare || !blackKingSquare) {
             throw new Error("FEN must contain exactly one white king and one black king");
+        }
+        
+        if (this.areKingsAdjacent(whiteKingSquare, blackKingSquare)) {
+            throw new Error("Invalid FEN: kings cannot be adjacent");
         }
 
         const whiteInCheck = this.isSquareAttacked(
             newSquares, 
-            whiteKing.rank, 
-            whiteKing.file, 
+            whiteKingSquare.rank, 
+            whiteKingSquare.file, 
             "black"
         );
 
         const blackInCheck = this.isSquareAttacked(
             newSquares, 
-            blackKing.rank, 
-            blackKing.file, 
+            blackKingSquare.rank, 
+            blackKingSquare.file, 
             "white"
         ); 
         
@@ -1536,6 +1542,18 @@ export class ChessBoard {
     // Locates where King is on real game board for each colour:
     private findKing(colour: Colour): { rank: Rank; file: File } | null {
         return this.findKingOnBoard(this.squares, colour);    
+    }
+
+    // // Checks if kings are adjacent (i.e. on squares next to each other, including diagonally), 
+    // which is illegal in chess and therefore indicates an invalid position:
+    private areKingsAdjacent(
+        whiteKing: { rank: Rank; file: File },
+        blackKing: { rank: Rank; file: File }
+    ): boolean {
+        return (
+            Math.abs(whiteKing.rank - blackKing.rank) <= 1 &&
+            Math.abs(whiteKing.file - blackKing.file) <= 1
+        );
     }
 
     private sameMove(a: Move, b: Move): boolean {
