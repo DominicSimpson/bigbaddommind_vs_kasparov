@@ -1,5 +1,16 @@
-import { ChessBoard } from '../../src/board/ChessBoard';
-import type { Rank, File } from '../../src/types/coords';
+import { expect } from 'vitest';
+import { ChessBoard } from '../../../src/board/ChessBoard';
+import type { Rank, File } from '../../../src/types/coords';
+
+// Utility functions for move tests:
+export function getMove(board: ChessBoard, from: string, to: string) {
+    const { rank, file } = algebraicToCoords(from);
+    // Find a legal move from 'from' to 'to' in algebraic notation (e.g. "e2" to "e4"):
+    return board.getLegalMoves(rank, file).find(move => {
+        const coord = board.getSquare(move.toRank, move.toFile).coord;
+        return coord === to;
+    });
+}
 
 
 // Simple algebraic parser for tests: converts algebraic notation (e.g. "e4") to internal coordinates (rank, file)
@@ -15,6 +26,7 @@ export function algebraicToCoords(square: string): {rank: Rank; file: File} {
     return { rank, file };
 }
 
+// Checks if there's a legal move from 'from' to 'to' in algebraic notation (e.g. "e2" to "e4"):
 export function hasLegalMoveByAlgebraicNotation(
     board: ChessBoard,
     from: string,
@@ -24,7 +36,7 @@ export function hasLegalMoveByAlgebraicNotation(
     const toSquare = algebraicToCoords(to);
 
     const legalMoves = board.getLegalMoves(fromSquare.rank, fromSquare.file);
-
+    // Check if any legal move matches the from and to coordinates:
     return legalMoves.some(
         move => 
             move.fromRank === fromSquare.rank && 
