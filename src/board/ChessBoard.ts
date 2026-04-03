@@ -1742,7 +1742,7 @@ export class ChessBoard {
             file, 
             byColour, 
             QUEEN_DIRS,
-            QUEEN_ATTACKERS, 
+            QUEEN_ATTACKERS,
         )) return true;
 
         return false;

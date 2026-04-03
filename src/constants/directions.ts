@@ -40,8 +40,8 @@ export const KING_DIRS: readonly Delta[] = [ // fixed steps
 export const ROOK_DIRS: readonly Delta[] = [ // orthogonal rays
   [+1,  0], // north
   [-1,  0], // south
-  [ 0, +1], // east
   [ 0, -1], // west
+  [ 0, +1], // east
 ];
 
 export const BISHOP_DIRS: readonly Delta[] = [ // diagonal rays
