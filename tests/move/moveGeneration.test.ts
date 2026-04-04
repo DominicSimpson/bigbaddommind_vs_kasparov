@@ -231,7 +231,7 @@ describe('back-rank pieces', () => {
                 );
             });
 
-            it('king on e8moves one square in any direction', () => {
+            it('king on e8 moves one square in any direction', () => {
 
                 const board = createBoard('4k3/8/8/8/8/8/8/4K3 b - - 0 1');
 
@@ -242,9 +242,119 @@ describe('back-rank pieces', () => {
                     ]
                 );
             });
+        });
+    });
 
+
+    describe('pieces cannot move through or onto a friendly piece', () => {
+
+        describe('white pieces', () => {
+
+            it('rook', () => {
+                const board = createBoard('4k3/8/8/8/8/8/P7/R3K3 w - - 0 1');
+
+                expectLegalDestinations(board, 0, 0, [
+                'b1', 'c1', 'd1',
+                // not a1 because occupied by piece itself
+                ]);
+
+                expect(hasLegalMoveByAlgebraicNotation(board, 'a1', 'a2')).toBe(false);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'a1', 'a3')).toBe(false);
+                });
+
+
+            it('knight', () => {
+                const board = createBoard('4k3/8/8/8/8/8/3P4/1N2K3 w - - 0 1');
+
+                expect(hasLegalMoveByAlgebraicNotation(board, 'b1', 'd2')).toBe(false);
+            });
+
+            it('bishop', () => {
+                const board = createBoard('4k3/8/8/8/8/4P3/8/2B1K3 w - - 0 1');
+
+                expect(hasLegalMoveByAlgebraicNotation(board, 'c1', 'd2')).toBe(true);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'c1', 'e3')).toBe(false); // occupied by friendly pawn
+                expect(hasLegalMoveByAlgebraicNotation(board, 'c1', 'f4')).toBe(false); // beyond blocker
+            });
+
+            it('queen', () => {
+                const board = createBoard('4k3/8/8/8/8/5P2/3P4/3QK3 w - - 0 1');
+
+                // Friendly pawn on f3 blocks diagonal from d1
+                expect(hasLegalMoveByAlgebraicNotation(board, 'd1', 'e2')).toBe(true);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'd1', 'f3')).toBe(false); // occupied
+                expect(hasLegalMoveByAlgebraicNotation(board, 'd1', 'g4')).toBe(false); // beyond blocker
+
+                // Friendly pawn on d2 blocks vertical movement
+                expect(hasLegalMoveByAlgebraicNotation(board, 'd1', 'd2')).toBe(false);
+            });
+
+            it('king', () => {
+                const board = createBoard('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
+
+                expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'e2')).toBe(false);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'd1')).toBe(true);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'f1')).toBe(true);
+            });
+
+        });
+
+        describe('black pieces', () => {
+
+            it('rook', () => {
+                const board = createBoard('r3k3/p7/8/8/8/8/8/4K3 b - - 0 1');
+
+                expectLegalDestinations(board, 7, 0, [
+                'b8', 'c8', 'd8',
+                // not a8 because occupied by piece itself
+                ]);
+
+                expect(hasLegalMoveByAlgebraicNotation(board, 'a8', 'a7')).toBe(false);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'a8', 'a6')).toBe(false);
+                });
+
+
+            it('knight', () => {
+                const board = createBoard('1n2k3/3p4/8/8/8/8/8/4K3 b - - 0 1');
+
+                expect(hasLegalMoveByAlgebraicNotation(board, 'b8', 'd7')).toBe(false);
+            });
+
+            it('bishop', () => {
+                const board = createBoard('2b1k3/8/4p3/8/8/8/8/4K3 b - - 0 1');
+
+                expect(hasLegalMoveByAlgebraicNotation(board, 'c8', 'd7')).toBe(true);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'c8', 'e6')).toBe(false); // occupied by friendly pawn
+                expect(hasLegalMoveByAlgebraicNotation(board, 'c8', 'f5')).toBe(false); // beyond blocker
+            });
+
+            it('queen', () => {
+                const board = createBoard('3qk3/3p4/5p2/8/8/8/8/4K3 b - - 0 1');
+
+                // Friendly pawn on f6 blocks diagonal from d8
+                expect(hasLegalMoveByAlgebraicNotation(board, 'd8', 'e7')).toBe(true);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'd8', 'f6')).toBe(false); // occupied
+                expect(hasLegalMoveByAlgebraicNotation(board, 'd8', 'g5')).toBe(false); // beyond blocker
+
+                // Friendly pawn on d7 blocks vertical movement
+                expect(hasLegalMoveByAlgebraicNotation(board, 'd8', 'd7')).toBe(false);
+            });
+
+            it('king', () => {
+
+                const board = createBoard('4k3/4p3/8/8/8/8/8/4K3 b - - 0 1');
+
+                expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'e7')).toBe(false);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'd8')).toBe(true);
+                expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'f8')).toBe(true);
+            });
+
+        });
+
+        
 
     });
+
  
         
 
@@ -253,12 +363,6 @@ describe('back-rank pieces', () => {
 
 
 
-                it('queen cannot move through a friendly piece', () => {
-                    const board = createBoard('4k3/8/8/8/8/8/8/3QK3 w - - 0 1');
+            
+});
 
-                    expect(hasLegalMoveByAlgebraicNotation(board, 'd1', 'e1')).toBe(false);
-                    expect(hasLegalMoveByAlgebraicNotation(board, 'd1', 'f1')).toBe(false);
-                });               
-            });
-
-}); 
