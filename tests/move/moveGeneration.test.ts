@@ -105,6 +105,7 @@ describe('back-rank pieces', () => {
 
     });
 
+    
     describe('when unobstructed', () => {
 
         describe('white pieces', () => {
@@ -324,6 +325,7 @@ describe('back-rank pieces', () => {
 
     });
 
+
     describe('pieces can capture an enemy piece but cannot move beyond it', () => {
 
         describe('white pieces', () => {
@@ -449,30 +451,82 @@ describe('back-rank pieces', () => {
 
         });
 
-
     });
 
-    describe('king specific / check rules', () => {
+
+    describe('king specific', () => {
+
+        it('white king cannot capture a defended piece', () => {
+                
+            const board = createBoard('4k3/8/8/7b/8/8/4r3/4K3 w - - 0 1');
+
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'e2')).toBe(false);
+
+        }); 
+        
+        it('white king cannot move adjacent to opposing black king', () => {
+            
+            const board = createBoard('8/8/8/8/8/4k3/8/4K3 w - - 0 1');
+
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'd2')).toBe(false);
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'e2')).toBe(false);
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'f2')).toBe(false);
+            
+        });
+
+        it('white king cannot move into a square attacked by a black knight', () => {
+            
+            const board = createBoard('4k3/8/8/8/5n2/8/8/4K3 w - - 0 1');
+
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'e2')).toBe(false);
+        });
+
+        it('white king cannot move into a square attacked by a black pawn', () => {
+            
+            const board = createBoard('4k3/8/8/8/8/3p4/8/4K3 w - - 0 1');
+
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'e2')).toBe(false);
+        });
+
+            
+        it('black king cannot capture a defended piece', () => {
+                
+            const board = createBoard('4k3/4R3/8/8/7B/8/8/4K3 b - - 0 1');
+
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'e7')).toBe(false);
+
+        }); 
+
+        it('black king cannot move adjacent to opposing white king', () => {
+            
+            const board = createBoard('4k3/8/4K3/8/8/8/8/8 b - - 0 1');
+
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'd7')).toBe(false);
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'e7')).toBe(false);
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'f7')).toBe(false);
+            
+        });
+
+        it('black king cannot move into a square attacked by a white knight', () => {
+            
+            const board = createBoard('4k3/8/8/5N2/8/8/8/4K3 b - - 0 1');
+
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'e7')).toBe(false);
+        });
+
+        it('black king cannot move into a square attacked by a white pawn', () => {
+            
+            const board = createBoard('4k3/8/3P4/8/8/8/8/4K3 b - - 0 1');
+
+            expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'e7')).toBe(false);
+        });
+        
+    });
+
+
+    describe('moves that would expose own king to check are illegal', () => {
 
         describe('white pieces', () => {
-
-            it('white king cannot capture a defended piece', () => {
-                
-                const board = createBoard('4k3/8/8/7b/8/8/4r3/4K3 w - - 0 1');
-
-                expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'e2')).toBe(false);
-
-            }); 
-        
-            it('white king cannot move adjacent to opposing black king', () => {
-            
-                const board = createBoard('8/8/8/8/8/4k3/8/4K3 w - - 0 1');
-
-                expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'd2')).toBe(false);
-                expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'e2')).toBe(false);
-                expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'f2')).toBe(false);
-            });
-
 
             it('white rook cannot move if it would expose its king to check', () => {
             
@@ -525,23 +579,6 @@ describe('back-rank pieces', () => {
 
         describe('black pieces', () => {
 
-            it('black king cannot capture a defended piece', () => {
-                
-                const board = createBoard('4k3/4R3/8/8/7B/8/8/4K3 b - - 0 1');
-
-                expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'e7')).toBe(false);
-
-            }); 
-
-            it('black king cannot move adjacent to opposing white king', () => {
-            
-                const board = createBoard('4k3/8/4K3/8/8/8/8/8 b - - 0 1');
-
-                expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'd7')).toBe(false);
-                expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'e7')).toBe(false);
-                expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'f7')).toBe(false);
-            });
-
             it('black rook cannot move if it would expose its king to check', () => {
             
                 const board = createBoard('4k3/4r3/8/8/8/8/4Q3/4K3 b - - 0 1');
@@ -592,6 +629,7 @@ describe('back-rank pieces', () => {
 
     });
 
+    
     describe('side to move enforcement', () => {
         
         it('white piece has no legal moves when it is black to move', () => {
@@ -603,7 +641,7 @@ describe('back-rank pieces', () => {
 
         });
 
-        it('black piece has no legal moves when it is black to move', () => {
+        it('black piece has no legal moves when it is white to move', () => {
             
             const board = createBoard('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
 
