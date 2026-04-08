@@ -652,17 +652,17 @@ describe('move generation', () => {
 
       it('pawn can move two squares forward on first move', () => {
         const board = createBoard('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
-        expectLegalDestinations(board, 1, 4, ['e2', 'e4']);
+        expectLegalDestinations(board, 1, 4, ['e3', 'e4']);
       });
 
       it('pawn cannot move two squares if blocked by enemy piece', () => {
         const board = createBoard('4k3/8/8/8/8/4p3/4P3/4K3 w - - 0 1');
-        expectLegalDestinations(board, 1, 4, ['e3']);
+        expectLegalDestinations(board, 1, 4, []);
       });
 
       it('pawn cannot move one square if blocked by enemy piece', () => {
         const board = createBoard('4k3/8/8/8/8/4p3/4P3/4K3 w - - 0 1');
-        expectLegalDestinations(board, 1, 4, ['e3']);
+        expectLegalDestinations(board, 1, 4, []);
       });
 
       it('pawn cannot move if blocked by friendly piece', () => {
@@ -676,23 +676,34 @@ describe('move generation', () => {
       });
 
       it('pawn can capture diagonally right', () => {
-        const board = createBoard('4k3/8/8/8/8/5p3/4P3/4K3 w - - 0 1');
+        const board = createBoard('4k3/8/8/8/8/5p2/4P3/4K3 w - - 0 1');
         expectLegalDestinations(board, 1, 4, ['e3', 'e4', 'f3']);
       });
 
       it('pawn can capture en passant', () => {
         const board = createBoard('4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1');
-        expectLegalDestinations(board, 3, 4, ['e6', 'd6']);
+        expectLegalDestinations(board, 4, 4, ['e6', 'd6']);
       });
 
-      it('pawn promotes to queen when reaching 8th rank', () => {
-        const board = createBoard('4k3/4P3/8/8/8/8/8/4K3 w - - 0 1');
-        expectLegalDestinations(board, 6, 4, ['e8']);
+      it('pawn has all 4 promotion options on c8', () => {
+        const board = createBoard('5k2/2P5/8/8/8/8/8/4K3 w - - 0 1'); // white pawn on c7
+
+        const promotionMoves = board
+          .getLegalMoves(6, 2) // c7
+          .filter(m => m.toRank === 7 && m.toFile === 2); // c8
+
+        expect(promotionMoves).toHaveLength(4);
+        expect(promotionMoves.map(m => m.promotion).sort()).toEqual([
+          'bishop',
+          'knight',
+          'queen',
+          'rook',
+        ]);
       });
 
       it('pawn cannot move backward', () => {
         const board = createBoard('4k3/8/8/8/8/4P3/8/4K3 w - - 0 1');
-        expectLegalDestinations(board, 2, 4, ['e2']);
+        expectLegalDestinations(board, 2, 4, ['e4']);
       });
     });
 
@@ -704,7 +715,7 @@ describe('move generation', () => {
 
       it('pawn can move one square forward when not on starting rank', () => {
         const board = createBoard('4k3/8/4p3/8/8/8/8/4K3 b - - 0 1');
-        expectLegalDestinations(board, 5, 4, ['e6']);
+        expectLegalDestinations(board, 5, 4, ['e5']);
       });
 
       it('pawn can move two squares forward on first move', () => {
@@ -714,12 +725,12 @@ describe('move generation', () => {
 
       it('pawn cannot move two squares if blocked by enemy piece', () => {
         const board = createBoard('4k3/4p3/4P3/8/8/8/8/4K3 b - - 0 1');
-        expectLegalDestinations(board, 6, 4, ['e6']);
+        expectLegalDestinations(board, 6, 4, []);
       });
 
       it('pawn cannot move one square if blocked by enemy piece', () => {
         const board = createBoard('4k3/4p3/4P3/8/8/8/8/4K3 b - - 0 1');
-        expectLegalDestinations(board, 6, 4, ['e6']);
+        expectLegalDestinations(board, 6, 4, []);
       });
 
       it('pawn cannot move if blocked by friendly piece', () => {
@@ -733,23 +744,34 @@ describe('move generation', () => {
       });
 
       it('pawn can capture diagonally right', () => {
-        const board = createBoard('4k3/4p3/5P3/8/8/8/8/4K3 b - - 0 1');
+        const board = createBoard('4k3/4p3/5P2/8/8/8/8/4K3 b - - 0 1');
         expectLegalDestinations(board, 6, 4, ['e6', 'e5', 'f6']);
       });
 
       it('pawn can capture en passant', () => {
-        const board = createBoard('4k3/8/8/8/3Pp3/8/8/4K3 b - e3 0 1');
+        const board = createBoard('4k3/8/8/8/3pP3/8/8/4K3 b - e3 0 1');
         expectLegalDestinations(board, 3, 3, ['d3', 'e3']);
       });
 
-      it('pawn promotes to queen when reaching 1st rank', () => {
-        const board = createBoard('4k3/8/8/8/8/8/4p3/4K3 b - - 0 1');
-        expectLegalDestinations(board, 1, 4, ['e1']);
+    it('pawn has all 4 promotion options on c1', () => {
+        const board = createBoard('5k2/8/8/8/8/8/2p5/4K3 b - - 0 1'); // black pawn on c2
+
+        const promotionMoves = board
+          .getLegalMoves(1, 2) // c2
+          .filter(m => m.toRank === 0 && m.toFile === 2); // c1
+
+        expect(promotionMoves).toHaveLength(4);
+        expect(promotionMoves.map(m => m.promotion).sort()).toEqual([
+          'bishop',
+          'knight',
+          'queen',
+          'rook',
+        ]);
       });
 
       it('pawn cannot move backward', () => {
         const board = createBoard('4k3/8/4p3/8/8/8/8/4K3 b - - 0 1');
-        expectLegalDestinations(board, 5, 4, ['e7']);
+        expectLegalDestinations(board, 5, 4, ['e5']);
       });
     });
   });
