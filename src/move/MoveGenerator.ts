@@ -74,6 +74,7 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
       // basic pawn support
       const dir = piece.colour === "white" ? 1: -1;
       const oneStepRank = fromRank + dir;
+      const twoStepRank = fromRank + 2 * dir;
 
       // a. Promotion
       // Definitions in all caps are fixed chess geometry and should never change: 
@@ -113,6 +114,23 @@ export class MoveGenerator { // pseudo-legal moves - obey piece movement rules
               fromFile
             )
           );
+
+          // Two-square advance on first move
+          const isStartingRank = piece.colour === "white" ? fromRank === 1 : fromRank === 6;
+          if (isStartingRank && this.isOnBoard(twoStepRank, fromFile)) {
+            const twoFwdSq = board.getSquare(twoStepRank as Rank, fromFile);
+            if (!twoFwdSq.piece) {
+              moves.push(
+                this.makeMove(
+                  board, 
+                  fromRank, 
+                  fromFile, 
+                  twoStepRank as Rank, 
+                  fromFile
+                )
+              );
+            }
+          }
         }
       }
     

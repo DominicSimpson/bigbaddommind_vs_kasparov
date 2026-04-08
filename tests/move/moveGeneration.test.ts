@@ -321,7 +321,7 @@ describe('move generation', () => {
         });
       });
     });
-  });
+  
 
   describe('knight specific', () => {
     it('white knight can jump over surrounding pieces', () => {
@@ -396,6 +396,7 @@ describe('move generation', () => {
       expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'd8')).toBe(false);
     });
   });
+ 
 
   describe('moves that would expose own king to check are illegal', () => {
     describe('white pieces', () => {
@@ -594,6 +595,14 @@ describe('move generation', () => {
         expect(hasLegalMoveByAlgebraicNotation(board, 'd2', 'e2')).toBe(true);
         expect(hasLegalMoveByAlgebraicNotation(board, 'd2', 'd3')).toBe(false);
       });
+
+      it('white king may move out of a rook check to a safe adjacent square', () => {
+        const board = createBoard('4k3/8/8/8/8/8/4r3/4K3 w - - 0 1');
+
+        expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'd1')).toBe(true);
+        expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'f1')).toBe(true);
+        });
+
     });
 
     describe('black pieces', () => {
@@ -617,6 +626,130 @@ describe('move generation', () => {
 
         expect(hasLegalMoveByAlgebraicNotation(board, 'd7', 'e7')).toBe(true);
         expect(hasLegalMoveByAlgebraicNotation(board, 'd7', 'd6')).toBe(false);
+      });
+
+       it('black king may move out of a rook check to a safe adjacent square', () => {
+        const board = createBoard('4k3/4R3/8/8/8/8/8/4K3 b - - 0 1');
+
+        expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'd8')).toBe(true);
+        expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'f8')).toBe(true);
+        });
+    });
+  });
+});
+
+   describe('pawn specific', () => {
+    describe('white pawns', () => {
+      it('pawn can move one or two squares forward on first move', () => {
+        const board = createBoard('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
+        expectLegalDestinations(board, 1, 4, ['e3', 'e4']);
+      });
+
+      it('pawn can move one square forward when not on starting rank', () => {
+        const board = createBoard('4k3/8/8/8/8/4P3/8/4K3 w - - 0 1');
+        expectLegalDestinations(board, 2, 4, ['e4']);
+      });
+
+      it('pawn can move two squares forward on first move', () => {
+        const board = createBoard('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
+        expectLegalDestinations(board, 1, 4, ['e2', 'e4']);
+      });
+
+      it('pawn cannot move two squares if blocked by enemy piece', () => {
+        const board = createBoard('4k3/8/8/8/8/4p3/4P3/4K3 w - - 0 1');
+        expectLegalDestinations(board, 1, 4, ['e3']);
+      });
+
+      it('pawn cannot move one square if blocked by enemy piece', () => {
+        const board = createBoard('4k3/8/8/8/8/4p3/4P3/4K3 w - - 0 1');
+        expectLegalDestinations(board, 1, 4, ['e3']);
+      });
+
+      it('pawn cannot move if blocked by friendly piece', () => {
+        const board = createBoard('4k3/8/8/8/8/4P3/4P3/4K3 w - - 0 1');
+        expectLegalDestinations(board, 1, 4, []);
+      });
+
+      it('pawn can capture diagonally left', () => {
+        const board = createBoard('4k3/8/8/8/8/3p4/4P3/4K3 w - - 0 1');
+        expectLegalDestinations(board, 1, 4, ['e3', 'e4', 'd3']);
+      });
+
+      it('pawn can capture diagonally right', () => {
+        const board = createBoard('4k3/8/8/8/8/5p3/4P3/4K3 w - - 0 1');
+        expectLegalDestinations(board, 1, 4, ['e3', 'e4', 'f3']);
+      });
+
+      it('pawn can capture en passant', () => {
+        const board = createBoard('4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1');
+        expectLegalDestinations(board, 3, 4, ['e6', 'd6']);
+      });
+
+      it('pawn promotes to queen when reaching 8th rank', () => {
+        const board = createBoard('4k3/4P3/8/8/8/8/8/4K3 w - - 0 1');
+        expectLegalDestinations(board, 6, 4, ['e8']);
+      });
+
+      it('pawn cannot move backward', () => {
+        const board = createBoard('4k3/8/8/8/8/4P3/8/4K3 w - - 0 1');
+        expectLegalDestinations(board, 2, 4, ['e2']);
+      });
+    });
+
+    describe('black pawns', () => {
+      it('pawn can move one square forward', () => {
+        const board = createBoard('4k3/4p3/8/8/8/8/8/4K3 b - - 0 1');
+        expectLegalDestinations(board, 6, 4, ['e6', 'e5']);
+      });
+
+      it('pawn can move one square forward when not on starting rank', () => {
+        const board = createBoard('4k3/8/4p3/8/8/8/8/4K3 b - - 0 1');
+        expectLegalDestinations(board, 5, 4, ['e6']);
+      });
+
+      it('pawn can move two squares forward on first move', () => {
+        const board = createBoard('4k3/4p3/8/8/8/8/8/4K3 b - - 0 1');
+        expectLegalDestinations(board, 6, 4, ['e6', 'e5']);
+      });
+
+      it('pawn cannot move two squares if blocked by enemy piece', () => {
+        const board = createBoard('4k3/4p3/4P3/8/8/8/8/4K3 b - - 0 1');
+        expectLegalDestinations(board, 6, 4, ['e6']);
+      });
+
+      it('pawn cannot move one square if blocked by enemy piece', () => {
+        const board = createBoard('4k3/4p3/4P3/8/8/8/8/4K3 b - - 0 1');
+        expectLegalDestinations(board, 6, 4, ['e6']);
+      });
+
+      it('pawn cannot move if blocked by friendly piece', () => {
+        const board = createBoard('4k3/4p3/4p3/8/8/8/8/4K3 b - - 0 1');
+        expectLegalDestinations(board, 6, 4, []);
+      });
+
+      it('pawn can capture diagonally left', () => {
+        const board = createBoard('4k3/4p3/3P4/8/8/8/8/4K3 b - - 0 1');
+        expectLegalDestinations(board, 6, 4, ['e6', 'e5', 'd6']);
+      });
+
+      it('pawn can capture diagonally right', () => {
+        const board = createBoard('4k3/4p3/5P3/8/8/8/8/4K3 b - - 0 1');
+        expectLegalDestinations(board, 6, 4, ['e6', 'e5', 'f6']);
+      });
+
+      it('pawn can capture en passant', () => {
+        const board = createBoard('4k3/8/8/8/3Pp3/8/8/4K3 b - e3 0 1');
+        expectLegalDestinations(board, 3, 3, ['d3', 'e3']);
+      });
+
+      it('pawn promotes to queen when reaching 1st rank', () => {
+        const board = createBoard('4k3/8/8/8/8/8/4p3/4K3 b - - 0 1');
+        expectLegalDestinations(board, 1, 4, ['e1']);
+      });
+
+      it('pawn cannot move backward', () => {
+        const board = createBoard('4k3/8/4p3/8/8/8/8/4K3 b - - 0 1');
+        expectLegalDestinations(board, 5, 4, ['e7']);
       });
     });
   });
