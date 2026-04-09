@@ -21,7 +21,7 @@ function playMove(
 
 describe('threefold repetition', () => {
   it('declares a draw when the same position occurs three times', () => {
-    const board = createBoard('rn2k3/8/8/8/8/8/8/RN2K3 w - - 0 1');
+    const board = createBoard('1n2k3/8/8/8/8/8/8/RN2K3 w - - 0 1');
     // knights moving back and forth between b1/c3 and b8/c6, creating the same position three times
     playMove(board, 'b1', 'c3');
     playMove(board, 'b8', 'c6');
@@ -39,7 +39,7 @@ describe('threefold repetition', () => {
   });
 
   it('does not declare a draw when the same position has occurred only twice', () => {
-    const board = createBoard('1n2k3/8/8/8/8/8/8/1N2K3 w - - 0 1');
+    const board = createBoard('1n2k3/8/8/8/8/8/8/RN2K3 w - - 0 1');
 
     playMove(board, 'b1', 'c3');
     playMove(board, 'b8', 'c6');
@@ -50,7 +50,7 @@ describe('threefold repetition', () => {
   });
 
   it('removes the threefold draw when the last move is undone', () => {
-    const board = createBoard('1n2k3/8/8/8/8/8/8/1N2K3 w - - 0 1');
+    const board = createBoard('1n2k3/8/8/8/8/8/8/RN2K3 w - - 0 1');
 
     playMove(board, 'b1', 'c3');
     playMove(board, 'b8', 'c6');
