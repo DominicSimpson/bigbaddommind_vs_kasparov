@@ -1,5 +1,5 @@
 import { it, expect } from 'vitest';
-import { ChessBoard } from '../../src/board/ChessBoard';
+import { ChessBoard } from '../../src/board/ChessBoard.js';
 
 it.each([
     [

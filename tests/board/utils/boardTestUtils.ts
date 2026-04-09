@@ -1,7 +1,7 @@
 import { expect } from 'vitest';
-import { ChessBoard } from '../../../src/board/ChessBoard';
-import type { File, Rank } from '../../../src/types/coords';
-import { algebraicToCoords } from '../../move/utils/moveTestUtils';
+import { ChessBoard } from '../../../src/board/ChessBoard.js';
+import type { File, Rank } from '../../../src/types/coords.js';
+import { algebraicToCoords } from '../../move/utils/moveTestUtils.js';
 
 // Utility functions for board tests:
 export function createBoard(fen: string): ChessBoard {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { ChessBoard } from '../../src/board/ChessBoard';
-import { LegalMoveFilter } from '../../src/move/LegalMoveFilter';
-import { hasLegalMoveByAlgebraicNotation } from '../move/utils/moveTestUtils';
+import { ChessBoard } from '../../src/board/ChessBoard.js';
+import { LegalMoveFilter } from '../../src/move/LegalMoveFilter.js';
+import { hasLegalMoveByAlgebraicNotation } from '../move/utils/moveTestUtils.js';
 
 
 describe('starting position move legality', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { ChessBoard } from '../../src/board/ChessBoard';
+import { ChessBoard } from '../../src/board/ChessBoard.js';
 
 function checkmate(fen: string, colour: 'white' | 'black', expected: boolean) {
     const board = new ChessBoard();

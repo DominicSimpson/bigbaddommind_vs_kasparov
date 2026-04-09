@@ -656,6 +656,23 @@ export class ChessBoard {
         if (!movingPiece) throw new Error("No piece on source square.");
         // enforces alternating turns
         if (!skipLegalityCheck && movingPiece.colour !== this.sideToMove) throw new Error("Not your turn.");
+
+        const reachedLastRank =
+            movingPiece.type === "pawn" &&
+            ((movingPiece.colour === "white" && move.toRank === 7) ||
+            (movingPiece.colour === "black" && move.toRank === 0));
+
+        if (move.promotion && movingPiece.type !== "pawn") {
+            throw new Error("Invalid promotion: only pawns can promote");
+        }
+
+        if (move.promotion && !reachedLastRank) {
+            throw new Error("Invalid promotion: pawn did not reach last rank");
+        }
+
+        if (reachedLastRank && !move.promotion) {
+            throw new Error("Pawn reached last rank without promotion choice");
+        }
         
         if (!skipLegalityCheck) {
             const legalMoves = this.getLegalMoves(move.fromRank, move.fromFile); // generates legal moves for piece on fromSquare
@@ -746,28 +763,6 @@ export class ChessBoard {
 
 
         // --- c) --- Validation (promotion + castling) before mutation --------------------------------------------
-
-            // promotion conditions:
-        const reachedLastRank = // calculates if move is a pawn promotion
-            movingPiece.type === "pawn" && // promotion can only happen if piece is pawn
-             // !! converts move.promotion (in types/Move.ts) to strict boolean
-            ((movingPiece.colour === "white" && move.toRank === 7) || // white promotes on rank 7 (top)
-            (movingPiece.colour === "black" && move.toRank === 0)); // black promotes on rank 0 (bottom)
-
-        if (move.promotion && movingPiece.type !== "pawn") {
-            throw new Error("Invalid promotion: only pawns can promote");
-        }
-
-        if (move.promotion && !reachedLastRank) {
-            throw new Error("Invalid promotion: pawn did not reach last rank");
-        }
-
-          // Optional strictness: if a pawn reaches last rank, promotion must be specified
-        if (reachedLastRank && !move.promotion) {
-            throw new Error("Pawn reached last rank without promotion choice");
-            // OR: default instead:
-            // move.promotion = "queen";
-        } 
 
             // before rook moves:
         if (move.castle) {

@@ -1,6 +1,6 @@
 import { expect } from 'vitest';
-import { ChessBoard } from '../../../src/board/ChessBoard';
-import type { Rank, File } from '../../../src/types/coords';
+import { ChessBoard } from '../../../src/board/ChessBoard.js';
+import type { Rank, File } from '../../../src/types/coords.js';
 
 // Utility functions for move tests:
 export function getMove(board: ChessBoard, from: string, to: string) {

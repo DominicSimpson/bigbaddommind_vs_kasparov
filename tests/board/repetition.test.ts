@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { createBoard } from './utils/boardTestUtils';
-import { getMove } from '../move/utils/moveTestUtils';
-import type { PromotionPiece } from '../../src/types/Move';
+import { createBoard } from './utils/boardTestUtils.js';
+import { getMove } from '../move/utils/moveTestUtils.js';
+import type { PromotionPiece } from '../../src/types/Move.js';
 
 function playMove(
   board: ReturnType<typeof createBoard>,
