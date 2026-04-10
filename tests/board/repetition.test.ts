@@ -9,12 +9,13 @@ function playMove(
   to: string,
   promotion?: PromotionPiece
 ) {
-  const move = getMove(board, from, to);
+  const move = getMove(
+    board,
+    from,
+    to,
+    promotion ? { promotion } : undefined
+  );
   if (!move) throw new Error(`Expected move ${from} -> ${to} to exist`);
-
-  if (promotion) {
-    move.promotion = promotion;
-  }
 
   board.makeMove(move);
 }

@@ -1,15 +1,34 @@
 import { expect } from 'vitest';
 import { ChessBoard } from '../../../src/board/ChessBoard.js';
 import type { Rank, File } from '../../../src/types/coords.js';
+import type { Move } from '../../../src/types/Move.js';
+
+type MoveMatcher = Partial<
+    Pick<Move, 'promotion' | 'castle' | 'enPassant' | 'isCapture'>
+>;
+
+function moveMatches(board: ChessBoard, move: Move, to: string, matcher?: MoveMatcher): boolean {
+    const coord = board.getSquare(move.toRank, move.toFile).coord;
+    if (coord !== to) return false;
+    if (!matcher) return true;
+
+    return Object.entries(matcher).every(([key, value]) => {
+        if (value === undefined) return true;
+        const moveKey = key as keyof MoveMatcher;
+        return move[moveKey] === value;
+    });
+}
 
 // Utility functions for move tests:
-export function getMove(board: ChessBoard, from: string, to: string) {
+export function getMove(
+    board: ChessBoard,
+    from: string,
+    to: string,
+    matcher?: MoveMatcher
+) {
     const { rank, file } = algebraicToCoords(from);
     // Find a legal move from 'from' to 'to' in algebraic notation (e.g. "e2" to "e4"):
-    return board.getLegalMoves(rank, file).find(move => {
-        const coord = board.getSquare(move.toRank, move.toFile).coord;
-        return coord === to;
-    });
+    return board.getLegalMoves(rank, file).find(move => moveMatches(board, move, to, matcher));
 }
 
 
@@ -30,18 +49,17 @@ export function algebraicToCoords(square: string): {rank: Rank; file: File} {
 export function hasLegalMoveByAlgebraicNotation(
     board: ChessBoard,
     from: string,
-    to: string
+    to: string,
+    matcher?: MoveMatcher
 ): boolean {
     const fromSquare = algebraicToCoords(from);
-    const toSquare = algebraicToCoords(to);
 
     const legalMoves = board.getLegalMoves(fromSquare.rank, fromSquare.file);
     // Check if any legal move matches the from and to coordinates:
     return legalMoves.some(
-        move => 
-            move.fromRank === fromSquare.rank && 
-            move.fromFile === fromSquare.file && 
-            move.toRank   === toSquare.rank && 
-            move.toFile   === toSquare.file
+        move =>
+            move.fromRank === fromSquare.rank &&
+            move.fromFile === fromSquare.file &&
+            moveMatches(board, move, to, matcher)
     );
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { createBoard, expectEmpty, expectPieceAt } from './utils/boardTestUtils.js';
-import { algebraicToCoords, getMove } from '../move/utils/moveTestUtils.js';
-import type { Move, PromotionPiece } from '../../src/types/Move.js';
+import { getMove } from '../move/utils/moveTestUtils.js';
+import type { PromotionPiece, Move } from '../../src/types/Move.js';
 
 function playPromotionMove(
   board: ReturnType<typeof createBoard>,
@@ -12,13 +12,7 @@ function playPromotionMove(
   let move: Move | undefined;
 
   if (promotion) {
-    const { rank, file } = algebraicToCoords(from);
-    move = board
-      .getLegalMoves(rank, file)
-      .find(candidate => {
-        const coord = board.getSquare(candidate.toRank, candidate.toFile).coord;
-        return coord === to && candidate.promotion === promotion;
-      });
+    move = getMove(board, from, to, { promotion });
   } else {
     const legalMove = getMove(board, from, to);
     if (legalMove) {

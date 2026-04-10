@@ -3,8 +3,11 @@ import { algebraicToCoords, getMove, hasLegalMoveByAlgebraicNotation } from '../
 import { createBoard, expectEmpty, expectLegalDestinations, expectPieceAt } from '../board/utils/boardTestUtils.js';
 
 describe('move generation', () => {
+
   describe('back-rank pieces', () => {
+
     describe('from the starting position, with pawns in place', () => {
+
       describe('white pieces', () => {
         it('rook on a1 has no legal moves', () => {
           const board = createBoard('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
@@ -72,7 +75,9 @@ describe('move generation', () => {
       });
     });
 
+
     describe('when unobstructed', () => {
+
       describe('white pieces', () => {
         it('rook on a1 moves horizontally and vertically', () => {
           const board = createBoard('4k3/8/8/8/8/8/8/R3K3 w - - 0 1');
@@ -158,7 +163,9 @@ describe('move generation', () => {
       });
     });
 
+
     describe('pieces cannot move through or onto a friendly piece', () => {
+
       describe('white pieces', () => {
         it('rook', () => {
           const board = createBoard('4k3/8/8/8/8/8/P7/R3K3 w - - 0 1');
@@ -240,7 +247,9 @@ describe('move generation', () => {
       });
     });
 
+
     describe('pieces can capture an enemy piece but cannot move beyond it', () => {
+
       describe('white pieces', () => {
         it('rook', () => {
           const board = createBoard('4k3/8/8/8/8/8/p7/R3K3 w - - 0 1');
@@ -324,6 +333,7 @@ describe('move generation', () => {
   
 
   describe('knight specific', () => {
+
     it('white knight can jump over surrounding pieces', () => {
       const board = createBoard('4k3/8/8/8/8/PPP5/1N1P4/4K3 w - - 0 1');
 
@@ -339,7 +349,46 @@ describe('move generation', () => {
     });
   });
 
+
   describe('king specific', () => {
+    it('white king generates both castling moves when both are legal', () => {
+      const board = createBoard('4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1');
+
+      expectLegalDestinations(board, 0, 4, [
+        'd2', 'e2', 'f2',
+        'd1', 'f1',
+        'c1', 'g1',
+      ]);
+      expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'g1', { castle: 'K' })).toBe(true);
+      expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'c1', { castle: 'Q' })).toBe(true);
+    });
+
+    it('black king generates both castling moves when both are legal', () => {
+      const board = createBoard('r3k2r/8/8/8/8/8/8/4K3 b kq - 0 1');
+
+      expectLegalDestinations(board, 7, 4, [
+        'd7', 'e7', 'f7',
+        'd8', 'f8',
+        'c8', 'g8',
+      ]);
+      expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'g8', { castle: 'K' })).toBe(true);
+      expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'c8', { castle: 'Q' })).toBe(true);
+    });
+
+    it('white king does not generate castling moves when path squares are occupied', () => {
+      const board = createBoard('4k3/8/8/8/8/8/8/R1B1K1NR w KQ - 0 1');
+
+      expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'g1', { castle: 'K' })).toBe(false);
+      expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'c1', { castle: 'Q' })).toBe(false);
+    });
+
+    it('black king does not generate castling moves when castling rights are absent', () => {
+      const board = createBoard('r3k2r/8/8/8/8/8/8/4K3 b - - 0 1');
+
+      expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'g8', { castle: 'K' })).toBe(false);
+      expect(hasLegalMoveByAlgebraicNotation(board, 'e8', 'c8', { castle: 'Q' })).toBe(false);
+    });
+
     it('white king cannot capture a defended piece', () => {
       const board = createBoard('4k3/8/8/7b/8/8/4r3/4K3 w - - 0 1');
       expect(hasLegalMoveByAlgebraicNotation(board, 'e1', 'e2')).toBe(false);
@@ -399,6 +448,7 @@ describe('move generation', () => {
  
 
   describe('moves that would expose own king to check are illegal', () => {
+
     describe('white pieces', () => {
       it('when white is in check, unrelated white rook moves are illegal', () => {
         const board = createBoard('4k3/8/8/8/8/8/4q3/R3K3 w - - 0 1');
@@ -572,6 +622,7 @@ describe('move generation', () => {
     });
   });
 
+
   describe('when in check, only moves that resolve the check are legal', () => {
     describe('white pieces', () => {
       it('white rook may capture the checking queen if that removes the check', () => {
@@ -638,7 +689,9 @@ describe('move generation', () => {
   });
 });
 
+
    describe('pawn specific', () => {
+
     describe('white pawns', () => {
       it('pawn can move one or two squares forward on first move', () => {
         const board = createBoard('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
@@ -683,6 +736,13 @@ describe('move generation', () => {
       it('pawn can capture en passant', () => {
         const board = createBoard('4k3/8/8/3pP3/8/8/8/4K3 w - d6 0 1');
         expectLegalDestinations(board, 4, 4, ['e6', 'd6']);
+      });
+
+      it('pawn cannot capture en passant if it would expose its own king to check', () => {
+        const board = createBoard('k3r3/8/8/3pP3/8/8/8/4K3 w - d6 0 1');
+
+        expectLegalDestinations(board, 4, 4, ['e6']);
+        expect(hasLegalMoveByAlgebraicNotation(board, 'e5', 'd6', { enPassant: true })).toBe(false);
       });
 
       it('pawn has all 4 promotion options on c8', () => {
@@ -753,6 +813,13 @@ describe('move generation', () => {
         expectLegalDestinations(board, 3, 3, ['d3', 'e3']);
       });
 
+      it('pawn cannot capture en passant if it would expose its own king to check', () => {
+        const board = createBoard('4k3/8/8/8/3Pp3/8/8/K3R3 b - d3 0 1');
+
+        expectLegalDestinations(board, 3, 4, ['e3']);
+        expect(hasLegalMoveByAlgebraicNotation(board, 'e4', 'd3', { enPassant: true })).toBe(false);
+      });
+
     it('pawn has all 4 promotion options on c1', () => {
         const board = createBoard('5k2/8/8/8/8/8/2p5/4K3 b - - 0 1'); // black pawn on c2
 
@@ -776,7 +843,9 @@ describe('move generation', () => {
     });
   });
 
+
   describe('side to move enforcement', () => {
+
     it('white piece has no legal moves when it is black to move', () => {
       const board = createBoard('4k3/8/8/8/8/8/8/4K3 b - - 0 1');
 
@@ -792,6 +861,7 @@ describe('move generation', () => {
     });
   });
 
+  
   describe('empty squares', () => {
     it('a1 has no legal moves when empty', () => {
       const board = createBoard('4k3/8/8/8/8/8/8/4K3 w - - 0 1');
