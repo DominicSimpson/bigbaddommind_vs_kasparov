@@ -18,6 +18,7 @@ describe('makeMove', () => {
             expectPieceAt(board, 'e3', 'pawn', 'white');
 
         });
+        // great early electronic album by Manuel Göttsching, btw:
         it('moves a pawn from e2 to e4', () => {
             const board = createBoard('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
 
