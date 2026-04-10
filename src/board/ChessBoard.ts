@@ -13,7 +13,7 @@ import type { Delta } from "../types/delta.js";
 import { 
     KING_DIRS, 
     KNIGHT_DIRS, 
-    ROOK_DIRS, 
+    ROOK_DIRS,
     BISHOP_DIRS, 
     QUEEN_DIRS, 
     ROOK_ATTACKERS, 
@@ -121,12 +121,52 @@ export class ChessBoard {
         return this.sideToMove;
     }
 
-    public getLegalMoves(fromRank: Rank, fromFile: File): Move[] {
+    public getAllLegalMoves(): Move[];
+    public getAllLegalMoves(colour: Colour): Move[];
+    public getAllLegalMoves(colour = this.sideToMove): Move[] {
+        return this.legalMoveFilter.getAllLegalMoves(colour);
+    }
+
+    public getLegalMoves(): Move[];
+    public getLegalMoves(fromRank: Rank, fromFile: File): Move[];
+    public getLegalMoves(fromRank?: Rank, fromFile?: File): Move[] {
+        if (fromRank === undefined || fromFile === undefined) {
+            return this.getAllLegalMoves();
+        }
+
         return this.legalMoveFilter.getLegalMoves(fromRank, fromFile);
     }
 
     public canUndo(): boolean {
         return this.history.length > 0;
+    }
+
+    public clone(): ChessBoard {
+        const clonedBoard = new ChessBoard();
+
+        clonedBoard.squares = this.squares.map(row =>
+            row.map(square => new Square(
+                square.rank,
+                square.file,
+                this.clonePiece(square.piece)
+            ))
+        );
+
+        clonedBoard.sideToMove = this.sideToMove;
+        clonedBoard.castlingRights = { ...this.castlingRights };
+        clonedBoard.enPassantTarget = this.enPassantTarget ? { ...this.enPassantTarget } : null;
+        clonedBoard.halfMoveClock = this.halfMoveClock;
+        clonedBoard.fullMoveNumber = this.fullMoveNumber;
+        clonedBoard.history = this.history.map(record => this.cloneUndoRecord(record));
+        clonedBoard.repetitionCounts = new Map(this.repetitionCounts);
+
+        return clonedBoard;
+    }
+
+    public clearHistory(): void {
+        this.history = [];
+        this.repetitionCounts.clear();
+        this.bumpRepetition(this.getPositionKey());
     }
 
     public canCastle(colour: Colour, side: "K" | "Q"): boolean { // 'prepares' castling rights
@@ -284,7 +324,7 @@ export class ChessBoard {
         return false;
     }
 
-    public getGameResult(): GameResult {
+    public getGameStatus(): GameResult {
 
         const side = this.getSideToMove();
 
@@ -311,6 +351,10 @@ export class ChessBoard {
         }
 
         return { status: "ongoing" };
+    }
+
+    public getGameResult(): GameResult {
+        return this.getGameStatus();
     }
 
     // ───────────────────────────────
@@ -676,9 +720,11 @@ export class ChessBoard {
         
         if (!skipLegalityCheck) {
             const legalMoves = this.getLegalMoves(move.fromRank, move.fromFile); // generates legal moves for piece on fromSquare
-            // checks if intended move is legal by comparing to legal moves list:
-            const isLegal = legalMoves.some(candidate => this.sameMove(candidate, move));
-            if (!isLegal) throw new Error("Illegal move.");
+            const matchedMove = legalMoves.find(candidate => this.matchesMoveRequest(candidate, move));
+            if (!matchedMove) throw new Error("Illegal move.");
+            // Canonicalise the move from the legal-move list so callers do not need
+            // to provide engine-internal convenience flags such as castle/enPassant/isCapture.
+            move = matchedMove;
         }
         // --- (a) Build undo record BEFORE mutating board -----------------------------------------------------
           // Store whatever you already store: castling rights, ep square, halfmove, etc.
@@ -1427,9 +1473,7 @@ export class ChessBoard {
         this.fullMoveNumber = fm;
 
         // Reset history + repetition to match new position:
-        this.history = [];
-        this.repetitionCounts.clear();
-        this.bumpRepetition(this.getPositionKey());
+        this.clearHistory();
 
     }
 
@@ -1564,6 +1608,44 @@ export class ChessBoard {
             !!a.isCapture === !!b.isCapture &&
             !!a.enPassant === !!b.enPassant
         );
+    }
+
+    private matchesMoveRequest(candidate: Move, requested: Move): boolean {
+        return (
+            candidate.fromRank === requested.fromRank &&
+            candidate.fromFile === requested.fromFile &&
+            candidate.toRank === requested.toRank &&
+            candidate.toFile === requested.toFile &&
+            candidate.promotion === requested.promotion
+        );
+    }
+
+    private clonePiece(piece: Piece | null): Piece | null {
+        return piece ? new Piece(piece.type, piece.colour) : null;
+    }
+
+    private cloneMove(move: Move): Move {
+        return { ...move };
+    }
+
+    private cloneUndoRecord(record: UndoRecord): UndoRecord {
+        return {
+            move: this.cloneMove(record.move),
+            movedPiece: new Piece(record.movedPiece.type, record.movedPiece.colour),
+            capturedPiece: this.clonePiece(record.capturedPiece),
+            capturedSquare: record.capturedSquare ? { ...record.capturedSquare } : null,
+            sideToMoveBefore: record.sideToMoveBefore,
+            castlingRightsBefore: { ...record.castlingRightsBefore },
+            enPassantTargetBefore: record.enPassantTargetBefore ? { ...record.enPassantTargetBefore } : null,
+            halfmoveClockBefore: record.halfmoveClockBefore,
+            fullmoveNumberBefore: record.fullmoveNumberBefore,
+            positionKeyBefore: record.positionKeyBefore,
+            positionKeyAfter: record.positionKeyAfter,
+            rookFrom: record.rookFrom ? { ...record.rookFrom } : null,
+            rookTo: record.rookTo ? { ...record.rookTo } : null,
+            rookPiece: this.clonePiece(record.rookPiece),
+            promotedTo: record.promotedTo,
+        };
     }
 
 

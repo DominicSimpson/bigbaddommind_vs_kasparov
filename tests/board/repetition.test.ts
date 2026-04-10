@@ -68,6 +68,29 @@ describe('threefold repetition', () => {
 
     expect(board.getGameResult()).toEqual({ status: 'ongoing' });
   });
+
+  it('clears move and position history without changing the current board', () => {
+    const board = createBoard('1n2k3/8/8/8/8/8/8/RN2K3 w - - 0 1');
+
+    playMove(board, 'b1', 'c3');
+    playMove(board, 'b8', 'c6');
+    playMove(board, 'c3', 'b1');
+    playMove(board, 'c6', 'b8');
+    playMove(board, 'b1', 'c3');
+    playMove(board, 'b8', 'c6');
+    playMove(board, 'c3', 'b1');
+    playMove(board, 'c6', 'b8');
+
+    expect(board.getGameResult()).toEqual({ status: 'draw', reason: 'threefold' });
+    expect(board.canUndo()).toBe(true);
+
+    const before = board.toFEN();
+    board.clearHistory();
+
+    expect(board.toFEN()).toBe(before);
+    expect(board.canUndo()).toBe(false);
+    expect(board.getGameResult()).toEqual({ status: 'ongoing' });
+  });
   // This test ensures that the threefold repetition rule is correctly implemented by verifying 
   // that positions with different castling rights are not treated as 
   // the same position, which could lead to incorrect draw declarations:

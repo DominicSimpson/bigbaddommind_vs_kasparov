@@ -7,6 +7,20 @@ import type { ChessBoard } from "../board/ChessBoard.js";
 export class LegalMoveFilter {
     constructor(private board: ChessBoard) {}
 
+    public getAllLegalMoves(colour = this.board.getSideToMove()): Move[] {
+        const legalMoves: Move[] = [];
+
+        for (const r of RANKS) {
+            for (const f of FILES) {
+                const piece = this.board.getSquare(r, f).piece;
+                if (!piece || piece.colour !== colour) continue;
+                legalMoves.push(...this.getLegalMoves(r, f, false));
+            }
+        }
+
+        return legalMoves;
+    }
+
     // Returns an array of legal moves for the piece on the given square:
     // enforceTurn logic: method should only allow moves for the side whose turn it currently is
     public getLegalMoves(fromRank: Rank, fromFile: File, enforceTurn = true): Move[] {
