@@ -56,12 +56,12 @@ describe('makeMove', () => {
             const board = createBoard('4k3/8/8/8/8/8/4P3/4K2R b - - 0 1');
 
             expect(board.getAllLegalMoves('black')).toHaveLength(5);
-            expect(board.getAllLegalMoves('white')).toHaveLength(14);
+            expect(board.getAllLegalMoves('white')).toHaveLength(15);
             expect(board.getLegalMoves()).toHaveLength(5);
         });
 
         it('updates game status after a legal move is applied', () => {
-            const board = createBoard('6k1/5Q2/6K1/8/8/8/8/8 w - - 0 1');
+            const board = createBoard('7k/5Q2/6K1/8/8/8/8/8 w - - 0 1');
             const move = getMove(board, 'f7', 'g7');
             if (!move) throw new Error('Expected move f7 -> g7 to exist');
 
