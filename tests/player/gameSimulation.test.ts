@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ChessBoard } from '../../src/board/ChessBoard.js';
+import { MinimaxPlayer } from '../../src/player/MinimaxPlayer.js';
 import { RandomMovePlayer } from '../../src/player/RandomMovePlayer.js';
 import type { Move } from '../../src/types/Move.js';
 import type { GameResult } from '../../src/types/GameResult.js';
@@ -8,6 +9,8 @@ interface Player {
     playMove(board: ChessBoard): Move | null;
 }
 
+// The FirstLegalMovePlayer class is a simple implementation of a chess player 
+// that always selects the first legal move available:
 class FirstLegalMovePlayer implements Player {
     public playMove(board: ChessBoard): Move | null {
         const move = [...board.getAllLegalMoves()].sort(compareMoves)[0] ?? null;
@@ -18,6 +21,8 @@ class FirstLegalMovePlayer implements Player {
     }
 }
 
+// The compareMoves function is a helper function used to sort moves in a 
+// consistent order:
 function compareMoves(a: Move, b: Move): number {
     return (
         a.fromRank - b.fromRank ||
@@ -28,6 +33,9 @@ function compareMoves(a: Move, b: Move): number {
     );
 }
 
+// The createCyclingRandom function creates a deterministic random number 
+// generator that cycles through a given array of values. 
+// This is useful for testing to ensure reproducibility while still simulating randomness:
 function createCyclingRandom(values: number[]): () => number {
     let index = 0;
 
@@ -38,6 +46,11 @@ function createCyclingRandom(values: number[]): () => number {
     };
 }
 
+// The playGame function simulates a game of chess between two players on a given board. 
+// It takes in a ChessBoard instance, two Player instances (one for white and one for black), 
+// and an optional maximum number of plies to play before declaring a draw. 
+// The function returns an object containing the total number of plies (one half-move)
+// played and the final game result:
 function playGame(
     board: ChessBoard,
     white: Player,
@@ -60,6 +73,19 @@ function playGame(
 }
 
 describe('game simulations', () => {
+    it('supports minimax-vs-random play from the starting position', () => {
+        const board = new ChessBoard();
+        const startingFen = board.toFEN();
+        const minimax = new MinimaxPlayer(1);
+        const random = new RandomMovePlayer(createCyclingRandom([0.91, 0.17, 0.63, 0.28, 0.74]));
+
+        const outcome = playGame(board, minimax, random);
+
+        expect(outcome.plies).toBeGreaterThan(0);
+        expect(outcome.plies).toBeLessThanOrEqual(120);
+        expect(board.toFEN()).not.toBe(startingFen);
+    });
+
     it('supports engine-vs-random play from the starting position', () => {
         const board = new ChessBoard();
         const startingFen = board.toFEN();
