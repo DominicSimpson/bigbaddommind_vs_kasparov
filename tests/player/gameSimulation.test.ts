@@ -76,7 +76,7 @@ describe('game simulations', () => {
     it('supports minimax-vs-random play from the starting position', () => {
         const board = new ChessBoard();
         const startingFen = board.toFEN();
-        const minimax = new MinimaxPlayer(1);
+        const minimax = new MinimaxPlayer('easy');
         const random = new RandomMovePlayer(createCyclingRandom([0.91, 0.17, 0.63, 0.28, 0.74]));
 
         const outcome = playGame(board, minimax, random);
