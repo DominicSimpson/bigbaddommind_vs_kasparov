@@ -1,28 +1,81 @@
 import type { ChessBoard } from "../board/ChessBoard.js";
-import { findBestMove } from "../engine/minimax.js";
+import { findBestMove, scoreMoves } from "../engine/minimax.js";
 import type { Move } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
 
-export const MINIMAX_DIFFICULTY_DEPTHS = {
-    easy: 1,
-    medium: 2,
-    hard: 3,
+export const MINIMAX_DIFFICULTY_PROFILES = {
+    easy: {
+        depth: 1,
+        orderMoves: false,
+        mistakeChance: 0.35,
+        mistakeCandidateCount: 3,
+    },
+    medium: {
+        depth: 2,
+        orderMoves: false,
+        mistakeChance: 0,
+        mistakeCandidateCount: 1,
+    },
+    hard: {
+        depth: 4,
+        orderMoves: true,
+        mistakeChance: 0,
+        mistakeCandidateCount: 1,
+    },
 } as const;
 
-export type MinimaxDifficulty = keyof typeof MINIMAX_DIFFICULTY_DEPTHS;
+export const MINIMAX_DIFFICULTY_ALIASES = {
+    beginner: "easy",
+    intermediate: "medium",
+    advanced: "hard",
+} as const;
+
+export const MINIMAX_DIFFICULTY_DEPTHS = {
+    easy: MINIMAX_DIFFICULTY_PROFILES.easy.depth,
+    medium: MINIMAX_DIFFICULTY_PROFILES.medium.depth,
+    hard: MINIMAX_DIFFICULTY_PROFILES.hard.depth,
+} as const;
+
+export type CanonicalMinimaxDifficulty = keyof typeof MINIMAX_DIFFICULTY_PROFILES;
+export type MinimaxDifficultyAlias = keyof typeof MINIMAX_DIFFICULTY_ALIASES;
+export type MinimaxDifficulty = CanonicalMinimaxDifficulty | MinimaxDifficultyAlias;
+
+interface MinimaxPlayerOptions {
+    randomFn?: () => number;
+}
 
 function isMinimaxDifficulty(value: unknown): value is MinimaxDifficulty {
-    return typeof value === "string" && value in MINIMAX_DIFFICULTY_DEPTHS;
+    return typeof value === "string" && (
+        value in MINIMAX_DIFFICULTY_PROFILES ||
+        value in MINIMAX_DIFFICULTY_ALIASES
+    );
+}
+
+function toCanonicalDifficulty(difficulty: MinimaxDifficulty): CanonicalMinimaxDifficulty {
+    if (difficulty in MINIMAX_DIFFICULTY_PROFILES) {
+        return difficulty as CanonicalMinimaxDifficulty;
+    }
+
+    return MINIMAX_DIFFICULTY_ALIASES[difficulty as MinimaxDifficultyAlias];
+}
+
+function resolveDifficulty(setting: MinimaxDifficulty | number): CanonicalMinimaxDifficulty | null {
+    if (isMinimaxDifficulty(setting)) {
+        return toCanonicalDifficulty(setting);
+    }
+
+    return null;
 }
 
 function resolveDepth(setting: MinimaxDifficulty | number): number {
-    if (isMinimaxDifficulty(setting)) {
-        return MINIMAX_DIFFICULTY_DEPTHS[setting];
+    const difficulty = resolveDifficulty(setting);
+    if (difficulty) {
+        return MINIMAX_DIFFICULTY_PROFILES[difficulty].depth;
     }
 
     if (!Number.isInteger(setting) || setting < 1) {
         throw new Error(
-            'MinimaxPlayer difficulty must be "easy", "medium", or "hard", or a positive integer depth.'
+            'MinimaxPlayer difficulty must be "easy", "medium", "hard", "beginner", "intermediate", or "advanced", or a positive integer depth.'
         );
     }
 
@@ -36,15 +89,46 @@ function resolveDepth(setting: MinimaxDifficulty | number): number {
 export class MinimaxPlayer {
     private readonly depth: number;
 
-    public readonly difficulty: MinimaxDifficulty | null;
+    private readonly randomFn: () => number;
 
-    constructor(difficultyOrDepth: MinimaxDifficulty | number = "medium") {
-        this.difficulty = isMinimaxDifficulty(difficultyOrDepth) ? difficultyOrDepth : null;
+    public readonly difficulty: CanonicalMinimaxDifficulty | null;
+
+    constructor(
+        difficultyOrDepth: MinimaxDifficulty | number = "medium",
+        options: MinimaxPlayerOptions = {}
+    ) {
+        this.difficulty = resolveDifficulty(difficultyOrDepth);
         this.depth = resolveDepth(difficultyOrDepth);
+        this.randomFn = options.randomFn ?? Math.random;
     }
 
     public getSearchDepth(): number {
         return this.depth;
+    }
+
+    private chooseDifficultyMove(board: ChessBoard, colour: Colour): Move | null {
+        if (!this.difficulty) {
+            return findBestMove(board, this.depth, colour);
+        }
+
+        const profile = MINIMAX_DIFFICULTY_PROFILES[this.difficulty];
+        const scoredMoves = scoreMoves(board, profile.depth, colour, {
+            orderMoves: profile.orderMoves,
+        });
+
+        if (scoredMoves.length === 0) return null;
+
+        const shouldBlunder =
+            profile.mistakeChance > 0 && this.randomFn() < profile.mistakeChance;
+        const candidateCount = shouldBlunder
+            ? Math.min(profile.mistakeCandidateCount, scoredMoves.length)
+            : 1;
+        const candidateIndex = Math.min(
+            Math.floor(this.randomFn() * candidateCount),
+            candidateCount - 1
+        );
+
+        return scoredMoves[candidateIndex].move;
     }
 
     // The chooseMove method evaluates the current board position and returns the best move for the specified colour:
@@ -53,7 +137,7 @@ export class MinimaxPlayer {
             throw new Error("MinimaxPlayer can only choose for the side to move.");
         }
 
-        return findBestMove(board, this.depth, colour);
+        return this.chooseDifficultyMove(board, colour);
     }
 
     // The playMove method uses chooseMove to select a move and then makes that move on the board. 

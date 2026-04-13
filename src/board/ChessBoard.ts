@@ -112,9 +112,12 @@ export class ChessBoard {
     // ───────────────────────────────
  
     public getSquare(rank: Rank, file: File): Square {
-        return this.squares[rank][file]; // rank first, then file, as is normal
-        // public method callable outside the class that returns Square
-        // safe public way to access one square
+        const square = this.squareAt(rank, file);
+        return new Square(square.rank, square.file, this.clonePiece(square.piece));
+    }
+
+    public getPieceAt(rank: Rank, file: File): Piece | null {
+        return this.clonePiece(this.squareAt(rank, file).piece);
     }
 
     public getSideToMove(): Colour {
@@ -201,6 +204,10 @@ export class ChessBoard {
         return !this.isInCheck(colour) && !this.legalMoveFilter.hasAnyLegalMoves(colour);
     }
 
+    private squareAt(rank: Rank, file: File): Square {
+        return this.squares[rank][file];
+    }
+
     private isDrawByFiftyMoveRule(): boolean {
         return this.halfMoveClock >= 100; // 100 half moves = 50 full moves
     }
@@ -231,7 +238,7 @@ export class ChessBoard {
         // so the position is not insufficient material.
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
-                const piece = this.getSquare(rank as Rank, file as File).piece;
+                const piece = this.squareAt(rank as Rank, file as File).piece;
                 if (!piece) continue;
                 if (piece.type === "king") continue; 
 
@@ -382,7 +389,7 @@ export class ChessBoard {
     }
 
     private getPseudoLegalMoves(fromRank: Rank, fromFile: File): Move[] { // logic for piece movement
-        const square = this.getSquare(fromRank, fromFile);
+        const square = this.squareAt(fromRank, fromFile);
         const piece = square.piece;
 
         if (!piece) return [];
@@ -492,7 +499,7 @@ export class ChessBoard {
             if (epRank === r + dir && Math.abs(epFile - f) === 1) {
                 // generate en passant moves only when it's fully legal
                 const victimRank = (piece.colour === "white" ? epRank - 1 : epRank + 1) as Rank;
-                const victimSq = this.getSquare(victimRank, epFile).piece; 
+                const victimSq = this.squareAt(victimRank, epFile).piece; 
                 // f is pawn's current file; epFile is the en passant target file
                 // Math.abs is used instead of writing either diagonal direction for pawn capture
                 // (epFile - f === -1 || epFile - f === 1)
@@ -583,9 +590,9 @@ export class ChessBoard {
             const rookFile = 7 as File; // file h (rook start square)
 
             // look up actual squares on board
-            const fSq = this.getSquare(homeRank, fFile); // fSq: f1 (white) or f8 (black)
-            const gSq = this.getSquare(homeRank, gFile); // gSq: g1 or g8
-            const rookSq = this.getSquare(homeRank, rookFile); // rookSq: h1 or h8
+            const fSq = this.squareAt(homeRank, fFile); // fSq: f1 (white) or f8 (black)
+            const gSq = this.squareAt(homeRank, gFile); // gSq: g1 or g8
+            const rookSq = this.squareAt(homeRank, rookFile); // rookSq: h1 or h8
             
             // very that rook is really a rook of the same colour, on the correct rook square:
             const rookOk = 
@@ -614,10 +621,10 @@ export class ChessBoard {
                 const dFile = 3 as File; // d
                 const rookFile = 0 as File; // a
 
-                const bSq = this.getSquare(homeRank, bFile);
-                const cSq = this.getSquare(homeRank, cFile);
-                const dSq = this.getSquare(homeRank, dFile);
-                const rookSq = this.getSquare(homeRank, rookFile);
+                const bSq = this.squareAt(homeRank, bFile);
+                const cSq = this.squareAt(homeRank, cFile);
+                const dSq = this.squareAt(homeRank, dFile);
+                const rookSq = this.squareAt(homeRank, rookFile);
 
                 const rookOk = 
                     rookSq.piece !== null &&
@@ -665,7 +672,7 @@ export class ChessBoard {
                 const tr = rr as Rank;
                 const tf = ff as File;
 
-                const target = this.getSquare(tr, tf).piece; // checks what's on current square
+                const target = this.squareAt(tr, tf).piece; // checks what's on current square
 
                 if (target === null) { // confirms that square is empty, so piece can move here
                     moves.push({ fromRank: r, fromFile: f, toRank: tr, toFile: tf });
@@ -691,8 +698,8 @@ export class ChessBoard {
 
     public makeMove(move: Move, skipLegalityCheck = false): void { // returns void because it mutates board state rather than
             // producing a value
-        const fromSquare = this.getSquare(move.fromRank, move.fromFile); // where the piece is moving from
-        const toSquare = this.getSquare(move.toRank, move.toFile); // where the piece is moving to
+        const fromSquare = this.squareAt(move.fromRank, move.fromFile); // where the piece is moving from
+        const toSquare = this.squareAt(move.toRank, move.toFile); // where the piece is moving to
         
         const movingPiece = fromSquare.piece; // takes piece currently on fromSquare
 
@@ -783,7 +790,7 @@ export class ChessBoard {
                 // Example: e5 > d6 captures the pawn on d5 (file d, same as destination file d):
             const capFile = move.toFile;
                 // Grabs Square object where captured pawn actually sits (e.g. d5):
-            const capSquare = this.getSquare(capRank, capFile);
+            const capSquare = this.squareAt(capRank, capFile);
 
                 // sanity check here:
             const victim = capSquare.piece;
@@ -842,7 +849,7 @@ export class ChessBoard {
         }    
         
             // The square that the rook starts on (a1/h1/a8/h8):
-            const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
+            const rookFromSquare = this.squareAt(undo.rookFrom.rank, undo.rookFrom.file);
 
             // Snapshots which rook is moving:
             const rook = rookFromSquare.piece;
@@ -866,7 +873,7 @@ export class ChessBoard {
 
             // If en passant, remove victim pawn now:
             if (enPassantVictimSquare) {
-                const vm = this.getSquare(enPassantVictimSquare.rank, enPassantVictimSquare.file);
+                const vm = this.squareAt(enPassantVictimSquare.rank, enPassantVictimSquare.file);
                 vm.piece = null;
             }
 
@@ -880,8 +887,8 @@ export class ChessBoard {
 
             // If castling, move rook (rookPiece already validated above)
             if (move.castle && undo.rookFrom && undo.rookTo) {
-                const rookFromSquare = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
-                const rookToSquare   = this.getSquare(undo.rookTo.rank, undo.rookTo.file);       
+                const rookFromSquare = this.squareAt(undo.rookFrom.rank, undo.rookFrom.file);
+                const rookToSquare   = this.squareAt(undo.rookTo.rank, undo.rookTo.file);       
                 // sanity check before mutating rook squares:
                 if (!undo.rookPiece) {
                     throw new Error("Invalid castling: rook snapshot missing");
@@ -978,13 +985,13 @@ export class ChessBoard {
         this.halfMoveClock = undo.halfmoveClockBefore;
         this.fullMoveNumber = undo.fullmoveNumberBefore;
 
-        const fromSquare = this.getSquare(move.fromRank, move.fromFile);
-        const toSquare   = this.getSquare(move.toRank, move.toFile);
+        const fromSquare = this.squareAt(move.fromRank, move.fromFile);
+        const toSquare   = this.squareAt(move.toRank, move.toFile);
 
         // undo rook if it was moved:
         if (undo.rookFrom && undo.rookTo) {
-            const rookFromSq = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
-            const rookToSq   = this.getSquare(undo.rookTo.rank, undo.rookTo.file);
+            const rookFromSq = this.squareAt(undo.rookFrom.rank, undo.rookFrom.file);
+            const rookToSq   = this.squareAt(undo.rookTo.rank, undo.rookTo.file);
             rookToSq.piece = null;
             rookFromSq.piece = undo.rookPiece ?? null;
         }
@@ -996,7 +1003,7 @@ export class ChessBoard {
         // restore captured piece:
         if (undo.capturedPiece) {
             if (undo.capturedSquare) {
-                const captSq = this.getSquare(undo.capturedSquare.rank, undo.capturedSquare.file);
+                const captSq = this.squareAt(undo.capturedSquare.rank, undo.capturedSquare.file);
                 captSq.piece = undo.capturedPiece;
             } else {
                 toSquare.piece = undo.capturedPiece;
@@ -1019,14 +1026,14 @@ export class ChessBoard {
         this.fullMoveNumber = undo.fullmoveNumberBefore;
 
         // squares involved
-        const fromSq = this.getSquare(move.fromRank, move.fromFile);
-        const toSq = this.getSquare(move.toRank, move.toFile);
+        const fromSq = this.squareAt(move.fromRank, move.fromFile);
+        const toSq = this.squareAt(move.toRank, move.toFile);
 
         // // a) Undo castling rook move (if castling has happpened)
         // (Do this before restoring king piece to avoid confusion, though either order works)
         if (undo.rookFrom && undo.rookTo) {
-            const rookFromSq = this.getSquare(undo.rookFrom.rank, undo.rookFrom.file);
-            const rookToSq = this.getSquare(undo.rookTo.rank, undo.rookTo.file);
+            const rookFromSq = this.squareAt(undo.rookFrom.rank, undo.rookFrom.file);
+            const rookToSq = this.squareAt(undo.rookTo.rank, undo.rookTo.file);
 
             // Move rook back
             rookToSq.piece = null;
@@ -1043,7 +1050,7 @@ export class ChessBoard {
         if (undo.capturedPiece) {
             if (undo.capturedSquare) {
                     // en passant (or any capture where captured square differs from 'to')
-                    const captSq = this.getSquare(undo.capturedSquare.rank, undo.capturedSquare.file);
+                    const captSq = this.squareAt(undo.capturedSquare.rank, undo.capturedSquare.file);
                     captSq.piece = undo.capturedPiece; 
                 } else {
                     // normal capture: captured piece is on destination square
@@ -1099,7 +1106,7 @@ export class ChessBoard {
 
     
     private squareToAlgebraic(rank: Rank, file: File): string {
-        return this.getSquare(rank, file).coord;
+        return this.squareAt(rank, file).coord;
     }
 
     // for parsing FEN input:
@@ -1160,7 +1167,7 @@ export class ChessBoard {
             let row = "";
             // Loop through files a to h (0 to 7):
             for (let file = 0; file < 8; file++) {
-                const piece = this.getSquare(rank as Rank, file as File).piece;
+                const piece = this.squareAt(rank as Rank, file as File).piece;
                 // If there's no piece, increment empties count; if there is a piece, 
                 // add the count of empties (if any) followed by the piece letter:
                 if (!piece) {
@@ -1527,7 +1534,7 @@ export class ChessBoard {
         const tr = toRank as Rank;
         const tf = toFile as File;
 
-        const target = this.getSquare(tr, tf).piece;
+        const target = this.squareAt(tr, tf).piece;
         
         if (target === null) {
             moves.push({ fromRank, fromFile, toRank: tr, toFile: tf });
@@ -1542,13 +1549,13 @@ export class ChessBoard {
 
     private isEmpty(r: number, f: number): boolean { // checks if square is empty
         if (!this.inBounds(r, f)) return false;
-        return this.getSquare(r as Rank, f as File).piece === null;
+        return this.squareAt(r as Rank, f as File).piece === null;
     }
 
     // checks if square is occuped by enemy piece
     private isEnemy(r: number, f: number, colour: Piece["colour"]): boolean {
         if (!this.inBounds(r, f)) return false;
-        const p = this.getSquare(r as Rank, f as File).piece;
+        const p = this.squareAt(r as Rank, f as File).piece;
         return p !== null && p.colour !== colour;
     }
 

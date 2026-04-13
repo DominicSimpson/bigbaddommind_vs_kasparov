@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { ChessBoard } from '../../src/board/ChessBoard.js';
 import {
+    MINIMAX_DIFFICULTY_ALIASES,
+    MINIMAX_DIFFICULTY_PROFILES,
     MINIMAX_DIFFICULTY_DEPTHS,
     MinimaxPlayer,
 } from '../../src/player/MinimaxPlayer.js';
 import { createBoard, expectBoardUnchanged } from '../board/utils/boardTestUtils.js';
+import { findBestMove } from '../../src/engine/minimax.js';
 
 describe('MinimaxPlayer', () => {
     it('maps named difficulty levels to search depths', () => {
@@ -13,6 +16,15 @@ describe('MinimaxPlayer', () => {
 
             expect(player.difficulty).toBe(difficulty);
             expect(player.getSearchDepth()).toBe(expectedDepth);
+        }
+    });
+
+    it('maps alias labels onto the canonical difficulties', () => {
+        for (const [alias, canonicalDifficulty] of Object.entries(MINIMAX_DIFFICULTY_ALIASES)) {
+            const player = new MinimaxPlayer(alias as keyof typeof MINIMAX_DIFFICULTY_ALIASES);
+
+            expect(player.difficulty).toBe(canonicalDifficulty);
+            expect(player.getSearchDepth()).toBe(MINIMAX_DIFFICULTY_PROFILES[canonicalDifficulty].depth);
         }
     });
 
@@ -32,11 +44,47 @@ describe('MinimaxPlayer', () => {
 
     it('rejects invalid difficulty settings', () => {
         expect(() => new MinimaxPlayer(0)).toThrow(
-            'MinimaxPlayer difficulty must be "easy", "medium", or "hard", or a positive integer depth.'
+            'MinimaxPlayer difficulty must be "easy", "medium", "hard", "beginner", "intermediate", or "advanced", or a positive integer depth.'
         );
         expect(() => new MinimaxPlayer('expert' as never)).toThrow(
-            'MinimaxPlayer difficulty must be "easy", "medium", or "hard", or a positive integer depth.'
+            'MinimaxPlayer difficulty must be "easy", "medium", "hard", "beginner", "intermediate", or "advanced", or a positive integer depth.'
         );
+    });
+
+    it('uses a deeper search depth for hard than for medium', () => {
+        const medium = new MinimaxPlayer('medium');
+        const hard = new MinimaxPlayer('hard');
+
+        expect(hard.getSearchDepth()).toBeGreaterThan(medium.getSearchDepth());
+    });
+
+    it('lets easy occasionally choose a weaker top move', () => {
+        const board = createBoard('4k3/8/8/8/8/8/3q4/3RK3 w - - 0 1');
+        const bestMove = findBestMove(board, 1, 'white');
+        const player = new MinimaxPlayer('easy', {
+            randomFn: (() => {
+                const values = [0.1, 0.9];
+                let index = 0;
+                return () => values[index++ % values.length];
+            })(),
+        });
+
+        const move = player.chooseMove(board);
+
+        expect(move).not.toBeNull();
+        expect(board.getAllLegalMoves()).toContainEqual(move!);
+        expect(move).not.toEqual(bestMove);
+    });
+
+    it('plays the best move deterministically on medium and hard', () => {
+        const board = createBoard('4k3/8/8/8/8/8/3q4/3RK3 w - - 0 1');
+        const medium = new MinimaxPlayer('intermediate');
+        const hard = new MinimaxPlayer('advanced');
+
+        expect(medium.chooseMove(board)).toEqual(findBestMove(board, medium.getSearchDepth(), 'white'));
+        expect(hard.chooseMove(board)).toEqual(findBestMove(board, hard.getSearchDepth(), 'white', {
+            orderMoves: true,
+        }));
     });
 
     it('chooses a legal move for the current side to move', () => {

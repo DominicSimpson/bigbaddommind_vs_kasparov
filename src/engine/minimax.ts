@@ -1,7 +1,9 @@
 import type { ChessBoard } from "../board/ChessBoard.js";
 import { evaluatePosition } from "./evaluatePosition.js";
+import { PIECE_VALUES } from "./evaluatePosition.js";
 import type { Move } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
+import type { PieceType } from "../pieces/Piece.js";
 
 // The minimax function implements the minimax algorithm 
 // with alpha-beta pruning to evaluate chess positions and determine the 
@@ -13,6 +15,7 @@ import type { Colour } from "../types/colour.js";
 export interface MinimaxOptions {
     alpha?: number;
     beta?: number;
+    orderMoves?: boolean;
 }
 
 // The MinimaxResult interface defines the structure of the result 
@@ -21,6 +24,47 @@ export interface MinimaxOptions {
 export interface MinimaxResult {
     move: Move | null;
     score: number;
+}
+
+export interface ScoredMove {
+    move: Move;
+    score: number;
+}
+
+const PROMOTION_BONUS: Record<PieceType, number> = {
+    pawn: 0,
+    knight: 320,
+    bishop: 330,
+    rook: 500,
+    queen: 900,
+    king: 0,
+};
+
+function scoreMoveHeuristically(board: ChessBoard, move: Move): number {
+    const movingPiece = board.getSquare(move.fromRank, move.fromFile).piece;
+    const targetPiece = board.getSquare(move.toRank, move.toFile).piece;
+
+    const captureValue = targetPiece
+        ? PIECE_VALUES[targetPiece.type] - (movingPiece ? PIECE_VALUES[movingPiece.type] / 10 : 0)
+        : 0;
+    const promotionBonus = move.promotion ? PROMOTION_BONUS[move.promotion] : 0;
+    const castleBonus = move.castle ? 50 : 0;
+    const centralisationBonus =
+        (3.5 - Math.abs(3.5 - move.toRank)) + (3.5 - Math.abs(3.5 - move.toFile));
+
+    return captureValue + promotionBonus + castleBonus + centralisationBonus;
+}
+
+function getOrderedMoves(
+    board: ChessBoard,
+    legalMoves: Move[],
+    orderMoves: boolean
+): Move[] {
+    if (!orderMoves) return legalMoves;
+
+    return [...legalMoves].sort(
+        (a, b) => scoreMoveHeuristically(board, b) - scoreMoveHeuristically(board, a)
+    );
 }
 
 // The findBestMove function is a helper that calls minimax and 
@@ -57,10 +101,16 @@ export function minimax(
     let alpha = options.alpha ?? -Infinity;
     let beta = options.beta ?? Infinity;
 
-    for (const move of legalMoves) {
+    const orderedMoves = getOrderedMoves(board, legalMoves, options.orderMoves ?? false);
+
+    for (const move of orderedMoves) {
         board.makeMove(move);
 
-        const childScore = minimax(board, depth - 1, perspective, { alpha, beta }).score;
+        const childScore = minimax(board, depth - 1, perspective, {
+            alpha,
+            beta,
+            orderMoves: options.orderMoves,
+        }).score;
 
         board.undoMove();
 
@@ -89,13 +139,53 @@ export function minimax(
     };
 }
 
+export function scoreMoves(
+    board: ChessBoard,
+    depth: number,
+    perspective: Colour = board.getSideToMove(),
+    options: MinimaxOptions = {}
+): ScoredMove[] {
+    const legalMoves = board.getAllLegalMoves();
+    if (legalMoves.length === 0 || board.getGameStatus().status !== "ongoing") {
+        return [];
+    }
+
+    const maximizingPlayer = board.getSideToMove() === perspective;
+    const orderedMoves = getOrderedMoves(board, legalMoves, options.orderMoves ?? false);
+    const scoredMoves: ScoredMove[] = [];
+    let alpha = options.alpha ?? -Infinity;
+    let beta = options.beta ?? Infinity;
+
+    for (const move of orderedMoves) {
+        board.makeMove(move);
+
+        const score = minimax(board, depth - 1, perspective, {
+            alpha,
+            beta,
+            orderMoves: options.orderMoves,
+        }).score;
+
+        board.undoMove();
+        scoredMoves.push({ move, score });
+
+        if (maximizingPlayer) {
+            alpha = Math.max(alpha, score);
+        } else {
+            beta = Math.min(beta, score);
+        }
+    }
+
+    scoredMoves.sort((a, b) => maximizingPlayer ? b.score - a.score : a.score - b.score);
+    return scoredMoves;
+}
+
 // The findBestMove function is a helper that calls minimax and 
 // extracts the best move from the result:
 export function findBestMove(
     board: ChessBoard,
     depth: number,
-    perspective: Colour = board.getSideToMove()
+    perspective: Colour = board.getSideToMove(),
+    options: MinimaxOptions = {}
 ): Move | null {
-    return minimax(board, depth, perspective).move;
+    return scoreMoves(board, depth, perspective, options)[0]?.move ?? null;
 }
-
