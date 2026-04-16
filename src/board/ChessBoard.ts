@@ -166,6 +166,12 @@ export class ChessBoard {
         return clonedBoard;
     }
 
+    public cloneWithMove(move: Move, skipLegalityCheck = false): ChessBoard {
+        const clonedBoard = this.clone();
+        clonedBoard.makeMove(this.cloneMove(move), skipLegalityCheck);
+        return clonedBoard;
+    }
+
     public clearHistory(): void {
         this.history = [];
         this.repetitionCounts.clear();
@@ -334,30 +340,35 @@ export class ChessBoard {
     public getGameStatus(): GameResult {
 
         const side = this.getSideToMove();
+        const inCheck = this.isInCheck(side);
 
         // no legal moves => either checkmate or stalemate:
         const hasMoves = this.legalMoveFilter.hasAnyLegalMoves(side);
         if (!hasMoves) {
-            if (this.isInCheck(side)) {
+            if (inCheck) {
                 const winner: Colour = side === "white" ? "black" : "white";
                 return { status: "checkmate", winner };
             }
-            return { status: "draw", reason: "stalemate" };
+            return { status: "stalemate" };
         }
 
         if (this.isDrawByFiftyMoveRule()) {
-            return { status: "draw", reason: "fiftyMove" };
+            return { status: "drawByFiftyMoveRule" };
         }
 
         if (this.isDrawByThreefoldRepetition()) {
-            return { status: "draw", reason: "threefold" };
+            return { status: "drawByRepetition" };
         }
 
         if (this.isDrawByInsufficientMaterial()) {
-            return { status: "draw", reason: "insufficientMaterial" };
+            return { status: "drawByInsufficientMaterial" };
         }
 
-        return { status: "ongoing" };
+        if (inCheck) {
+            return { status: "check", sideInCheck: side };
+        }
+
+        return { status: "active" };
     }
 
     public getGameResult(): GameResult {
@@ -1573,7 +1584,7 @@ export class ChessBoard {
     ): { rank: Rank; file: File } | null {  
         for (let rank = 0; rank < 8; rank++) {
             for (let file = 0; file < 8; file++) {
-                const piece = this.squares[rank][file].piece;
+                const piece = squares[rank][file].piece;
                 if (piece !== null && piece?.type === "king" && piece.colour === colour) {
                     return { rank: rank as Rank, file: file as File };
                 }

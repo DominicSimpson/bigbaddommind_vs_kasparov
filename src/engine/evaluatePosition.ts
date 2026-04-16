@@ -2,6 +2,7 @@ import type { ChessBoard } from "../board/ChessBoard.js";
 import { FILES, RANKS } from "../types/coords.js";
 import type { Colour } from "../types/colour.js";
 import type { PieceType } from "../pieces/Piece.js";
+import { isDrawGameResult } from "../types/GameResult.js";
 
 // The CHECKMATE_SCORE is a large positive value that represents a winning position for the perspective player.
 // It means checkmate is treated as overwhelmingly more important than ordinary material gains or losses:
@@ -37,7 +38,7 @@ export function evaluatePosition(
         return gameStatus.winner === perspective ? CHECKMATE_SCORE : -CHECKMATE_SCORE;
     }
 
-    if (gameStatus.status === "draw") {
+    if (isDrawGameResult(gameStatus)) {
         return 0;
     }
 

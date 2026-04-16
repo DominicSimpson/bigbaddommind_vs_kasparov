@@ -35,7 +35,7 @@ describe('evaluatePosition', () => {
     it('returns zero for drawn positions', () => {
         const board = createBoard('7k/5Q2/7K/8/8/8/8/8 b - - 0 1');
 
-        expect(board.getGameStatus()).toEqual({ status: 'draw', reason: 'stalemate' });
+        expect(board.getGameStatus()).toEqual({ status: 'stalemate' });
         expect(evaluatePosition(board, 'white')).toBe(0);
         expect(evaluatePosition(board, 'black')).toBe(0);
     });

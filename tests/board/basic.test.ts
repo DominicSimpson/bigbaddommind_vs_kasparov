@@ -54,6 +54,35 @@ describe('ChessBoard basic functionality', () => {
         expect(clone.canUndo()).toBe(false);
     });
 
+    it('creates a hypothetical position on a clone without mutating the original board', () => {
+        const board = new ChessBoard();
+        const move = getMove(board, 'e2', 'e4');
+        if (!move) throw new Error('Expected move e2 -> e4 to exist');
+
+        const branch = board.cloneWithMove(move);
+
+        expect(board.toFEN()).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+        expect(branch.toFEN()).toBe('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1');
+        expect(board.canUndo()).toBe(false);
+        expect(branch.canUndo()).toBe(true);
+    });
+
+    it('lets a cloned hypothetical line continue independently and undo back to its source position', () => {
+        const board = new ChessBoard();
+        const firstMove = getMove(board, 'e2', 'e4');
+        if (!firstMove) throw new Error('Expected move e2 -> e4 to exist');
+        const branch = board.cloneWithMove(firstMove);
+        const branchedStart = branch.toFEN();
+
+        const reply = getMove(branch, 'e7', 'e5');
+        if (!reply) throw new Error('Expected move e7 -> e5 to exist on the cloned board');
+        branch.makeMove(reply);
+        branch.undoMove();
+
+        expect(branch.toFEN()).toBe(branchedStart);
+        expect(board.toFEN()).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
+    });
+
     it('returns detached square snapshots from the public API', () => {
         const board = new ChessBoard();
         const square = board.getSquare(0, 4);

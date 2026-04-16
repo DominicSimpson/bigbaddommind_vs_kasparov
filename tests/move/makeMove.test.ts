@@ -65,7 +65,7 @@ describe('makeMove', () => {
             const move = getMove(board, 'f7', 'g7');
             if (!move) throw new Error('Expected move f7 -> g7 to exist');
 
-            expect(board.getGameStatus()).toEqual({ status: 'ongoing' });
+            expect(board.getGameStatus()).toEqual({ status: 'active' });
 
             board.makeMove(move);
             
@@ -237,6 +237,18 @@ describe('makeMove', () => {
             expectPieceAt(board, 'd5', 'pawn', 'white');
             expect(board.toFEN()).toBe('4k3/8/8/3P4/8/8/8/4K3 b - - 0 1');
         });
+
+        it('removes the matching castling right when a rook is captured on its home square', () => {
+            const board = createBoard('r3k2r/8/8/7q/8/8/8/4K2R b Kkq - 4 1');
+            const move = getMove(board, 'h5', 'h1');
+            if (!move) throw new Error('Expected move h5 -> h1 to exist');
+
+            board.makeMove(move);
+
+            expectEmpty(board, 'h5');
+            expectPieceAt(board, 'h1', 'queen', 'black');
+            expect(board.toFEN()).toBe('r3k2r/8/8/8/8/8/8/4K2q w kq - 0 2');
+        });
     });
 
     describe('special-move flag inference', () => {
@@ -275,6 +287,18 @@ describe('makeMove', () => {
     });
 
     describe('promotion validation', () => {
+        it('applies a promotion capture and updates castling rights from the captured rook square', () => {
+            const board = createBoard('r3k3/1P6/8/8/8/8/8/4K3 w q - 7 1');
+            const move = getMove(board, 'b7', 'a8', { promotion: 'queen' });
+            if (!move) throw new Error('Expected move b7 -> a8=queen to exist');
+
+            board.makeMove(move);
+
+            expectEmpty(board, 'b7');
+            expectPieceAt(board, 'a8', 'queen', 'white');
+            expect(board.toFEN()).toBe('Q3k3/8/8/8/8/8/8/4K3 b - - 0 1');
+        });
+
         it('throws if a pawn reaches the last rank without a promotion choice', () => {
             const board = createBoard('5k2/2P5/8/8/8/8/8/4K3 w - - 0 1');
 

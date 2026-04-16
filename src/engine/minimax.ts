@@ -4,6 +4,7 @@ import { PIECE_VALUES } from "./evaluatePosition.js";
 import type { Move } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
 import type { PieceType } from "../pieces/Piece.js";
+import { isTerminalGameResult } from "../types/GameResult.js";
 
 // The minimax function implements the minimax algorithm 
 // with alpha-beta pruning to evaluate chess positions and determine the 
@@ -77,7 +78,7 @@ export function minimax(
 ): MinimaxResult {
     const legalMoves = board.getAllLegalMoves();
 
-    if (depth <= 0 || legalMoves.length === 0 || board.getGameStatus().status !== "ongoing") {
+    if (depth <= 0 || legalMoves.length === 0 || isTerminalGameResult(board.getGameStatus())) {
         return {
             move: null,
             score: evaluatePosition(board, perspective),
@@ -146,7 +147,7 @@ export function scoreMoves(
     options: MinimaxOptions = {}
 ): ScoredMove[] {
     const legalMoves = board.getAllLegalMoves();
-    if (legalMoves.length === 0 || board.getGameStatus().status !== "ongoing") {
+    if (legalMoves.length === 0 || isTerminalGameResult(board.getGameStatus())) {
         return [];
     }
 

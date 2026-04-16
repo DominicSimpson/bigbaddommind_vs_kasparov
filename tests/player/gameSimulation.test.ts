@@ -59,7 +59,7 @@ function playGame(
 ): { plies: number; result: GameResult } {
     for (let ply = 0; ply < maxPlies; ply++) {
         const result = board.getGameStatus();
-        if (result.status !== 'ongoing') {
+        if (result.status !== 'active' && result.status !== 'check') {
             return { plies: ply, result };
         }
 

@@ -1,7 +1,24 @@
 import type { Colour } from "./colour.js";
 
-// Union of object shapes representing the three possible game states:
+// Union of object shapes representing the possible game states:
 export type GameResult = 
-    | { status: "ongoing" }
+    | { status: "active" }
+    | { status: "check"; sideInCheck: Colour }
     | { status: "checkmate"; winner: Colour }
-    | { status: "draw"; reason: "stalemate" | "threefold" | "fiftyMove" | "insufficientMaterial" }
+    | { status: "stalemate" }
+    | { status: "drawByRepetition" }
+    | { status: "drawByFiftyMoveRule" }
+    | { status: "drawByInsufficientMaterial" };
+
+export function isTerminalGameResult(result: GameResult): boolean {
+    return result.status !== "active" && result.status !== "check";
+}
+
+export function isDrawGameResult(result: GameResult): boolean {
+    return (
+        result.status === "stalemate" ||
+        result.status === "drawByRepetition" ||
+        result.status === "drawByFiftyMoveRule" ||
+        result.status === "drawByInsufficientMaterial"
+    );
+}

@@ -59,7 +59,7 @@ describe('whole-game flow integration', () => {
     expectPieceAt(board, 'f1', 'rook', 'white');
     expectPieceAt(board, 'g8', 'king', 'black');
     expectPieceAt(board, 'f8', 'rook', 'black');
-    expect(board.getGameStatus()).toEqual({ status: 'ongoing' });
+    expect(board.getGameStatus()).toEqual({ status: 'active' });
     expect(board.getSideToMove()).toBe('white');
   });
 
@@ -84,7 +84,7 @@ describe('whole-game flow integration', () => {
     }
 
     expect(board.toFEN()).toBe(start);
-    expect(board.getGameStatus()).toEqual({ status: 'ongoing' });
+    expect(board.getGameStatus()).toEqual({ status: 'active' });
     expect(board.getSideToMove()).toBe('white');
     expect(board.canUndo()).toBe(false);
   });

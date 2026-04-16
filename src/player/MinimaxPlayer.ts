@@ -68,9 +68,8 @@ function resolveDifficulty(setting: MinimaxDifficulty | number): CanonicalMinima
 }
 
 function resolveDepth(setting: MinimaxDifficulty | number): number {
-    const difficulty = resolveDifficulty(setting);
-    if (difficulty) {
-        return MINIMAX_DIFFICULTY_PROFILES[difficulty].depth;
+    if (isMinimaxDifficulty(setting)) {
+        return MINIMAX_DIFFICULTY_PROFILES[toCanonicalDifficulty(setting)].depth;
     }
 
     if (!Number.isInteger(setting) || setting < 1) {

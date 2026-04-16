@@ -29,14 +29,14 @@ describe('threefold repetition', () => {
     playMove(board, 'c3', 'b1');
     playMove(board, 'c6', 'b8');
 
-    expect(board.getGameResult()).toEqual({ status: 'ongoing' });
+    expect(board.getGameResult()).toEqual({ status: 'active' });
 
     playMove(board, 'b1', 'c3');
     playMove(board, 'b8', 'c6');
     playMove(board, 'c3', 'b1');
     playMove(board, 'c6', 'b8');
 
-    expect(board.getGameResult()).toEqual({ status: 'draw', reason: 'threefold' });
+    expect(board.getGameResult()).toEqual({ status: 'drawByRepetition' });
   });
 
   it('does not declare a draw when the same position has occurred only twice', () => {
@@ -47,7 +47,7 @@ describe('threefold repetition', () => {
     playMove(board, 'c3', 'b1');
     playMove(board, 'c6', 'b8');
 
-    expect(board.getGameResult()).toEqual({ status: 'ongoing' });
+    expect(board.getGameResult()).toEqual({ status: 'active' });
   });
 
   it('removes the threefold draw when the last move is undone', () => {
@@ -62,11 +62,11 @@ describe('threefold repetition', () => {
     playMove(board, 'c3', 'b1');
     playMove(board, 'c6', 'b8');
 
-    expect(board.getGameResult()).toEqual({ status: 'draw', reason: 'threefold' });
+    expect(board.getGameResult()).toEqual({ status: 'drawByRepetition' });
 
     board.undoMove();
 
-    expect(board.getGameResult()).toEqual({ status: 'ongoing' });
+    expect(board.getGameResult()).toEqual({ status: 'active' });
   });
 
   it('clears move and position history without changing the current board', () => {
@@ -81,7 +81,7 @@ describe('threefold repetition', () => {
     playMove(board, 'c3', 'b1');
     playMove(board, 'c6', 'b8');
 
-    expect(board.getGameResult()).toEqual({ status: 'draw', reason: 'threefold' });
+    expect(board.getGameResult()).toEqual({ status: 'drawByRepetition' });
     expect(board.canUndo()).toBe(true);
 
     const before = board.toFEN();
@@ -89,7 +89,7 @@ describe('threefold repetition', () => {
 
     expect(board.toFEN()).toBe(before);
     expect(board.canUndo()).toBe(false);
-    expect(board.getGameResult()).toEqual({ status: 'ongoing' });
+    expect(board.getGameResult()).toEqual({ status: 'active' });
   });
   // This test ensures that the threefold repetition rule is correctly implemented by verifying 
   // that positions with different castling rights are not treated as 
@@ -103,7 +103,7 @@ describe('threefold repetition', () => {
     playMove(board, 'h7', 'h8');
 
     expect(board.toFEN()).toBe('r3k2r/8/8/8/8/8/8/R3K2R w Qq - 4 3');
-    expect(board.getGameResult()).toEqual({ status: 'ongoing' });
+    expect(board.getGameResult()).toEqual({ status: 'active' });
   });
   // This test ensures that the threefold repetition rule is correctly implemented by verifying 
   // that positions with different en passant availability are not treated as the same position, 
@@ -126,6 +126,6 @@ describe('threefold repetition', () => {
     playMove(board, 'f6', 'g8');
     playMove(board, 'f3', 'g1');
 
-    expect(board.getGameResult()).toEqual({ status: 'ongoing' });
+    expect(board.getGameResult()).toEqual({ status: 'active' });
   });
 });
