@@ -14,6 +14,7 @@ describe('ChessBoard basic functionality', () => {
         expect(board.canCastle('black', 'K')).toBe(true);
         expect(board.canCastle('black', 'Q')).toBe(true);
         expect(board.canUndo()).toBe(false);
+        expect(board.getMoveHistory()).toEqual([]);
         expect(board.toFEN()).toBe('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1');
         // white:
         expect(board.getSquare(0, 4).piece?.type).toBe('king');
@@ -45,6 +46,7 @@ describe('ChessBoard basic functionality', () => {
         expect(clone).not.toBe(board);
         expect(clone.toFEN()).toBe(board.toFEN());
         expect(clone.canUndo()).toBe(true);
+        expect(clone.getMoveHistory()).toEqual(board.getMoveHistory());
 
         clone.undoMove();
 
@@ -52,6 +54,49 @@ describe('ChessBoard basic functionality', () => {
         expect(board.toFEN()).toBe('rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1');
         expect(board.canUndo()).toBe(true);
         expect(clone.canUndo()).toBe(false);
+    });
+
+    it('records move history entries with move, capture, promotion and resulting position key', () => {
+        const board = new ChessBoard();
+        board.loadFEN('1r2k3/P7/8/8/8/8/8/4K3 w - - 0 1');
+
+        const move = getMove(board, 'a7', 'b8', { promotion: 'queen' });
+        if (!move) throw new Error('Expected promotion capture a7 -> b8=queen to exist');
+
+        board.makeMove(move);
+
+        expect(board.getMoveHistory()).toEqual([
+            {
+                move,
+                movedPiece: new Piece('pawn', 'white'),
+                capturedPiece: new Piece('rook', 'black'),
+                promotionPiece: 'queen',
+                positionKey: '1Q2k3/8/8/8/8/8/8/4K3 b - -',
+            },
+        ]);
+    });
+
+    it('returns detached move history snapshots', () => {
+        const board = new ChessBoard();
+        const move = getMove(board, 'e2', 'e4');
+        if (!move) throw new Error('Expected move e2 -> e4 to exist');
+
+        board.makeMove(move);
+
+        const history = board.getMoveHistory();
+        history[0].move.toFile = 0;
+        history[0].movedPiece = new Piece('queen', 'black');
+        history[0].capturedPiece = new Piece('bishop', 'white');
+
+        expect(board.getMoveHistory()).toEqual([
+            {
+                move,
+                movedPiece: new Piece('pawn', 'white'),
+                capturedPiece: null,
+                promotionPiece: null,
+                positionKey: 'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3',
+            },
+        ]);
     });
 
     it('creates a hypothetical position on a clone without mutating the original board', () => {

@@ -3,6 +3,7 @@ import { createBoard } from './utils/boardTestUtils.js';
 import { getMove } from '../move/utils/moveTestUtils.js';
 import type { PromotionPiece } from '../../src/types/Move.js';
 
+
 function playMove(
   board: ReturnType<typeof createBoard>,
   from: string,
@@ -63,10 +64,12 @@ describe('threefold repetition', () => {
     playMove(board, 'c6', 'b8');
 
     expect(board.getGameResult()).toEqual({ status: 'drawByRepetition' });
+    expect(board.getMoveHistory()).toHaveLength(8);
 
     board.undoMove();
 
     expect(board.getGameResult()).toEqual({ status: 'active' });
+    expect(board.getMoveHistory()).toHaveLength(7);
   });
 
   it('clears move and position history without changing the current board', () => {
@@ -89,6 +92,7 @@ describe('threefold repetition', () => {
 
     expect(board.toFEN()).toBe(before);
     expect(board.canUndo()).toBe(false);
+    expect(board.getMoveHistory()).toEqual([]);
     expect(board.getGameResult()).toEqual({ status: 'active' });
   });
   // This test ensures that the threefold repetition rule is correctly implemented by verifying 

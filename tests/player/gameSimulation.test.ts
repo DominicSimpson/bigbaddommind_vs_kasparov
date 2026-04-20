@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ChessBoard } from '../../src/board/ChessBoard.js';
+import { BasicComputerPlayer } from '../../src/player/BasicComputerPlayer.js';
+import { ComputerPlayer } from '../../src/player/ComputerPlayer.js';
 import { MinimaxPlayer } from '../../src/player/MinimaxPlayer.js';
 import { RandomMovePlayer } from '../../src/player/RandomMovePlayer.js';
 import type { Move } from '../../src/types/Move.js';
@@ -93,6 +95,36 @@ describe('game simulations', () => {
         const random = new RandomMovePlayer(createCyclingRandom([0.91, 0.17, 0.63, 0.28, 0.74]));
 
         const outcome = playGame(board, engine, random);
+
+        expect(outcome.plies).toBeGreaterThan(0);
+        expect(outcome.plies).toBeLessThanOrEqual(120);
+        expect(board.toFEN()).not.toBe(startingFen);
+    });
+
+    it('supports basic-computer-vs-random play from the starting position', () => {
+        const board = new ChessBoard();
+        const startingFen = board.toFEN();
+        const basic = new BasicComputerPlayer({
+            randomFn: createCyclingRandom([0.13, 0.67, 0.24, 0.81, 0.4]),
+        });
+        const random = new RandomMovePlayer(createCyclingRandom([0.91, 0.17, 0.63, 0.28, 0.74]));
+
+        const outcome = playGame(board, basic, random);
+
+        expect(outcome.plies).toBeGreaterThan(0);
+        expect(outcome.plies).toBeLessThanOrEqual(120);
+        expect(board.toFEN()).not.toBe(startingFen);
+    });
+
+    it('supports packaged easy-vs-medium computer play from the starting position', () => {
+        const board = new ChessBoard();
+        const startingFen = board.toFEN();
+        const easy = new ComputerPlayer('easy', {
+            randomFn: createCyclingRandom([0.05, 0.44, 0.87, 0.23, 0.61]),
+        });
+        const medium = new ComputerPlayer('medium');
+
+        const outcome = playGame(board, easy, medium);
 
         expect(outcome.plies).toBeGreaterThan(0);
         expect(outcome.plies).toBeLessThanOrEqual(120);

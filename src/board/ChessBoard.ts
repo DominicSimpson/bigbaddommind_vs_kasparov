@@ -7,6 +7,7 @@ import type { Move, PromotionPiece } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
 import type { CastlingRights } from "../types/CastlingRights.js";
 import type { UndoRecord } from "../types/UndoRecord.js";
+import type { MoveHistoryEntry } from "../types/MoveHistoryEntry.js";
 import { LegalMoveFilter } from "../move/LegalMoveFilter.js";
 import type { GameResult } from "../types/GameResult.js";
 import type { Delta } from "../types/delta.js";
@@ -142,6 +143,10 @@ export class ChessBoard {
 
     public canUndo(): boolean {
         return this.history.length > 0;
+    }
+
+    public getMoveHistory(): MoveHistoryEntry[] {
+        return this.history.map(record => this.toMoveHistoryEntry(record));
     }
 
     public clone(): ChessBoard {
@@ -1663,6 +1668,16 @@ export class ChessBoard {
             rookTo: record.rookTo ? { ...record.rookTo } : null,
             rookPiece: this.clonePiece(record.rookPiece),
             promotedTo: record.promotedTo,
+        };
+    }
+
+    private toMoveHistoryEntry(record: UndoRecord): MoveHistoryEntry {
+        return {
+            move: this.cloneMove(record.move),
+            movedPiece: new Piece(record.movedPiece.type, record.movedPiece.colour),
+            capturedPiece: this.clonePiece(record.capturedPiece),
+            promotionPiece: record.promotedTo,
+            positionKey: record.positionKeyAfter,
         };
     }
 
