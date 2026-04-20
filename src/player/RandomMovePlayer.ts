@@ -7,6 +7,10 @@ export class RandomMovePlayer {
     constructor(private readonly randomFn: () => number = Math.random) {}
 
     public chooseMove(board: ChessBoard, colour: Colour = board.getSideToMove()): Move | null {
+        if (colour !== board.getSideToMove()) {
+            throw new Error("RandomMovePlayer can only choose for the side to move.");
+        }
+
         const legalMoves = board.getAllLegalMoves(colour);
         if (legalMoves.length === 0) return null;
 

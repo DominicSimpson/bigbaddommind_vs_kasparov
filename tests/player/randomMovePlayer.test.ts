@@ -20,19 +20,6 @@ describe('RandomMovePlayer', () => {
         )).toBe(true);
     });
 
-    it('can choose moves for a specified side even when it is not that side to move', () => {
-        const board = createBoard('4k3/8/8/8/8/8/4P3/4K2R b - - 0 1');
-        const player = new RandomMovePlayer(() => 0);
-
-        const whiteMove = player.chooseMove(board, 'white');
-        const blackMove = player.chooseMove(board, 'black');
-
-        expect(whiteMove).not.toBeNull();
-        expect(blackMove).not.toBeNull();
-        expect(board.getAllLegalMoves('white')).toContainEqual(whiteMove!);
-        expect(board.getAllLegalMoves('black')).toContainEqual(blackMove!);
-    });
-
     it('plays a legal move on the board and returns it', () => {
         const board = createBoard('4k3/8/8/8/8/8/4P3/4K3 w - - 0 1');
         const player = new RandomMovePlayer(() => 0);
@@ -53,10 +40,13 @@ describe('RandomMovePlayer', () => {
         expect(player.playMove(board)).toBeNull();
     });
 
-    it('throws if asked to play for a side that is not to move', () => {
+    it('throws if asked to choose or play for a side that is not to move', () => {
         const board = new ChessBoard();
         const player = new RandomMovePlayer(() => 0);
 
+        expect(() => player.chooseMove(board, 'black')).toThrow(
+            'RandomMovePlayer can only choose for the side to move.'
+        );
         expect(() => player.playMove(board, 'black')).toThrow(
             'RandomMovePlayer can only play for the side to move.'
         );
