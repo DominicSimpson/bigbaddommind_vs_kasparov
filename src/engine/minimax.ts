@@ -41,6 +41,12 @@ const PROMOTION_BONUS: Record<PieceType, number> = {
     king: 0,
 };
 
+// // Assesses which legal moves looks promising before the full minimax search explores them:
+// // The heuristic favours:
+// Captures, especially winning a valuable piece with a cheaper piece
+// Promotions, with queen promotion getting the biggest bonus
+// Castling, with a small bonus
+// Centralising moves, by rewarding moves toward the center squares
 function scoreMoveHeuristically(board: ChessBoard, move: Move): number {
     const movingPiece = board.getSquare(move.fromRank, move.fromFile).piece;
     const targetPiece = board.getSquare(move.toRank, move.toFile).piece;
