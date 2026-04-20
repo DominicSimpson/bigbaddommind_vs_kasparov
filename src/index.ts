@@ -1,12 +1,10 @@
 import { ChessBoard } from "./board/ChessBoard.js";
+import { getAppElements } from "../ui/input.js";
+import { renderBoard } from "../ui/renderBoard.js";
+import { renderStatus } from "../ui/renderStatus.js";
 
 const board = new ChessBoard();
+const { boardRoot, status, turnBadge } = getAppElements();
 
-
-console.log(board.getSquare(1, 4).piece);
-console.log(board.getSquare(3, 4).piece);
-
-
-
-
-
+renderBoard(board, boardRoot);
+renderStatus(board, status, turnBadge);
