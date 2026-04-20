@@ -42,6 +42,9 @@ const PROMOTION_BONUS: Record<PieceType, number> = {
 };
 
 // // Assesses which legal moves looks promising before the full minimax search explores them:
+// // The actual position score still comes from evaluatePosition() at the minimax 
+// leaf nodes, not from this heuristic.
+
 // // The heuristic favours:
 // Captures, especially winning a valuable piece with a cheaper piece
 // Promotions, with queen promotion getting the biggest bonus
