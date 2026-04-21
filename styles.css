@@ -34,7 +34,7 @@ body {
   gap: 2rem;
 }
 
-.hero,
+.app-header,
 .board-panel {
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -43,7 +43,7 @@ body {
   backdrop-filter: blur(10px);
 }
 
-.hero {
+.app-header {
   padding: 2rem;
 }
 
@@ -55,12 +55,12 @@ body {
   color: var(--accent);
 }
 
-.hero h1,
+.app-header h1,
 .panel-header h2 {
   margin: 0;
 }
 
-.hero h1 {
+.app-header h1 {
   font-size: clamp(2.4rem, 6vw, 4.8rem);
   line-height: 0.95;
 }
@@ -169,7 +169,7 @@ body {
     padding-top: 1rem;
   }
 
-  .hero,
+  .app-header,
   .board-panel {
     padding: 1.1rem;
     border-radius: 18px;
