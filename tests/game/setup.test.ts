@@ -10,7 +10,7 @@ describe("game setup", () => {
       playerName: "Alice",
       sideLabels: {
         white: "Alice",
-        black: "Computer",
+        black: "DomDeepBlue",
       },
     });
   });
@@ -22,7 +22,7 @@ describe("game setup", () => {
       computerDifficulty: "hard",
       playerName: null,
       sideLabels: {
-        white: "Computer",
+        white: "DomDeepBlue",
         black: "Black",
       },
     });

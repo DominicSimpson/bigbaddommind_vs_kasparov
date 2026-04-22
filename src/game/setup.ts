@@ -2,6 +2,7 @@ import type { ComputerDifficulty } from "../player/ComputerPlayer.js";
 import type { Colour } from "../types/colour.js";
 
 export type SideLabels = Record<Colour, string>;
+const COMPUTER_NAME = "DomDeepBlue";
 
 export type GameSetup = {
   playerColour: Colour;
@@ -26,10 +27,10 @@ export function createGameSetup(
   const sideLabels: SideLabels = {
     white: playerColour === "white"
       ? normalizedPlayerName ?? "White"
-      : "Computer",
+      : COMPUTER_NAME,
     black: playerColour === "black"
       ? normalizedPlayerName ?? "Black"
-      : "Computer",
+      : COMPUTER_NAME,
   };
 
   return {
