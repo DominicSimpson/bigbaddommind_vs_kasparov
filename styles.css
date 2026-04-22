@@ -105,6 +105,126 @@ body {
   margin: 0 auto;
 }
 
+.setup-dialog {
+  width: min(92vw, 34rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  color: inherit;
+}
+
+.setup-dialog::backdrop {
+  background: rgba(33, 24, 18, 0.46);
+  backdrop-filter: blur(4px);
+}
+
+.setup-dialog__form {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.75rem;
+  background: linear-gradient(180deg, #fffaf0 0%, #f6ecdc 100%);
+  border: 1px solid rgba(71, 56, 38, 0.14);
+  border-radius: 24px;
+  box-shadow: 0 28px 80px rgba(39, 22, 8, 0.28);
+}
+
+.setup-dialog__title,
+.setup-dialog__section {
+  margin: 0;
+}
+
+.setup-dialog__title {
+  font-size: clamp(1.75rem, 4vw, 2.2rem);
+}
+
+.setup-dialog__description {
+  margin: -0.5rem 0 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.setup-dialog__section {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0;
+  border: 0;
+}
+
+.setup-dialog__section legend,
+.setup-dialog__label {
+  font-size: 0.98rem;
+  font-weight: 700;
+}
+
+.setup-dialog__choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.setup-dialog__choice {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.95rem 1rem;
+  border: 1px solid rgba(71, 56, 38, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+}
+
+.setup-dialog__choice:has(input:checked) {
+  border-color: rgba(164, 74, 63, 0.5);
+  box-shadow: 0 0 0 3px rgba(164, 74, 63, 0.12);
+}
+
+.setup-dialog__select {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(71, 56, 38, 0.18);
+  border-radius: 14px;
+  font: inherit;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.setup-dialog__input {
+  width: 100%;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(71, 56, 38, 0.18);
+  border-radius: 14px;
+  font: inherit;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.setup-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+}
+
+.setup-dialog__button {
+  padding: 0.8rem 1.15rem;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font: inherit;
+  cursor: pointer;
+}
+
+.setup-dialog__button--primary {
+  background: var(--accent);
+  color: #fffaf5;
+}
+
+.setup-dialog__button--secondary {
+  border-color: rgba(71, 56, 38, 0.15);
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--text);
+}
+
 .board-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -182,5 +302,14 @@ body {
 
   .turn-badge {
     width: fit-content;
+  }
+
+  .setup-dialog__choices,
+  .setup-dialog__actions {
+    grid-template-columns: 1fr;
+  }
+
+  .setup-dialog__actions {
+    display: grid;
   }
 }

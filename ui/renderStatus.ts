@@ -1,14 +1,16 @@
 import type { ChessBoard } from "../src/board/ChessBoard.js";
+import type { SideLabels } from "../src/game/setup.js";
 
 // UI for game outcome:
 export function renderStatus(
   board: ChessBoard,
   statusElement: HTMLElement,
   turnBadgeElement: HTMLElement,
+  sideLabels: SideLabels,
 ): void {
   const sideToMove = board.getSideToMove();
   const gameStatus = board.getGameStatus();
-  const sideLabel = sideToMove === "white" ? "White" : "Black";
+  const sideLabel = sideLabels[sideToMove];
 
   turnBadgeElement.textContent = `${sideLabel} to move`;
 
@@ -20,7 +22,7 @@ export function renderStatus(
       statusElement.textContent = `${sideLabel} is in check.`;
       return;
     case "checkmate":
-      statusElement.textContent = `Checkmate. ${capitalize(gameStatus.winner)} wins.`;
+      statusElement.textContent = `Checkmate. ${sideLabels[gameStatus.winner]} wins.`;
       return;
     case "stalemate":
       statusElement.textContent = "Stalemate.";
@@ -35,8 +37,4 @@ export function renderStatus(
       statusElement.textContent = "Draw by insufficient material.";
       return;
   }
-}
-
-function capitalize(value: string): string {
-  return value.charAt(0).toUpperCase() + value.slice(1);
 }

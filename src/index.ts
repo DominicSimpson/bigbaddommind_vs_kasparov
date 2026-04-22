@@ -1,18 +1,25 @@
 import { ChessBoard } from "./board/ChessBoard.js";
+import { createGameSetup } from "./game/setup.js";
+import type { SideLabels } from "./game/setup.js";
 import { createComputerPlayer } from "./player/ComputerPlayer.js";
+import type { ComputerDifficulty } from "./player/ComputerPlayer.js";
 import { isTerminalGameResult } from "./types/GameResult.js";
 import type { Colour } from "./types/colour.js";
-import { choosePlayerColour } from "../ui/choosePlayerColour.js";
+import { chooseGameOptions } from "../ui/modalPopupWindow.js";
 import { getAppElements } from "../ui/input.js";
 import { renderBoard } from "../ui/renderBoard.js";
 import { renderStatus } from "../ui/renderStatus.js";
 
 const board = new ChessBoard();
 const { boardRoot, status, turnBadge } = getAppElements();
+let sideLabels: SideLabels = {
+  white: "White",
+  black: "Black",
+};
 
 function renderGame(): void {
   renderBoard(board, boardRoot);
-  renderStatus(board, status, turnBadge);
+  renderStatus(board, status, turnBadge, sideLabels);
 }
 
 function renderSetupError(message: string): void {
@@ -21,7 +28,10 @@ function renderSetupError(message: string): void {
   turnBadge.textContent = "";
 }
 
-function playComputerTurnIfNeeded(computerColour: Colour): void {
+function playComputerTurnIfNeeded(
+  computerColour: Colour,
+  computerDifficulty: ComputerDifficulty,
+): void {
   if (board.getSideToMove() !== computerColour) {
     return;
   }
@@ -39,19 +49,21 @@ function playComputerTurnIfNeeded(computerColour: Colour): void {
       return;
     }
 
-    const computerPlayer = createComputerPlayer("medium");
+    const computerPlayer = createComputerPlayer(computerDifficulty);
     computerPlayer.playMove(board, computerColour);
     renderGame();
   }, 250);
 }
 
-function initialiseGame(): void {
+async function initialiseGame(): Promise<void> {
   try {
-    const playerColour = choosePlayerColour();
-    const computerColour: Colour = playerColour === "white" ? "black" : "white";
+    const { playerColour, computerDifficulty, playerName } = await chooseGameOptions();
+    const setup = createGameSetup(playerColour, computerDifficulty, playerName);
+    const computerColour: Colour = setup.computerColour;
+    sideLabels = setup.sideLabels;
 
     renderGame();
-    playComputerTurnIfNeeded(computerColour);
+    playComputerTurnIfNeeded(computerColour, setup.computerDifficulty);
   } catch (error) {
     const message = error instanceof Error
       ? error.message
@@ -61,4 +73,4 @@ function initialiseGame(): void {
   }
 }
 
-initialiseGame();
+void initialiseGame();
