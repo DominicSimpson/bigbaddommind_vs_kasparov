@@ -23,6 +23,7 @@ const pieceSymbols: Record<Colour, Record<PieceType, string>> = {
   },
 };
 
+// render chess board
 export function renderBoard(board: ChessBoard, root: HTMLElement): void {
   root.replaceChildren();
 

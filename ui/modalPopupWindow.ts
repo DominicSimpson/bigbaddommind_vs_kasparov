@@ -7,6 +7,8 @@ export type SelectedGameOptions = {
   playerName: string | null;
 };
 
+
+// checkboxes
 function createRadioOption(
   name: string,
   value: string,
@@ -30,6 +32,7 @@ function createRadioOption(
   return option;
 }
 
+// Options in pop-up modal window before game starts
 export function chooseGameOptions(): Promise<SelectedGameOptions> {
   return new Promise<SelectedGameOptions>((resolve, reject) => {
     const dialog = document.createElement("dialog");
@@ -50,7 +53,7 @@ export function chooseGameOptions(): Promise<SelectedGameOptions> {
 
     const colourSection = document.createElement("fieldset");
     colourSection.className = "setup-dialog__section";
-
+    // player chooses their pawn colour
     const colourLegend = document.createElement("legend");
     colourLegend.textContent = "Which colour would you like to play?";
 
@@ -65,7 +68,7 @@ export function chooseGameOptions(): Promise<SelectedGameOptions> {
 
     const difficultySection = document.createElement("label");
     difficultySection.className = "setup-dialog__section";
-
+    // Game difficulty level
     const difficultyLabel = document.createElement("span");
     difficultyLabel.className = "setup-dialog__label";
     difficultyLabel.textContent = "Computer difficulty";
@@ -95,7 +98,7 @@ export function chooseGameOptions(): Promise<SelectedGameOptions> {
 
     const playerNameSection = document.createElement("label");
     playerNameSection.className = "setup-dialog__section";
-
+    // Player's name (not mandatory to fill in):
     const playerNameLabel = document.createElement("span");
     playerNameLabel.className = "setup-dialog__label";
     playerNameLabel.textContent = "Your name (optional)";
@@ -112,7 +115,7 @@ export function chooseGameOptions(): Promise<SelectedGameOptions> {
 
     const actions = document.createElement("div");
     actions.className = "setup-dialog__actions";
-
+    // if player wants to cancel game:
     const cancelButton = document.createElement("button");
     cancelButton.className = "setup-dialog__button setup-dialog__button--secondary";
     cancelButton.type = "button";
@@ -120,7 +123,7 @@ export function chooseGameOptions(): Promise<SelectedGameOptions> {
     cancelButton.addEventListener("click", () => {
       dialog.close("cancel");
     });
-
+    // start game:
     const submitButton = document.createElement("button");
     submitButton.className = "setup-dialog__button setup-dialog__button--primary";
     submitButton.type = "submit";

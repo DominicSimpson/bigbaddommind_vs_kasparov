@@ -5,7 +5,8 @@ import type { SideLabels } from "../src/game/setup.js";
 export function renderStatus(
   board: ChessBoard,
   statusElement: HTMLElement,
-  turnBadgeElement: HTMLElement,
+  turnBadgeElement: HTMLElement, // DOM element where UI shows whose turn it is
+  // If sideLabel is "white", that element's visible text becomes "White to move"
   sideLabels: SideLabels,
 ): void {
   const sideToMove = board.getSideToMove();

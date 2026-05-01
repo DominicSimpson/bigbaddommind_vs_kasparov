@@ -3,7 +3,7 @@ import { findBestMove, scoreMoves } from "../engine/minimax.js";
 import type { Move } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
 
-
+// Game difficulty levels:
 export const MINIMAX_DIFFICULTY_PROFILES = {
     easy: {
         depth: 1,

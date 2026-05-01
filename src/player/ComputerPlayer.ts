@@ -15,6 +15,11 @@ export interface ComputerPlayerOptions {
     randomFn?: () => number;
 }
 
+// // This class does not evaluate moves itself. It chooses which strategy 
+// implementation to use based on difficulty and delegates to another player:
+// easy -> RandomMovePlayer
+// medium -> MinimaxPlayer("medium")
+// hard -> MinimaxPlayer("hard")
 export class ComputerPlayer {
     public readonly difficulty: ComputerDifficulty;
 

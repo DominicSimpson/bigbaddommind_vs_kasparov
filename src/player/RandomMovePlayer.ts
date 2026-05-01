@@ -2,7 +2,9 @@ import type { ChessBoard } from "../board/ChessBoard.js";
 import type { Move } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
 
-// A simple player that selects a random legal move from the current position and plays it on the board:
+// // A simple player that selects a random legal move from the current position 
+// and plays it on the board. Based on "easy" level of computer difficulty 
+// (see player/ComputerPlayer.ts):
 export class RandomMovePlayer {
     constructor(private readonly randomFn: () => number = Math.random) {}
 

@@ -1,6 +1,7 @@
 import type { ComputerDifficulty } from "../player/ComputerPlayer.js";
 import type { Colour } from "../types/colour.js";
 
+// Computer player's name:
 export type SideLabels = Record<Colour, string>;
 const COMPUTER_NAME = "DomDeepBlue";
 
@@ -24,6 +25,8 @@ export function createGameSetup(
   const computerColour = getOpponentColour(playerColour);
   const normalizedPlayerName = playerName?.trim() || null;
 
+  // If human player doesn't input a name (optional), default their name
+  // to whatever the colour is that they have chosen:
   const sideLabels: SideLabels = {
     white: playerColour === "white"
       ? normalizedPlayerName ?? "White"

@@ -7,13 +7,20 @@ interface BasicComputerPlayerOptions {
     randomFn?: () => number;
     preferCaptures?: boolean;
     preferCheck?: boolean;
-    avoidHangingPieces?: boolean;
+    avoidHangingPieces?: boolean; // see below
 }
 
 const CHECKMATE_BONUS = 100000;
 const CHECK_BONUS = 75;
+// Controls how scared the computer is of moving 
+// a piece onto a square where it can be taken:
 const HANGING_PIECE_PENALTY_FACTOR = 1;
 
+// // Class scores each legal move with simple heuristics:
+// bonus for captures
+// bonus for check/checkmate
+// penalty for moving a piece onto an attacked square
+// Then it picks the highest-scoring move, breaking ties randomly:
 export class BasicComputerPlayer {
     private readonly randomFn: () => number;
 
@@ -58,7 +65,7 @@ export class BasicComputerPlayer {
         const index = Math.floor(this.randomFn() * bestMoves.length);
         return bestMoves[Math.min(index, bestMoves.length - 1)];
     }
-
+    // Stops the computer player from accidentially playing a move as the human player:
     public playMove(board: ChessBoard, colour: Colour = board.getSideToMove()): Move | null {
         if (colour !== board.getSideToMove()) {
             throw new Error("BasicComputerPlayer can only play for the side to move.");
@@ -100,7 +107,7 @@ export class BasicComputerPlayer {
 
         return score;
     }
-
+    // Assigns the same value as a normal pawn capture:
     private getCaptureBonus(board: ChessBoard, move: Move): number {
         if (move.enPassant) {
             return PIECE_VALUES.pawn;
