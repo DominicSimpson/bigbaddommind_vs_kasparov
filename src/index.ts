@@ -29,6 +29,11 @@ let selectedCoord: string | null = null;
 let computerColour: Colour | null = null;
 let computerDifficulty: ComputerDifficulty | null = null;
 let isAwaitingPromotionChoice = false;
+// // How long the computer "thinks" for before making a move, in milliseconds.
+// This is just to make the computer's moves feel less instantaneous and robotic,
+// which makes the game more evenly paced and enjoyable:
+const COMPUTER_MOVE_DELAY_MS = 2000;
+
 
 function getLegalMovesForCoord(coord: string | null): Move[] {
   if (!coord) {
@@ -176,7 +181,7 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
 // // Computer-move trigger. It:
 // - checks whether it's currently the computer's turn
 // - checks the game isn't already over
-// - waits 250ms
+// - waits 2000ms
 // - checks those conditions again
 // - creates a computer player and tells it to make a move
 // - re-renders the UI
@@ -205,7 +210,7 @@ function playComputerTurnIfNeeded(
     computerPlayer.playMove(board, computerColour);
     selectedCoord = null;
     renderGame();
-  }, 250);
+  }, COMPUTER_MOVE_DELAY_MS);
 }
 
 // startup flow:
