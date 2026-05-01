@@ -1,11 +1,24 @@
 import type { ComputerDifficulty } from "../src/player/ComputerPlayer.js";
 import type { Colour } from "../src/types/colour.js";
+import type { PromotionPiece } from "../src/types/Move.js";
 
 export type SelectedGameOptions = {
   playerColour: Colour;
   computerDifficulty: ComputerDifficulty;
   playerName: string | null;
 };
+
+// Promotion options for when a pawn reaches the final rank:
+const PROMOTION_OPTIONS: ReadonlyArray<{
+  value: PromotionPiece;
+  label: string;
+  description: string;
+}> = [
+  { value: "queen", label: "Queen", description: "Strongest all-round option." },
+  { value: "rook", label: "Rook", description: "Straight-line power and pressure." },
+  { value: "bishop", label: "Bishop", description: "Diagonal control across the board." },
+  { value: "knight", label: "Knight", description: "L-shaped moves for tricky forks." },
+];
 
 
 // checkboxes
@@ -182,6 +195,79 @@ export function chooseGameOptions(): Promise<SelectedGameOptions> {
         computerDifficulty: selectedDifficulty,
         playerName: trimmedPlayerName.length > 0 ? trimmedPlayerName : null,
       });
+    }, { once: true });
+
+    dialog.showModal();
+  });
+}
+
+// // When a pawn reaches the final rank, this pop-up modal prompts the player 
+// to choose which piece they want to promote to. The function returns a 
+// Promise that resolves to the chosen promotion piece, or rejects if the 
+// selection is cancelled. The UI is built using a <dialog> element, 
+// with buttons for each promotion option, and appropriate event listeners 
+// for handling user interactions:
+export function choosePromotionPiece(colour: Colour): Promise<PromotionPiece> {
+  return new Promise<PromotionPiece>((resolve, reject) => {
+    const dialog = document.createElement("dialog");
+    dialog.className = "setup-dialog";
+
+    const form = document.createElement("form");
+    form.className = "setup-dialog__form";
+    form.method = "dialog";
+
+    const title = document.createElement("h2");
+    title.className = "setup-dialog__title";
+    title.textContent = "Choose a promotion";
+
+    const description = document.createElement("p");
+    description.className = "setup-dialog__description";
+    description.textContent = `${colour === "white" ? "White" : "Black"} pawn reached the final rank. Pick the piece to promote to.`;
+
+    const section = document.createElement("fieldset");
+    section.className = "setup-dialog__section";
+
+    const legend = document.createElement("legend");
+    legend.textContent = "Promotion piece";
+
+    const choices = document.createElement("div");
+    choices.className = "setup-dialog__promotion-grid";
+
+    for (const optionData of PROMOTION_OPTIONS) {
+      const button = document.createElement("button");
+      button.className = "setup-dialog__promotion-option";
+      button.type = "button";
+      button.value = optionData.value;
+
+      const label = document.createElement("span");
+      label.className = "setup-dialog__promotion-name";
+      label.textContent = optionData.label;
+
+      const detail = document.createElement("span");
+      detail.className = "setup-dialog__promotion-detail";
+      detail.textContent = optionData.description;
+
+      button.append(label, detail);
+      button.addEventListener("click", () => {
+        cleanup();
+        resolve(optionData.value);
+      });
+      choices.append(button);
+    }
+
+    section.append(legend, choices);
+    form.append(title, description, section);
+    dialog.append(form);
+    document.body.append(dialog);
+
+    const cleanup = (): void => {
+      dialog.remove();
+    };
+
+    dialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      cleanup();
+      reject(new Error("Promotion selection was cancelled."));
     }, { once: true });
 
     dialog.showModal();

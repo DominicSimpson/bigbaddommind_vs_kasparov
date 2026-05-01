@@ -17,7 +17,7 @@ export function renderStatus(
 
   switch (gameStatus.status) {
     case "active":
-      statusElement.textContent = "Starting position loaded. Ready for move input.";
+      statusElement.textContent = "Select a piece to see its legal moves, then click a destination square.";
       return;
     case "check":
       statusElement.textContent = `${sideLabel} is in check.`;
