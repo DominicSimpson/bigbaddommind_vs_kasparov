@@ -22,6 +22,7 @@ export type SelectedGameOptions = {
 
 let activeStatusDialog: HTMLDialogElement | null = null;
 let activeStatusDialogTimeoutId: number | null = null;
+const STATUS_DIALOG_TIMEOUT_MS = 3000;
 
 // Promotion options for when a pawn reaches the final rank:
 const PROMOTION_OPTIONS: ReadonlyArray<{
@@ -90,7 +91,7 @@ function closeActiveStatusDialog(): void {
 // including a title, description, and actions section. It returns the created 
 // dialog element along with references to the form and actions container for 
 // further customisation by the caller:
-function createStatusDialog(titleText: string, descriptionText: string): {
+function createStatusDialog(titleText: string | null, descriptionText: string): {
   dialog: HTMLDialogElement;
   form: HTMLFormElement;
   actions: HTMLDivElement;
@@ -102,10 +103,6 @@ function createStatusDialog(titleText: string, descriptionText: string): {
   form.className = "setup-dialog__form";
   form.method = "dialog";
 
-  const title = document.createElement("h2");
-  title.className = "setup-dialog__title";
-  title.textContent = titleText;
-
   const description = document.createElement("p");
   description.className = "setup-dialog__description";
   description.textContent = descriptionText;
@@ -113,7 +110,14 @@ function createStatusDialog(titleText: string, descriptionText: string): {
   const actions = document.createElement("div");
   actions.className = "setup-dialog__actions";
 
-  form.append(title, description, actions);
+  if (titleText) {
+    const title = document.createElement("h2");
+    title.className = "setup-dialog__title";
+    title.textContent = titleText;
+    form.append(title);
+  }
+
+  form.append(description, actions);
   dialog.append(form);
 
   return { dialog, form, actions };
@@ -124,11 +128,14 @@ export function resetStatusDialogs(): void {
 }
 
 // This function displays a temporary modal with a 
-// status message (e.g. "White is in check"):
-export function showTimedStatusModal(message: string, durationMs: number): void {
+// status message (e.g. "White is in check") for three seconds:
+export function showTimedStatusModal(
+  message: string,
+  durationMs = STATUS_DIALOG_TIMEOUT_MS,
+): void {
   closeActiveStatusDialog();
 
-  const { dialog, actions } = createStatusDialog("Game update", message);
+  const { dialog, actions } = createStatusDialog(null, message);
   const dismissButton = document.createElement("button");
   dismissButton.className = "setup-dialog__button setup-dialog__button--secondary";
   dismissButton.type = "button";

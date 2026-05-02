@@ -3,10 +3,21 @@ import type { ChessBoard } from "../src/board/ChessBoard.js";
 import type { PieceType } from "../src/pieces/Piece.js";
 import type { Colour } from "../src/types/colour.js";
 
-// board rendering logic, which converts the ChessBoard state into HTML elements, 
+// // Types related to rendering the chess board and pieces, and the computer 
+// move animation:
+export type ComputerMovePreview = {
+  originCoord: string;
+  currentCoord: string;
+  colour: Colour;
+  pieceType: PieceType;
+};
+
+// // Board rendering logic, which converts the ChessBoard state into HTML elements, 
 // and also defines the piece symbols and other UI-related types:
 export type BoardRenderState = {
   selectedCoord?: string | null;
+  computerMovingCoord?: string | null;
+  computerMovePreview?: ComputerMovePreview | null;
   legalMoveCoords?: ReadonlySet<string>;
   legalCaptureCoords?: ReadonlySet<string>;
 };
@@ -37,6 +48,8 @@ export function renderBoard(
   root: HTMLElement,
   {
     selectedCoord = null,
+    computerMovingCoord = null,
+    computerMovePreview = null,
     legalMoveCoords = new Set<string>(),
     legalCaptureCoords = new Set<string>(),
   }: BoardRenderState = {},
@@ -89,15 +102,51 @@ export function renderBoard(
         squareElement.append(fileLabel);
       }
 
-      if (square.piece) {
+      const previewOccupiesSquare = (
+        computerMovePreview
+        && square.coord === computerMovePreview.currentCoord
+        && square.coord !== computerMovePreview.originCoord
+      );
+      const hideOriginalPiece = (
+        computerMovePreview
+        && square.coord === computerMovePreview.originCoord
+        && computerMovePreview.currentCoord !== computerMovePreview.originCoord
+      );
+
+      if (square.piece && !previewOccupiesSquare && !hideOriginalPiece) {
         const pieceElement = document.createElement("span");
-        pieceElement.className = "piece";
+        const pieceClasses = ["piece"];
+        // This is used to trigger the "moving..." visual effect on the 
+        // piece that's about to move, while the computer is "thinking".
+        // This helps the human player track the computer's move, because 
+        // the move happens immediately after the computer "thinks",
+        // with no visual transition or indication of which piece just moved:
+        if (square.coord === computerMovingCoord) {
+          pieceClasses.push("piece--computer-moving");
+        }
+
+        pieceElement.className = pieceClasses.join(" ");
         pieceElement.textContent = pieceSymbols[square.piece.colour][square.piece.type];
         pieceElement.setAttribute(
           "aria-label",
           `${square.piece.colour} ${square.piece.type} on ${square.coord}`,
         );
         squareElement.append(pieceElement);
+      }
+
+      if (
+        computerMovePreview
+        && square.coord === computerMovePreview.currentCoord
+        && computerMovePreview.currentCoord !== computerMovePreview.originCoord
+      ) {
+        const previewPieceElement = document.createElement("span");
+        previewPieceElement.className = "piece piece--computer-moving piece--computer-preview";
+        previewPieceElement.textContent = pieceSymbols[computerMovePreview.colour][computerMovePreview.pieceType];
+        previewPieceElement.setAttribute(
+          "aria-label",
+          `${computerMovePreview.colour} ${computerMovePreview.pieceType} moving through ${computerMovePreview.currentCoord}`,
+        );
+        squareElement.append(previewPieceElement);
       }
 
       grid.append(squareElement);

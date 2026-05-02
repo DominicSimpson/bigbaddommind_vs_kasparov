@@ -9,8 +9,6 @@ import { showReplayModal, showTimedStatusModal } from "./modalPopupWindow.js";
 // important status changes (e.g. when a player is in check or when 
 // the game ends) and ensures that these pop-ups are not shown repeatedly 
 // for the same status:
-const STATUS_MODAL_DURATION_MS = 3000;
-
 let lastAnnouncedStatusKey: string | null = null;
 
 type RenderStatusOptions = {
@@ -57,9 +55,9 @@ export function renderStatus(
 
   switch (gameStatus.status) {
     case "check":
-      statusElement.textContent = `${sideLabel} is in check.`;
+      statusElement.textContent = "";
       if (shouldAnnounceStatus) {
-        showTimedStatusModal(statusElement.textContent, STATUS_MODAL_DURATION_MS);
+        showTimedStatusModal(`${sideLabel} is in check.`);
       }
       return;
     case "checkmate":

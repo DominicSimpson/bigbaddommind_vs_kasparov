@@ -32,7 +32,7 @@ describe("ComputerPlayer", () => {
     });
 
     it("creates a hard player that matches deeper minimax with move ordering", () => {
-        const board = createBoard("4k3/8/8/8/8/8/3q4/3RK3 w - - 0 1");
+        const board = createBoard("4k3/8/8/8/8/8/4q3/3RK3 w - - 0 1");
         const player = createComputerPlayer("hard");
 
         expect(player.chooseMove(board)).toEqual(findBestMove(board, 4, "white", {

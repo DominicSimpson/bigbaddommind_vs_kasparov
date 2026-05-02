@@ -365,6 +365,24 @@ body {
     text-shadow 140ms ease;
 }
 
+.piece--computer-moving {
+  -webkit-text-stroke: 1.2px rgba(0, 95, 204, 0.95);
+  color: #0b63d1;
+  text-shadow:
+    -1px 0 rgba(0, 95, 204, 0.95),
+    1px 0 rgba(0, 95, 204, 0.95),
+    0 -1px rgba(0, 95, 204, 0.95),
+    0 1px rgba(0, 95, 204, 0.95),
+    0 0 0.75rem rgba(138, 193, 255, 0.55);
+  filter: drop-shadow(0 0 0.4rem rgba(0, 95, 204, 0.28));
+}
+
+.piece--computer-preview {
+  position: relative;
+  z-index: 2;
+  transform: scale(1.08);
+}
+
 .square.occupied {
   cursor: pointer;
 }
