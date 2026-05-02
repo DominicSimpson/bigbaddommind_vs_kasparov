@@ -4,6 +4,8 @@ import { describe, expect, it } from "vitest";
 import { ChessBoard } from "../../src/board/ChessBoard.js";
 import { renderBoard } from "../../ui/renderBoard.js";
 
+// Helper function to create a clean root element for rendering 
+// the board in each test
 function createRoot(): HTMLDivElement {
   const root = document.createElement("div");
   document.body.replaceChildren(root);
