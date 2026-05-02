@@ -2,11 +2,26 @@ import type { ComputerDifficulty } from "../src/player/ComputerPlayer.js";
 import type { Colour } from "../src/types/colour.js";
 import type { PromotionPiece } from "../src/types/Move.js";
 
+// // This file contains functions for creating and managing pop-up modal 
+// windows in the UI, such as the game setup dialog, promotion choice dialog, 
+// and status update modals. The modals are implemented using the HTML 
+// <dialog> element, with dynamic content and event listeners for user 
+// interactions. The functions include:
+// - chooseGameOptions: Prompts the player to select their colour, 
+// computer difficulty, and optionally enter their name before starting a new game.
+// - choosePromotionPiece: When a pawn reaches the final rank, prompts the player 
+// to choose which piece to promote to.
+// - showTimedStatusModal: Displays a temporary modal with a status message (e.g. "White is in check") 
+// that automatically dismisses after a specified duration.
+// - showReplayModal: When the game ends, shows a modal with the result and offers the option to play again:
 export type SelectedGameOptions = {
   playerColour: Colour;
   computerDifficulty: ComputerDifficulty;
   playerName: string | null;
 };
+
+let activeStatusDialog: HTMLDialogElement | null = null;
+let activeStatusDialogTimeoutId: number | null = null;
 
 // Promotion options for when a pawn reaches the final rank:
 const PROMOTION_OPTIONS: ReadonlyArray<{
@@ -43,6 +58,163 @@ function createRadioOption(
   option.append(input, text);
 
   return option;
+}
+
+// Utility functions for managing the active status dialog, 
+// ensuring that only one is open at a time and that timeouts 
+// are properly cleared when dialogs are closed or replaced:
+function clearActiveStatusDialogTimeout(): void {
+  if (activeStatusDialogTimeoutId !== null) {
+    window.clearTimeout(activeStatusDialogTimeoutId);
+    activeStatusDialogTimeoutId = null;
+  }
+}
+
+// Closes the currently active status dialog, if there is one, 
+// and clears any associated timeouts:
+function closeActiveStatusDialog(): void {
+  clearActiveStatusDialogTimeout();
+
+  if (activeStatusDialog) {
+    if (activeStatusDialog.open) {
+      activeStatusDialog.close();
+      return;
+    }
+
+    activeStatusDialog.remove();
+    activeStatusDialog = null;
+  }
+}
+
+// // This helper function creates a standardized structure for status dialogs, 
+// including a title, description, and actions section. It returns the created 
+// dialog element along with references to the form and actions container for 
+// further customisation by the caller:
+function createStatusDialog(titleText: string, descriptionText: string): {
+  dialog: HTMLDialogElement;
+  form: HTMLFormElement;
+  actions: HTMLDivElement;
+} {
+  const dialog = document.createElement("dialog");
+  dialog.className = "setup-dialog";
+
+  const form = document.createElement("form");
+  form.className = "setup-dialog__form";
+  form.method = "dialog";
+
+  const title = document.createElement("h2");
+  title.className = "setup-dialog__title";
+  title.textContent = titleText;
+
+  const description = document.createElement("p");
+  description.className = "setup-dialog__description";
+  description.textContent = descriptionText;
+
+  const actions = document.createElement("div");
+  actions.className = "setup-dialog__actions";
+
+  form.append(title, description, actions);
+  dialog.append(form);
+
+  return { dialog, form, actions };
+}
+
+export function resetStatusDialogs(): void {
+  closeActiveStatusDialog();
+}
+
+// This function displays a temporary modal with a 
+// status message (e.g. "White is in check"):
+export function showTimedStatusModal(message: string, durationMs: number): void {
+  closeActiveStatusDialog();
+
+  const { dialog, actions } = createStatusDialog("Game update", message);
+  const dismissButton = document.createElement("button");
+  dismissButton.className = "setup-dialog__button setup-dialog__button--secondary";
+  dismissButton.type = "button";
+  dismissButton.textContent = "Dismiss";
+  dismissButton.addEventListener("click", () => {
+    dialog.close();
+  });
+
+  actions.append(dismissButton);
+  document.body.append(dialog);
+  activeStatusDialog = dialog;
+
+  dialog.addEventListener("close", () => {
+    clearActiveStatusDialogTimeout();
+    if (activeStatusDialog === dialog) {
+      activeStatusDialog = null;
+    }
+    dialog.remove();
+  }, { once: true });
+
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    dialog.close();
+  });
+
+  dialog.showModal();
+  activeStatusDialogTimeoutId = window.setTimeout(() => {
+    if (dialog.open) {
+      dialog.close();
+    }
+  }, durationMs);
+}
+
+// When the game ends, this pop-up modal shows the result and offers 
+// the option to play again. The function takes a message to display 
+// (e.g. "White wins by checkmate") and a callback function to execute 
+// if the player chooses to play again. The UI is built using a <dialog> 
+// element, with buttons for closing the dialog or starting a new game, 
+// and appropriate event listeners for handling user interactions:
+export function showReplayModal(
+  message: string,
+  onPlayAgain: () => void,
+): void {
+  closeActiveStatusDialog();
+
+  const { dialog, actions } = createStatusDialog("Game over", message);
+
+  const closeButton = document.createElement("button");
+  closeButton.className = "setup-dialog__button setup-dialog__button--secondary";
+  closeButton.type = "button";
+  closeButton.textContent = "Close";
+  closeButton.addEventListener("click", () => {
+    dialog.close();
+  });
+
+  const playAgainButton = document.createElement("button");
+  playAgainButton.className = "setup-dialog__button setup-dialog__button--primary";
+  playAgainButton.type = "button";
+  playAgainButton.textContent = "Play again";
+  playAgainButton.addEventListener("click", () => {
+    dialog.close("playAgain");
+  });
+
+  actions.append(closeButton, playAgainButton);
+  document.body.append(dialog);
+  activeStatusDialog = dialog;
+
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    dialog.close();
+  });
+
+  dialog.addEventListener("close", () => {
+    if (activeStatusDialog === dialog) {
+      activeStatusDialog = null;
+    }
+
+    const shouldPlayAgain = dialog.returnValue === "playAgain";
+    dialog.remove();
+
+    if (shouldPlayAgain) {
+      onPlayAgain();
+    }
+  }, { once: true });
+
+  dialog.showModal();
 }
 
 // Options in pop-up modal window before game starts

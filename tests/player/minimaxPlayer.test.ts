@@ -7,7 +7,7 @@ import {
     MinimaxPlayer,
 } from '../../src/player/MinimaxPlayer.js';
 import { createBoard, expectBoardUnchanged } from '../board/utils/boardTestUtils.js';
-import { findBestMove } from '../../src/engine/minimax.js';
+import { findBestMove, scoreMoves } from '../../src/engine/minimax.js';
 
 describe('MinimaxPlayer', () => {
     it('maps named difficulty levels to search depths', () => {
@@ -77,7 +77,7 @@ describe('MinimaxPlayer', () => {
     });
 
     it('plays the best move deterministically on medium and hard', () => {
-        const board = createBoard('4k3/8/8/8/8/8/3q4/3RK3 w - - 0 1');
+        const board = createBoard('4k3/8/8/8/8/8/4q3/3RK3 w - - 0 1');
         const medium = new MinimaxPlayer('intermediate');
         const hard = new MinimaxPlayer('advanced');
 
@@ -85,6 +85,21 @@ describe('MinimaxPlayer', () => {
         expect(hard.chooseMove(board)).toEqual(findBestMove(board, hard.getSearchDepth(), 'white', {
             orderMoves: true,
         }));
+    });
+
+    it('randomises between equally scored best moves', () => {
+        const board = new ChessBoard();
+        const player = new MinimaxPlayer('medium', { randomFn: () => 0.99 });
+
+        const scoredMoves = scoreMoves(board, player.getSearchDepth(), 'white');
+        const bestScore = scoredMoves[0]?.score;
+        const bestMoves = scoredMoves.filter(({ score }) => score === bestScore).map(({ move }) => move);
+        const move = player.chooseMove(board);
+
+        expect(bestMoves.length).toBeGreaterThan(1);
+        expect(move).not.toBeNull();
+        expect(bestMoves).toContainEqual(move!);
+        expect(move).not.toEqual(bestMoves[0]);
     });
 
     it('chooses a legal move for the current side to move', () => {

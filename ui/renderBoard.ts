@@ -12,7 +12,7 @@ export type BoardRenderState = {
 };
 
 // For UI:
-const pieceSymbols: Record<Colour, Record<PieceType, string>> = {
+export const pieceSymbols: Record<Colour, Record<PieceType, string>> = {
   white: {
     king: "♔",
     queen: "♕",

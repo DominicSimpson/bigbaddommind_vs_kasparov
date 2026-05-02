@@ -8,10 +8,15 @@ import { isTerminalGameResult } from "./types/GameResult.js";
 import type { Colour } from "./types/colour.js";
 import { FILES, RANKS } from "./types/coords.js";
 import type { Move } from "./types/Move.js";
-import { chooseGameOptions, choosePromotionPiece } from "../ui/modalPopupWindow.js";
+import {
+  chooseGameOptions,
+  choosePromotionPiece,
+  resetStatusDialogs,
+} from "../ui/modalPopupWindow.js";
 import { getAppElements } from "../ui/input.js";
 import { renderBoard } from "../ui/renderBoard.js";
-import { renderStatus } from "../ui/renderStatus.js";
+import { renderCapturedPieces } from "../ui/renderCapturedPieces.js";
+import { renderStatus, resetStatusAnnouncements } from "../ui/renderStatus.js";
 
 // Coordinator file that starts the game, connects the model to the UI, 
 // and asks the computer to move when appropriate
@@ -19,7 +24,7 @@ import { renderStatus } from "../ui/renderStatus.js";
 // single ChessBoard instance for the whole app:
 const board = new ChessBoard();
 // grabs DOM elements like the board container and status labels:
-const { boardRoot, status, turnBadge } = getAppElements();
+const { boardRoot, status, turnBadge, capturedPieces } = getAppElements();
 let sideLabels: SideLabels = {
   white: "White",
   black: "Black",
@@ -33,6 +38,7 @@ let isAwaitingPromotionChoice = false;
 // This is just to make the computer's moves feel less instantaneous and robotic,
 // which makes the game more evenly paced and enjoyable:
 const COMPUTER_MOVE_DELAY_MS = 2000;
+const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
 function getLegalMovesForCoord(coord: string | null): Move[] {
@@ -70,7 +76,12 @@ function renderGame(): void {
     legalMoveCoords,
     legalCaptureCoords,
   });
-  renderStatus(board, status, turnBadge, sideLabels);
+  renderStatus(board, status, turnBadge, sideLabels, {
+    onPlayAgain: () => {
+      void initialiseGame(false);
+    },
+  });
+  renderCapturedPieces(board, capturedPieces);
 }
 
 // If setup fails, it still renders the board, shows the error text, 
@@ -79,6 +90,15 @@ function renderSetupError(message: string): void {
   renderBoard(board, boardRoot, { selectedCoord });
   status.textContent = message;
   turnBadge.textContent = "";
+  renderCapturedPieces(board, capturedPieces);
+}
+
+function resetBoardForNewGame(): void {
+  board.loadFEN(INITIAL_POSITION_FEN);
+  selectedCoord = null;
+  isAwaitingPromotionChoice = false;
+  resetStatusDialogs();
+  resetStatusAnnouncements();
 }
 
 function getSquareByCoord(coord: string): Square | null {
@@ -214,7 +234,7 @@ function playComputerTurnIfNeeded(
 }
 
 // startup flow:
-async function initialiseGame(): Promise<void> {
+async function initialiseGame(showSetupErrorOnCancel = true): Promise<void> {
   try {
     const {
       playerColour: chosenPlayerColour,
@@ -222,7 +242,7 @@ async function initialiseGame(): Promise<void> {
       playerName,
     } = await chooseGameOptions();
     const setup = createGameSetup(chosenPlayerColour, chosenComputerDifficulty, playerName);
-    selectedCoord = null;
+    resetBoardForNewGame();
     playerColour = setup.playerColour;
     computerColour = setup.computerColour;
     computerDifficulty = setup.computerDifficulty;
@@ -231,6 +251,11 @@ async function initialiseGame(): Promise<void> {
     renderGame();
     playComputerTurnIfNeeded(setup.computerColour, setup.computerDifficulty);
   } catch (error) {
+    if (!showSetupErrorOnCancel && error instanceof Error && error.message === "Player colour selection was cancelled.") {
+      renderGame();
+      return;
+    }
+
     const message = error instanceof Error
       ? error.message
       : "Unable to start the game setup.";

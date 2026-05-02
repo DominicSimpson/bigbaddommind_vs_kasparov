@@ -4,6 +4,7 @@ export type AppElements = {
   boardRoot: HTMLDivElement; // board container
   status: HTMLParagraphElement; // a paragraph for status text
   turnBadge: HTMLDivElement; // a div showing whose turn it is
+  capturedPieces: HTMLElement; // captured pieces panel
 };
 
 // generic helper that returns element from document.querySelector:
@@ -24,5 +25,6 @@ export function getAppElements(): AppElements {
     boardRoot: requireElement<HTMLDivElement>("#chessboard"),
     status: requireElement<HTMLParagraphElement>("#status"),
     turnBadge: requireElement<HTMLDivElement>("#turn-badge"),
+    capturedPieces: requireElement<HTMLElement>("#captured-pieces"),
   };
 }

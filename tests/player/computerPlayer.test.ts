@@ -25,7 +25,7 @@ describe("ComputerPlayer", () => {
     });
 
     it("creates a medium player that matches shallow minimax", () => {
-        const board = createBoard("4k3/8/8/8/8/8/3q4/3RK3 w - - 0 1");
+        const board = createBoard("4k3/8/8/8/8/8/4q3/3RK3 w - - 0 1");
         const player = createComputerPlayer("medium");
 
         expect(player.chooseMove(board)).toEqual(findBestMove(board, 2, "white"));
@@ -38,6 +38,16 @@ describe("ComputerPlayer", () => {
         expect(player.chooseMove(board)).toEqual(findBestMove(board, 4, "white", {
             orderMoves: true,
         }));
+    });
+
+    it("passes its random function through to minimax-based difficulties", () => {
+        const board = new ChessBoard();
+        const firstMove = createComputerPlayer("medium", { randomFn: () => 0 }).chooseMove(board);
+        const laterMove = createComputerPlayer("medium", { randomFn: () => 0.99 }).chooseMove(board);
+
+        expect(firstMove).not.toBeNull();
+        expect(laterMove).not.toBeNull();
+        expect(firstMove).not.toEqual(laterMove);
     });
 
     it("plays a legal move on the board", () => {

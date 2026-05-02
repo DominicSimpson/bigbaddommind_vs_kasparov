@@ -6,6 +6,8 @@ import { RandomMovePlayer } from "./RandomMovePlayer.js";
 
 export type ComputerDifficulty = "easy" | "medium" | "hard";
 
+// // This module defines the ComputerPlayer class, which represents 
+// an AI opponent in the chess game:
 interface PlayerLike {
     chooseMove(board: ChessBoard, colour?: Colour): Move | null;
     playMove(board: ChessBoard, colour?: Colour): Move | null;
@@ -46,9 +48,9 @@ export class ComputerPlayer {
             case "easy":
                 return new RandomMovePlayer(options.randomFn);
             case "medium":
-                return new MinimaxPlayer("medium");
+                return new MinimaxPlayer("medium", options);
             case "hard":
-                return new MinimaxPlayer("hard");
+                return new MinimaxPlayer("hard", options);
             default: {
                 const exhaustiveCheck: never = difficulty;
                 throw new Error(`Unsupported computer difficulty: ${exhaustiveCheck}`);

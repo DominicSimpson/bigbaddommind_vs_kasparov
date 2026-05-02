@@ -23,15 +23,16 @@
     </section>
 
     <section class="board-panel" aria-label="Chess board panel">
-      <div class="panel-header">
-        <div>
-          <h2>Board</h2>
-          <p id="status" class="status-text">Loading position...</p>
+      <div class="board-layout">
+        <div class="board-column">
+          <p id="status" class="status-text"></p>
+          <div id="chessboard" class="board-frame" aria-label="Chess board"></div>
         </div>
-        <div id="turn-badge" class="turn-badge" aria-live="polite"></div>
+        <div class="panel-sidebar">
+          <div id="turn-badge" class="turn-badge" aria-live="polite"></div>
+          <section id="captured-pieces" class="captured-panel" aria-live="polite"></section>
+        </div>
       </div>
-
-      <div id="chessboard" class="board-frame" aria-label="Chess board"></div>
     </section>
   </main>
 
