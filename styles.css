@@ -26,7 +26,11 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: "Trebuchet MS", Arial, sans-serif;
+  font-family: "Arial Narrow", Arial, sans-serif;
+  font-stretch: condensed;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text);
   background:
     linear-gradient(rgba(36, 27, 18, 0.16), rgba(36, 27, 18, 0.16)),
@@ -36,7 +40,7 @@ body {
 }
 
 .app-shell {
-  width: min(1120px, calc(100% - 2rem));
+  width: min(1680px, calc(100% - 2rem));
   margin: 0 auto;
   padding: 3rem 0 4rem;
   display: grid;
@@ -90,7 +94,7 @@ body {
 
 .board-layout {
   display: grid;
-  grid-template-columns: minmax(10.5rem, 13rem) minmax(0, 1fr) minmax(15rem, 18rem);
+  grid-template-columns: minmax(10.5rem, 13rem) minmax(0, 3fr) minmax(60rem, 82rem);
   align-items: stretch;
   gap: 1.5rem;
 }
@@ -103,6 +107,11 @@ body {
 .panel-sidebar {
   display: grid;
   gap: 0.85rem;
+  justify-self: end;
+  align-self: start;
+  width: min(100%, 21rem);
+  min-width: 0;
+  margin-right: 0;
 }
 
 .status-text {
@@ -208,8 +217,14 @@ body {
 }
 
 .team-mate-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-right: 0;
+  box-sizing: border-box;
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) 2.35rem minmax(0, 1.8fr);
+  grid-template-columns: max-content 2.1rem minmax(0, 1fr);
+  justify-content: end;
   align-items: stretch;
   min-height: 10.25rem;
   padding: 0.8rem;
@@ -225,7 +240,7 @@ body {
   display: grid;
   align-content: center;
   gap: 0.4rem;
-  padding: 0.4rem 0.65rem 0.4rem 0.1rem;
+  padding: 0.4rem 0.45rem 0.4rem 0.1rem;
 }
 
 .team-mate-panel__row {
@@ -236,9 +251,11 @@ body {
 }
 
 .team-mate-panel__command {
+  font-family: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  font-stretch: condensed;
+  letter-spacing: 0.11em;
   text-transform: uppercase;
   color: #f0f2ed;
 }
@@ -277,37 +294,59 @@ body {
 
 .team-mate-panel__brand {
   display: grid;
+  grid-template-columns: max-content 1.15rem;
   align-content: center;
-  gap: 0.2rem;
-  padding: 0.4rem 0.15rem 0.4rem 0.6rem;
+  align-items: center;
+  column-gap: 1.35rem;
+  min-width: 0;
+  justify-self: start;
+  align-self: start;
+  padding: 0.4rem 0.35rem 0.4rem 0.75rem;
+  margin-top: 0.4rem;
   border-left: 1px solid rgba(255, 255, 255, 0.08);
   color: #f3f4ef;
 }
 
+.team-mate-panel__brand-text {
+  display: grid;
+  gap: 0.2rem;
+  min-width: 0;
+  justify-self: start;
+}
+
 .team-mate-panel__brand-title {
-  font-size: 1.9rem;
-  font-weight: 300;
-  letter-spacing: 0.04em;
-  line-height: 0.92;
+  font-family: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  font-size: 1.95rem;
+  font-weight: 700;
+  font-stretch: condensed;
+  letter-spacing: 0.015em;
+  line-height: 0.9;
+  white-space: nowrap;
+  text-transform: uppercase;
 }
 
 .team-mate-panel__brand-subtitle {
+  font-family: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
   font-size: 1rem;
   font-weight: 700;
-  letter-spacing: 0.09em;
-  line-height: 1.1;
+  font-stretch: condensed;
+  letter-spacing: 0.07em;
+  line-height: 1.05;
+  white-space: nowrap;
+  text-transform: uppercase;
 }
 
-.team-mate-panel__kasparov {
+.team-mate-panel__brand-strip {
   justify-self: end;
-  margin-top: 0.95rem;
-  padding: 0.22rem 0.55rem 0.18rem;
-  background: linear-gradient(180deg, #efefeb 0%, #d8d8d3 100%);
-  color: #6a6d70;
-  font-size: 0.84rem;
-  font-style: italic;
-  letter-spacing: 0.09em;
-  transform: rotate(-2deg);
+  align-self: stretch;
+  width: 100%;
+  min-height: 4.4rem;
+  background: linear-gradient(180deg, #f6f6f1 0%, #ecece6 100%);
+  border-left: 1px solid rgba(255, 255, 255, 0.72);
+  border-right: 1px solid rgba(98, 103, 106, 0.38);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+    0 0 0 1px rgba(19, 22, 24, 0.32);
 }
 
 .board-frame {
@@ -715,9 +754,17 @@ body {
   color: #e3e5e1;
 }
 
+.board-panel {
+  overflow: visible;
+}
+
+.panel-sidebar {
+  overflow: visible;
+}
+
 @media (max-width: 700px) {
   .app-shell {
-    width: min(100% - 1rem, 1120px);
+    width: min(100% - 1rem, 1680px);
     padding-top: 1rem;
   }
 
@@ -770,6 +817,7 @@ body {
   }
 
   .team-mate-panel__brand {
+    grid-template-columns: minmax(0, 1fr) 0.9rem;
     padding: 0.35rem 0 0;
     border-left: 0;
     border-top: 1px solid rgba(255, 255, 255, 0.08);

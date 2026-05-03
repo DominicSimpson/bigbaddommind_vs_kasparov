@@ -101,6 +101,9 @@ function renderTeamMatePanel(
   const logoBlock = document.createElement("div");
   logoBlock.className = "team-mate-panel__brand";
 
+  const logoText = document.createElement("div");
+  logoText.className = "team-mate-panel__brand-text";
+
   const logoTitle = document.createElement("div");
   logoTitle.className = "team-mate-panel__brand-title";
   logoTitle.textContent = "TEAM-MATE";
@@ -109,11 +112,12 @@ function renderTeamMatePanel(
   logoSubtitle.className = "team-mate-panel__brand-subtitle";
   logoSubtitle.textContent = "CHESS COMPUTER";
 
-  const kasparovTag = document.createElement("div");
-  kasparovTag.className = "team-mate-panel__kasparov";
-  kasparovTag.textContent = "KASPAROV";
+  const whiteStrip = document.createElement("div");
+  whiteStrip.className = "team-mate-panel__brand-strip";
+  whiteStrip.setAttribute("aria-hidden", "true");
 
-  logoBlock.append(logoTitle, logoSubtitle, kasparovTag);
+  logoText.append(logoTitle, logoSubtitle);
+  logoBlock.append(logoText, whiteStrip);
   panel.append(commandStack, stripePanel, logoBlock);
   root.replaceChildren(panel);
 }
