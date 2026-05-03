@@ -22,27 +22,28 @@ export type BoardRenderState = {
   legalCaptureCoords?: ReadonlySet<string>;
 };
 
-// For UI:
+// For UI: mapping from piece types and colours to their corresponding 
+// Unicode symbols for display purposes:
 export const pieceSymbols: Record<Colour, Record<PieceType, string>> = {
   white: {
-    king: "♔",
-    queen: "♕",
-    rook: "♖",
-    bishop: "♗",
-    knight: "♘",
-    pawn: "♙",
+    king: "\u2654",
+    queen: "\u2655",
+    rook: "\u2656",
+    bishop: "\u2657",
+    knight: "\u2658",
+    pawn: "\u2659",
   },
   black: {
-    king: "♚",
-    queen: "♛",
-    rook: "♜",
-    bishop: "♝",
-    knight: "♞",
-    pawn: "♟",
+    king: "\u265A",
+    queen: "\u265B",
+    rook: "\u265C",
+    bishop: "\u265D",
+    knight: "\u265E",
+    pawn: "\u265F",
   },
 };
 
-// render chess board
+// Render chess board:
 export function renderBoard(
   board: ChessBoard,
   root: HTMLElement,
@@ -56,9 +57,35 @@ export function renderBoard(
 ): void {
   root.replaceChildren();
 
+  const boardShell = document.createElement("div");
+  boardShell.className = "board-shell";
+
+  const leftAxis = document.createElement("div");
+  leftAxis.className = "board-axis board-axis--left";
+
+  for (const rank of [...RANKS].reverse()) {
+    const axisCell = document.createElement("div");
+    axisCell.className = "board-axis__cell";
+
+    const tick = document.createElement("span");
+    tick.className = "board-axis__tick";
+    axisCell.append(tick);
+
+    const label = document.createElement("span");
+    label.className = "board-axis__label";
+    label.textContent = String(rank + 1);
+    axisCell.append(label);
+
+    leftAxis.append(axisCell);
+  }
+
+  const boardScreen = document.createElement("div");
+  boardScreen.className = "board-screen";
+
   const grid = document.createElement("div");
   grid.className = "board-grid";
-  // visual effect for when player clicks on the selected piece:
+  
+
   for (const rank of [...RANKS].reverse()) {
     for (const file of FILES) {
       const square = board.getSquare(rank, file);
@@ -71,7 +98,7 @@ export function renderBoard(
       if (square.piece) {
         classes.push("occupied");
       }
-      // when the player clicks on a piece, it highlights the square:
+
       if (square.coord === selectedCoord) {
         classes.push("selected");
       }
@@ -116,11 +143,7 @@ export function renderBoard(
       if (square.piece && !previewOccupiesSquare && !hideOriginalPiece) {
         const pieceElement = document.createElement("span");
         const pieceClasses = ["piece"];
-        // This is used to trigger the "moving..." visual effect on the 
-        // piece that's about to move, while the computer is "thinking".
-        // This helps the human player track the computer's move, because 
-        // the move happens immediately after the computer "thinks",
-        // with no visual transition or indication of which piece just moved:
+
         if (square.coord === computerMovingCoord) {
           pieceClasses.push("piece--computer-moving");
         }
@@ -153,5 +176,27 @@ export function renderBoard(
     }
   }
 
-  root.append(grid);
+  boardScreen.append(grid);
+
+  const bottomAxis = document.createElement("div");
+  bottomAxis.className = "board-axis board-axis--bottom";
+
+  for (const file of FILES) {
+    const axisCell = document.createElement("div");
+    axisCell.className = "board-axis__cell";
+
+    const label = document.createElement("span");
+    label.className = "board-axis__label";
+    label.textContent = "abcdefgh"[file];
+    axisCell.append(label);
+
+    const tick = document.createElement("span");
+    tick.className = "board-axis__tick";
+    axisCell.append(tick);
+
+    bottomAxis.append(axisCell);
+  }
+
+  boardShell.append(leftAxis, boardScreen, bottomAxis);
+  root.append(boardShell);
 }
