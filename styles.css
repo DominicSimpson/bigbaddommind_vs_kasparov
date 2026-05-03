@@ -646,16 +646,19 @@ body {
     0 0.2rem 0.3rem rgba(0, 0, 0, 0.35);
 }
 
-.square.dark .piece {
-  color: #fbfbf7;
+.piece[aria-label^="black"] {
+ color: #050607;
+  text-shadow:
+    -1px 0 #fff,
+    1px 0 #fff,
+    0 -1px #fff,
+    0 1px #fff;
+    -webkit-text-stroke: 0.1px rgba(138, 119, 119, 0.75);
 }
 
-.piece[aria-label^="black"] {
-  color: #0d1012;
-  text-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.06),
-    0 -1px 0 rgba(0, 0, 0, 0.45),
-    0 0.18rem 0.35rem rgba(0, 0, 0, 0.34);
+.piece[aria-label^="white"] {
+  color: #fbfbf7;
+  -webkit-text-stroke: 0.6px rgba(255, 255, 255, 0.95);
 }
 
 .piece--computer-moving {
