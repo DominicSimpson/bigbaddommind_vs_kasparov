@@ -11,8 +11,16 @@ import { showReplayModal, showTimedStatusModal } from "./modalPopupWindow.js";
 // for the same status:
 let lastAnnouncedStatusKey: string | null = null;
 
+// Types related to rendering the game status and the team-mate panel:
 type RenderStatusOptions = {
   onPlayAgain?: () => void;
+};
+
+// // This type defines the structure of the information needed to render 
+// the team-mate panel:
+type TeamMateIndicator = {
+  label: string;
+  active: boolean;
 };
 
 // // This helper function generates a unique key for the current game status, 
@@ -35,6 +43,81 @@ export function resetStatusAnnouncements(): void {
   lastAnnouncedStatusKey = null;
 }
 
+// // This function creates a single row in the team-mate panel, 
+// consisting of a label and an LED indicator that is active or 
+// inactive based on the provided information:
+function createIndicatorRow({ label, active }: TeamMateIndicator): HTMLElement {
+  const row = document.createElement("div");
+  row.className = "team-mate-panel__row";
+
+  const labelElement = document.createElement("span");
+  labelElement.className = "team-mate-panel__command";
+  labelElement.textContent = label;
+
+  const led = document.createElement("span");
+  led.className = active ? "team-mate-panel__led is-active" : "team-mate-panel__led";
+  led.setAttribute("aria-hidden", "true");
+
+  row.append(labelElement, led);
+  return row;
+}
+
+// // This function renders the team-mate panel, which shows the current 
+// side to move, whether the player is in check, and whether the game 
+// has ended. It uses the provided side labels and game status to 
+// determine which indicators should be active:
+function renderTeamMatePanel(
+  root: HTMLElement,
+  sideLabels: SideLabels,
+  sideToMove: "white" | "black",
+  gameStatus: GameResult,
+): void {
+  const isCheck = gameStatus.status === "check";
+  const isEnd = gameStatus.status === "checkmate";
+  const showInfo = !isCheck && !isEnd;
+  const indicators: TeamMateIndicator[] = [
+    { label: sideLabels.white, active: sideToMove === "white" && !isEnd },
+    { label: sideLabels.black, active: sideToMove === "black" && !isEnd },
+    { label: "Check", active: isCheck },
+    { label: "End", active: isEnd },
+    { label: "Info", active: showInfo },
+  ];
+
+  const panel = document.createElement("section");
+  panel.className = "team-mate-panel";
+  panel.setAttribute("aria-label", "Team-Mate computer status panel");
+
+  const commandStack = document.createElement("div");
+  commandStack.className = "team-mate-panel__commands";
+
+  for (const indicator of indicators) {
+    commandStack.append(createIndicatorRow(indicator));
+  }
+
+  const stripePanel = document.createElement("div");
+  stripePanel.className = "team-mate-panel__stripes";
+  stripePanel.setAttribute("aria-hidden", "true");
+
+  const logoBlock = document.createElement("div");
+  logoBlock.className = "team-mate-panel__brand";
+
+  const logoTitle = document.createElement("div");
+  logoTitle.className = "team-mate-panel__brand-title";
+  logoTitle.textContent = "TEAM-MATE";
+
+  const logoSubtitle = document.createElement("div");
+  logoSubtitle.className = "team-mate-panel__brand-subtitle";
+  logoSubtitle.textContent = "CHESS COMPUTER";
+
+  const kasparovTag = document.createElement("div");
+  kasparovTag.className = "team-mate-panel__kasparov";
+  kasparovTag.textContent = "KASPAROV";
+
+  logoBlock.append(logoTitle, logoSubtitle, kasparovTag);
+  panel.append(commandStack, stripePanel, logoBlock);
+  root.replaceChildren(panel);
+}
+
 // UI for game outcome:
 export function renderStatus(
   board: ChessBoard,
@@ -50,7 +133,7 @@ export function renderStatus(
   const statusAnnouncementKey = getStatusAnnouncementKey(gameStatus);
   const shouldAnnounceStatus = statusAnnouncementKey !== lastAnnouncedStatusKey;
 
-  turnBadgeElement.textContent = `${sideLabel} to move`;
+  renderTeamMatePanel(turnBadgeElement, sideLabels, sideToMove, gameStatus);
   lastAnnouncedStatusKey = statusAnnouncementKey;
 
   switch (gameStatus.status) {
