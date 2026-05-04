@@ -1,6 +1,43 @@
 import { ChessBoard } from "./board/ChessBoard.js";
 import { createGameSetup } from "./game/setup.js";
 import type { SideLabels } from "./game/setup.js";
+import {
+  isCastlingMove,
+  isCaptureMove,
+  isEnPassantMove,
+  isOrdinaryMoveCandidate,
+  isOrdinaryMoveSoundState,
+  isPromotionMove,
+  playCastlingSound,
+  playCaptureSound,
+  playCheckSound,
+  playCheckmateSound,
+  playEnPassantSound,
+  playOrdinaryMoveSound,
+  playQuitGameSound,
+  playPromotionSound,
+  isQuitGameSoundState,
+  preloadCastlingSound,
+  preloadCaptureSound,
+  preloadCheckSound,
+  preloadCheckmateSound,
+  preloadDrawByFiftyMoveRuleSound,
+  preloadDrawByInsufficientMaterialSound,
+  preloadDrawByThreefoldRepetitionSound,
+  preloadEnPassantSound,
+  preloadOrdinaryMoveSound,
+  preloadPromotionSound,
+  preloadQuitGameSound,
+  preloadStalemateSound,
+  playDrawByFiftyMoveRuleSound,
+  playDrawByInsufficientMaterialSound,
+  playDrawByThreefoldRepetitionSound,
+  playStalemateSound,
+  isDrawByFiftyMoveRuleSoundState,
+  isStalemateSoundState,
+  isDrawByThreefoldRepetitionSoundState,
+  isDrawByInsufficientMaterialSoundState,
+} from "./audio/moveSound.js";
 import { createComputerPlayer } from "./player/ComputerPlayer.js";
 import type { ComputerDifficulty } from "./player/ComputerPlayer.js";
 import type { Square } from "./board/Square.js";
@@ -201,6 +238,76 @@ function getComputerMoveTraversalCoords(move: Move, pieceType: PieceType): strin
   return buildLinearTraversalCoords(move);
 }
 
+// // Applies a move to the board, then checks the new 
+// board state to determine which move sound to play. 
+// For example, if the move puts the opponent in check, 
+// it plays the check sound. If it's an ordinary move that doesn't put either 
+// player in check, it plays the ordinary move sound:
+function applyMove(move: Move): void {
+  const shouldPlayCastlingSound = isCastlingMove(board, move);
+  const shouldPlayCaptureSound = isCaptureMove(board, move);
+  const shouldPlayEnPassantSound = isEnPassantMove(board, move);
+  const shouldPlayPromotionSound = isPromotionMove(board, move);
+  const shouldPlayMoveSound = isOrdinaryMoveCandidate(board, move);
+
+  board.makeMove(move);
+  const gameStatus = board.getGameStatus();
+
+  if (gameStatus.status === "checkmate") {
+    playCheckmateSound();
+    return;
+  }
+
+  if (gameStatus.status === "check") {
+    playCheckSound();
+    return;
+  }
+
+  if (isDrawByFiftyMoveRuleSoundState(board, move)) {
+    playDrawByFiftyMoveRuleSound();
+    return;
+  }
+
+  if (isDrawByThreefoldRepetitionSoundState(board)) {
+    playDrawByThreefoldRepetitionSound();
+    return;
+  }
+
+  if (isDrawByInsufficientMaterialSoundState(board)) {
+    playDrawByInsufficientMaterialSound();
+    return;
+  }
+
+  if (isStalemateSoundState(board)) {
+    playStalemateSound();
+    return;
+  }
+
+  if (shouldPlayCastlingSound) {
+    playCastlingSound();
+    return;
+  }
+
+  if (shouldPlayEnPassantSound) {
+    playEnPassantSound();
+    return;
+  }
+
+  if (shouldPlayPromotionSound) {
+    playPromotionSound();
+    return;
+  }
+
+  if (shouldPlayCaptureSound) {
+    playCaptureSound();
+    return;
+  }
+
+  if (shouldPlayMoveSound && isOrdinaryMoveSoundState(board)) {
+    playOrdinaryMoveSound();
+  }
+}
+
 // // Animates the computer's move by updating the computerMovePreview 
 // // state with intermediate coordinates. The piece then visually "moves" 
 // // across the board by re-rendering the board for each intermediate coordinate.
@@ -319,8 +426,10 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
       isAwaitingPromotionChoice = false;
     }
   }
-
-  board.makeMove(chosenMove);
+  // // At this point, we have the player's chosen move, and if it was a promotion,
+  // we've already asked the player which piece they want to promote to and updated 
+  // the chosen move accordingly. So now we can just apply the move and update the UI:
+  applyMove(chosenMove);
   selectedCoord = null;
   computerMovingCoord = null;
   computerMovePreview = null;
@@ -397,7 +506,7 @@ function playComputerTurnIfNeeded(
           return;
         }
 
-        board.makeMove(chosenMove);
+        applyMove(chosenMove);
         selectedCoord = null;
         computerMovingCoord = null;
         computerMovePreview = null;
@@ -424,7 +533,13 @@ async function initialiseGame(showSetupErrorOnCancel = true): Promise<void> {
     renderGame();
     playComputerTurnIfNeeded(setup.computerColour, setup.computerDifficulty);
   } catch (error) {
-    if (!showSetupErrorOnCancel && error instanceof Error && error.message === "Player colour selection was cancelled.") {
+    const setupWasCancelled = error instanceof Error && error.message === "Player colour selection was cancelled.";
+
+    if (setupWasCancelled && isQuitGameSoundState(board)) {
+      playQuitGameSound();
+    }
+
+    if (!showSetupErrorOnCancel && setupWasCancelled) {
       renderGame();
       return;
     }
@@ -437,5 +552,17 @@ async function initialiseGame(showSetupErrorOnCancel = true): Promise<void> {
   }
 }
 // kicks everything off when the module loads:
+preloadOrdinaryMoveSound();
+preloadCaptureSound();
+preloadCastlingSound();
+preloadCheckSound();
+preloadEnPassantSound();
+preloadPromotionSound();
+preloadCheckmateSound();
+preloadDrawByFiftyMoveRuleSound();
+preloadDrawByThreefoldRepetitionSound();
+preloadDrawByInsufficientMaterialSound();
+preloadStalemateSound();
+preloadQuitGameSound();
 boardRoot.addEventListener("click", handleBoardClick);
 void initialiseGame();
