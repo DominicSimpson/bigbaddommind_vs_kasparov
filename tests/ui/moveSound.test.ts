@@ -8,9 +8,14 @@ import {
   isDrawByThreefoldRepetitionSoundState,
   isEnPassantMove,
   isCheckSoundState,
+  isCheckmateSoundState,
   isOrdinaryMoveSoundState,
   isOrdinaryMoveCandidate,
   isPromotionMove,
+  playCaptureSound,
+  playCheckmateSound,
+  playCheckSound,
+  playOrdinaryMoveSound,
   isQuitGameSoundState,
   isStalemateSoundState,
 } from "../../src/audio/moveSound.js";
@@ -72,8 +77,8 @@ describe("moveSound", () => {
   });
 
   it("triggers the check sound state when white is put in check", () => {
-    const board = createBoard("4k3/8/8/8/8/8/4r3/4K3 b - - 0 1");
-    const move = getMove(board, "e2", "e1");
+    const board = createBoard("4k3/r7/8/8/8/8/8/4K3 b - - 0 1");
+    const move = getMove(board, "a7", "a1");
 
     expect(move).toBeTruthy();
 
@@ -99,7 +104,7 @@ describe("moveSound", () => {
   });
 
   it("treats a capture that gives checkmate as checkmate rather than a capture outcome", () => {
-    const board = createBoard("7k/6pp/5Q2/8/8/8/8/6K1 w - - 0 1");
+    const board = createBoard("7k/6pp/5Q1K/8/8/8/8/8 w - - 0 1");
     const move = getMove(board, "f6", "g7");
 
     expect(move).toBeTruthy();
@@ -107,7 +112,86 @@ describe("moveSound", () => {
 
     board.makeMove(move!);
 
+    expect(isCheckmateSoundState(board)).toBe(true);
     expect(board.getGameStatus()).toEqual({ status: "checkmate", winner: "white" });
+  });
+
+  it("uses a distinct capture sound and supersedes it with check or checkmate after capturing moves", () => {
+    const createdSources: string[] = [];
+
+    class MockAudio {
+      public preload = "";
+      public currentTime = 0;
+
+      constructor(public readonly src: string) {
+        createdSources.push(src);
+      }
+
+      load(): void {}
+
+      play(): Promise<void> {
+        return Promise.resolve();
+      }
+    }
+
+    const originalAudio = globalThis.Audio;
+    globalThis.Audio = MockAudio as unknown as typeof Audio;
+
+    try {
+      playOrdinaryMoveSound();
+      playCaptureSound();
+      playCheckSound();
+      playCheckmateSound();
+
+      const ordinaryMoveSource = "/sounds/chesssounds_ordinarymove.mp3";
+      const captureSource = "/sounds/chesssounds_capture.mp3";
+      const checkSource = "/sounds/chesssounds_check.mp3";
+      const checkmateSource = "/sounds/chesssounds_checkmate.mp3";
+
+      expect(createdSources).toContain(ordinaryMoveSource);
+      expect(createdSources).toContain(captureSource);
+      expect(createdSources).toContain(checkSource);
+      expect(createdSources).toContain(checkmateSource);
+      expect(captureSource).not.toBe(ordinaryMoveSource);
+      expect(captureSource).not.toBe(checkSource);
+      expect(captureSource).not.toBe(checkmateSource);
+
+      const ordinaryCaptureBoard = createBoard("4k3/8/8/3p4/4P3/8/8/4K3 w - - 0 1");
+      const ordinaryCaptureMove = getMove(ordinaryCaptureBoard, "e4", "d5");
+
+      expect(ordinaryCaptureMove).toBeTruthy();
+      expect(isCaptureMove(ordinaryCaptureBoard, ordinaryCaptureMove!)).toBe(true);
+
+      ordinaryCaptureBoard.makeMove(ordinaryCaptureMove!);
+
+      expect(isCheckSoundState(ordinaryCaptureBoard)).toBe(false);
+      expect(isCheckmateSoundState(ordinaryCaptureBoard)).toBe(false);
+
+      const captureCheckBoard = createBoard("4k3/4p3/8/8/8/8/4R3/4K3 w - - 0 1");
+      const captureCheckMove = getMove(captureCheckBoard, "e2", "e7");
+
+      expect(captureCheckMove).toBeTruthy();
+      expect(isCaptureMove(captureCheckBoard, captureCheckMove!)).toBe(true);
+
+      captureCheckBoard.makeMove(captureCheckMove!);
+
+      expect(isCheckSoundState(captureCheckBoard)).toBe(true);
+      expect(isCheckmateSoundState(captureCheckBoard)).toBe(false);
+      expect(checkSource).not.toBe(captureSource);
+
+      const captureCheckmateBoard = createBoard("7k/6pp/5Q2/8/8/8/8/6K1 w - - 0 1");
+      const captureCheckmateMove = getMove(captureCheckmateBoard, "f6", "g7");
+
+      expect(captureCheckmateMove).toBeTruthy();
+      expect(isCaptureMove(captureCheckmateBoard, captureCheckmateMove!)).toBe(true);
+
+      captureCheckmateBoard.makeMove(captureCheckmateMove!);
+
+      expect(isCheckmateSoundState(captureCheckmateBoard)).toBe(true);
+      expect(checkmateSource).not.toBe(captureSource);
+    } finally {
+      globalThis.Audio = originalAudio;
+    }
   });
 
   it("treats an unfinished game as eligible for the quit-game sound", () => {
@@ -117,7 +201,7 @@ describe("moveSound", () => {
   });
 
   it("does not treat a concluded game as eligible for the quit-game sound", () => {
-    const board = createBoard("7k/6pp/5QK1/8/8/8/8/8 w - - 0 1");
+    const board = createBoard("7k/6pp/5Q1K/8/8/8/8/8 w - - 0 1");
     const move = getMove(board, "f6", "g7");
 
     expect(move).toBeTruthy();

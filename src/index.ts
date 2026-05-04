@@ -51,7 +51,7 @@ import {
   resetStatusDialogs,
 } from "../ui/modalPopupWindow.js";
 import { getAppElements } from "../ui/input.js";
-import type { ComputerMovePreview } from "../ui/renderBoard.js";
+import type { ComputerAxisLight, ComputerMovePreview } from "../ui/renderBoard.js";
 import { renderBoard } from "../ui/renderBoard.js";
 import { renderCapturedPieces } from "../ui/renderCapturedPieces.js";
 import { renderStatus, resetStatusAnnouncements } from "../ui/renderStatus.js";
@@ -73,19 +73,20 @@ let selectedCoord: string | null = null;
 let computerColour: Colour | null = null;
 let computerDifficulty: ComputerDifficulty | null = null;
 let isAwaitingPromotionChoice = false;
-// // This is used to trigger the "moving..." visual effect on the 
-// piece that's about to move, while the computer is "thinking".
-// Otherwise, the human player finds it hard to track the computer's move, 
-// because the move happens immediately after the computer "thinks", 
-// with no visual transition or indication of which piece just moved:
+let isComputerThinking = false;
+let computerThinkingCoord: string | null = null;
+// // This is used to trigger the "moving..." visual effect on the
+// piece while its move animation is actively running:
 let computerMovingCoord: string | null = null;
 let computerMovePreview: ComputerMovePreview | null = null;
+let computerDestinationCoord: string | null = null;
 // // How long the computer "thinks" for before making a move, in milliseconds.
 // This is just to make the computer's moves feel less instantaneous and robotic,
 // which makes the game more evenly paced and enjoyable:
 const COMPUTER_MOVE_DELAY_MS = 2000;
 const COMPUTER_MOVE_STEP_MS = 140;
 const COMPUTER_MOVE_MIN_ANIMATION_MS = 420;
+const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
 
@@ -100,6 +101,31 @@ function getLegalMovesForCoord(coord: string | null): Move[] {
   }
 
   return board.getLegalMoves(square.rank, square.file);
+}
+
+function getComputerAxisLight(): ComputerAxisLight | null {
+  if (computerMovePreview) {
+    return {
+      coord: computerMovePreview.currentCoord,
+      mode: "confirmed",
+    };
+  }
+
+  if (computerMovingCoord) {
+    return {
+      coord: computerMovingCoord,
+      mode: "confirmed",
+    };
+  }
+
+  if (isComputerThinking && computerThinkingCoord) {
+    return {
+      coord: computerThinkingCoord,
+      mode: "thinking",
+    };
+  }
+
+  return null;
 }
 
 // Redraws the board and status UI from the current board state:
@@ -123,10 +149,13 @@ function renderGame(): void {
     selectedCoord,
     computerMovingCoord,
     computerMovePreview,
+    computerAxisLight: getComputerAxisLight(),
+    computerDestinationCoord,
     legalMoveCoords,
     legalCaptureCoords,
   });
   renderStatus(board, status, turnBadge, sideLabels, {
+    isComputerThinking,
     onPlayAgain: () => {
       void initialiseGame(false);
     },
@@ -141,6 +170,8 @@ function renderSetupError(message: string): void {
     selectedCoord,
     computerMovingCoord,
     computerMovePreview,
+    computerAxisLight: getComputerAxisLight(),
+    computerDestinationCoord,
   });
   status.textContent = message;
   turnBadge.textContent = "";
@@ -152,6 +183,9 @@ function resetBoardForNewGame(): void {
   selectedCoord = null;
   computerMovingCoord = null;
   computerMovePreview = null;
+  computerThinkingCoord = null;
+  computerDestinationCoord = null;
+  isComputerThinking = false;
   isAwaitingPromotionChoice = false;
   resetStatusDialogs();
   resetStatusAnnouncements();
@@ -433,6 +467,7 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
   selectedCoord = null;
   computerMovingCoord = null;
   computerMovePreview = null;
+  computerDestinationCoord = null;
   renderGame();
 
   if (computerColour && computerDifficulty) {
@@ -463,54 +498,108 @@ function playComputerTurnIfNeeded(
   const chosenMove = computerPlayer.chooseMove(board, computerColour);
 
   if (!chosenMove) {
+    isComputerThinking = false;
+    computerThinkingCoord = null;
     computerMovingCoord = null;
+    computerDestinationCoord = null;
     renderGame();
     return;
   }
 
-  computerMovingCoord = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).coord;
+  isComputerThinking = true;
+  computerThinkingCoord = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).coord;
+  computerMovingCoord = null;
+  computerMovePreview = null;
+  computerDestinationCoord = null;
   renderGame();
 
   window.setTimeout(() => {
     if (board.getSideToMove() !== computerColour) {
+      isComputerThinking = false;
+      computerThinkingCoord = null;
       computerMovingCoord = null;
       computerMovePreview = null;
+      computerDestinationCoord = null;
+      renderGame();
       return;
     }
 
     if (isTerminalGameResult(board.getGameStatus())) {
+      isComputerThinking = false;
+      computerThinkingCoord = null;
       computerMovingCoord = null;
       computerMovePreview = null;
+      computerDestinationCoord = null;
+      renderGame();
       return;
     }
 
     const movingPiece = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).piece;
     if (!movingPiece) {
+      isComputerThinking = false;
+      computerThinkingCoord = null;
       computerMovingCoord = null;
       computerMovePreview = null;
+      computerDestinationCoord = null;
       renderGame();
       return;
     }
 
+    computerMovingCoord = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).coord;
     void animateComputerMove(chosenMove, movingPiece.type, computerColour)
       .then(() => {
         if (board.getSideToMove() !== computerColour) {
+          isComputerThinking = false;
+          computerThinkingCoord = null;
           computerMovingCoord = null;
           computerMovePreview = null;
+          computerDestinationCoord = null;
+          renderGame();
           return;
         }
 
         if (isTerminalGameResult(board.getGameStatus())) {
+          isComputerThinking = false;
+          computerThinkingCoord = null;
           computerMovingCoord = null;
           computerMovePreview = null;
+          computerDestinationCoord = null;
+          renderGame();
           return;
         }
 
-        applyMove(chosenMove);
-        selectedCoord = null;
-        computerMovingCoord = null;
-        computerMovePreview = null;
+        computerDestinationCoord = board.getSquare(chosenMove.toRank, chosenMove.toFile).coord;
         renderGame();
+        return delay(COMPUTER_MOVE_DESTINATION_HOLD_MS).then(() => {
+          if (board.getSideToMove() !== computerColour) {
+            isComputerThinking = false;
+            computerThinkingCoord = null;
+            computerMovingCoord = null;
+            computerMovePreview = null;
+            computerDestinationCoord = null;
+            renderGame();
+            return;
+          }
+
+          if (isTerminalGameResult(board.getGameStatus())) {
+            isComputerThinking = false;
+            computerThinkingCoord = null;
+            computerMovingCoord = null;
+            computerMovePreview = null;
+            computerDestinationCoord = null;
+            renderGame();
+            return;
+          }
+
+          applyMove(chosenMove);
+          isComputerThinking = false;
+          computerThinkingCoord = null;
+          selectedCoord = null;
+          computerMovingCoord = null;
+          computerMovePreview = null;
+          computerDestinationCoord = null;
+          renderGame();
+        });
       });
   }, COMPUTER_MOVE_DELAY_MS);
 }

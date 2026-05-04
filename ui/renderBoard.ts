@@ -12,12 +12,22 @@ export type ComputerMovePreview = {
   pieceType: PieceType;
 };
 
+// Types related to the computer axis light, which indicates 
+// the rank or file the computer is "thinking" about or has 
+// "confirmed" a move to:
+export type ComputerAxisLight = {
+  coord: string;
+  mode: "thinking" | "confirmed";
+};
+
 // // Board rendering logic, which converts the ChessBoard state into HTML elements, 
 // and also defines the piece symbols and other UI-related types:
 export type BoardRenderState = {
   selectedCoord?: string | null;
   computerMovingCoord?: string | null;
   computerMovePreview?: ComputerMovePreview | null;
+  computerAxisLight?: ComputerAxisLight | null;
+  computerDestinationCoord?: string | null;
   legalMoveCoords?: ReadonlySet<string>;
   legalCaptureCoords?: ReadonlySet<string>;
 };
@@ -51,11 +61,15 @@ export function renderBoard(
     selectedCoord = null,
     computerMovingCoord = null,
     computerMovePreview = null,
+    computerAxisLight = null,
+    computerDestinationCoord = null,
     legalMoveCoords = new Set<string>(),
     legalCaptureCoords = new Set<string>(),
   }: BoardRenderState = {},
 ): void {
   root.replaceChildren();
+  const axisLightRank = computerAxisLight ? Number(computerAxisLight.coord[1]) : null;
+  const axisLightFile = computerAxisLight?.coord[0] ?? null;
 
   const boardShell = document.createElement("div");
   boardShell.className = "board-shell";
@@ -65,7 +79,18 @@ export function renderBoard(
 
   for (const rank of [...RANKS].reverse()) {
     const axisCell = document.createElement("div");
-    axisCell.className = "board-axis__cell";
+    const axisCellClasses = ["board-axis__cell"];
+
+    if (axisLightRank === rank + 1) {
+      axisCellClasses.push("board-axis__cell--computer-active");
+      axisCellClasses.push(
+        computerAxisLight?.mode === "thinking"
+          ? "board-axis__cell--computer-thinking"
+          : "board-axis__cell--computer-confirmed",
+      );
+    }
+
+    axisCell.className = axisCellClasses.join(" ");
 
     const tick = document.createElement("span");
     tick.className = "board-axis__tick";
@@ -109,6 +134,10 @@ export function renderBoard(
 
       if (legalCaptureCoords.has(square.coord)) {
         classes.push("legal-capture");
+      }
+
+      if (square.coord === computerDestinationCoord) {
+        classes.push("square--computer-destination");
       }
 
       squareElement.className = classes.join(" ");
@@ -183,7 +212,18 @@ export function renderBoard(
 
   for (const file of FILES) {
     const axisCell = document.createElement("div");
-    axisCell.className = "board-axis__cell";
+    const axisCellClasses = ["board-axis__cell"];
+
+    if (axisLightFile === "abcdefgh"[file]) {
+      axisCellClasses.push("board-axis__cell--computer-active");
+      axisCellClasses.push(
+        computerAxisLight?.mode === "thinking"
+          ? "board-axis__cell--computer-thinking"
+          : "board-axis__cell--computer-confirmed",
+      );
+    }
+
+    axisCell.className = axisCellClasses.join(" ");
 
     const label = document.createElement("span");
     label.className = "board-axis__label";

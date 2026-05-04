@@ -51,6 +51,23 @@ describe("renderBoard", () => {
     ).toBe("white pawn on e2");
   });
 
+  it("uses selection classes for the human piece without applying the computer-moving class", () => {
+    const board = new ChessBoard();
+    const root = createRoot();
+
+    renderBoard(board, root, {
+      selectedCoord: "e2",
+    });
+
+    const selectedSquare = root.querySelector<HTMLElement>('.square[data-coord="e2"]');
+    const selectedPiece = root.querySelector<HTMLElement>('.square[data-coord="e2"] .piece');
+
+    expect(selectedSquare?.className).toContain("selected");
+    expect(selectedPiece).not.toBeNull();
+    expect(selectedPiece?.className).not.toContain("piece--computer-moving");
+    expect(selectedPiece?.getAttribute("aria-label")).toBe("white pawn on e2");
+  });
+
   it("renders the computer move preview on the destination square and hides the origin piece", () => {
     const board = new ChessBoard();
     const root = createRoot();

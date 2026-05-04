@@ -13,6 +13,7 @@ let lastAnnouncedStatusKey: string | null = null;
 
 // Types related to rendering the game status and the team-mate panel:
 type RenderStatusOptions = {
+  isComputerThinking?: boolean;
   onPlayAgain?: () => void;
 };
 
@@ -71,15 +72,17 @@ function renderTeamMatePanel(
   sideLabels: SideLabels,
   sideToMove: "white" | "black",
   gameStatus: GameResult,
+  isComputerThinking: boolean,
 ): void {
   const isCheck = gameStatus.status === "check";
   const isEnd = gameStatus.status === "checkmate";
-  const showInfo = !isCheck && !isEnd;
+  const showInfo = !isCheck && !isEnd && !isComputerThinking;
   const indicators: TeamMateIndicator[] = [
     { label: sideLabels.white, active: sideToMove === "white" && !isEnd },
     { label: sideLabels.black, active: sideToMove === "black" && !isEnd },
     { label: "Check", active: isCheck },
     { label: "End", active: isEnd },
+    { label: "Think", active: isComputerThinking },
     { label: "Info", active: showInfo },
   ];
 
@@ -136,8 +139,9 @@ export function renderStatus(
   const sideLabel = sideLabels[sideToMove];
   const statusAnnouncementKey = getStatusAnnouncementKey(gameStatus);
   const shouldAnnounceStatus = statusAnnouncementKey !== lastAnnouncedStatusKey;
+  const isComputerThinking = options.isComputerThinking ?? false;
 
-  renderTeamMatePanel(turnBadgeElement, sideLabels, sideToMove, gameStatus);
+  renderTeamMatePanel(turnBadgeElement, sideLabels, sideToMove, gameStatus, isComputerThinking);
   lastAnnouncedStatusKey = statusAnnouncementKey;
 
   switch (gameStatus.status) {
