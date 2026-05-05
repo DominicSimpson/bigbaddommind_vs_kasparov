@@ -10,6 +10,9 @@ import { showReplayModal, showTimedStatusModal } from "./modalPopupWindow.js";
 // the game ends) and ensures that these pop-ups are not shown repeatedly 
 // for the same status:
 let lastAnnouncedStatusKey: string | null = null;
+let pendingStatusAnnouncementTimeoutId: number | null = null;
+let pendingStatusAnnouncementKey: string | null = null;
+const CHECK_STATUS_MODAL_DELAY_MS = 320;
 
 // Types related to rendering the game status and the team-mate panel:
 type RenderStatusOptions = {
@@ -40,7 +43,22 @@ function getStatusAnnouncementKey(gameStatus: GameResult): string {
   }
 }
 
+// // This function ensures that the 'check' audio effect occurs
+// before the 'check' modal appears, and that if the player moves 
+// out of check before the modal appears, the modal will not be 
+// shown at all. It also clears any pending status announcements 
+// when the status changes:
+function clearPendingStatusAnnouncement(): void {
+  if (pendingStatusAnnouncementTimeoutId !== null) {
+    window.clearTimeout(pendingStatusAnnouncementTimeoutId);
+    pendingStatusAnnouncementTimeoutId = null;
+  }
+
+  pendingStatusAnnouncementKey = null;
+}
+
 export function resetStatusAnnouncements(): void {
+  clearPendingStatusAnnouncement();
   lastAnnouncedStatusKey = null;
 }
 
@@ -142,13 +160,28 @@ export function renderStatus(
   const isComputerThinking = options.isComputerThinking ?? false;
 
   renderTeamMatePanel(turnBadgeElement, sideLabels, sideToMove, gameStatus, isComputerThinking);
+
+  if (gameStatus.status !== "check") {
+    clearPendingStatusAnnouncement();
+  }
+
   lastAnnouncedStatusKey = statusAnnouncementKey;
 
   switch (gameStatus.status) {
     case "check":
       statusElement.textContent = "";
       if (shouldAnnounceStatus) {
-        showTimedStatusModal(`${sideLabel} is in check.`);
+        clearPendingStatusAnnouncement();
+        pendingStatusAnnouncementKey = statusAnnouncementKey;
+        pendingStatusAnnouncementTimeoutId = window.setTimeout(() => {
+          if (pendingStatusAnnouncementKey !== statusAnnouncementKey) {
+            return;
+          }
+
+          showTimedStatusModal(`${sideLabel} is in check.`);
+          pendingStatusAnnouncementTimeoutId = null;
+          pendingStatusAnnouncementKey = null;
+        }, CHECK_STATUS_MODAL_DELAY_MS);
       }
       return;
     case "checkmate":
