@@ -54,7 +54,11 @@ import { getAppElements } from "../ui/input.js";
 import type { ComputerAxisLight, ComputerMovePreview } from "../ui/renderBoard.js";
 import { renderBoard } from "../ui/renderBoard.js";
 import { renderCapturedPieces } from "../ui/renderCapturedPieces.js";
-import { renderStatus, resetStatusAnnouncements } from "../ui/renderStatus.js";
+import {
+  CHECK_STATUS_MODAL_DELAY_MS,
+  renderStatus,
+  resetStatusAnnouncements,
+} from "../ui/renderStatus.js";
 import type { PieceType } from "./pieces/Piece.js";
 
 // Coordinator file that starts the game, connects the model to the UI, 
@@ -83,11 +87,21 @@ let computerDestinationCoord: string | null = null;
 // // How long the computer "thinks" for before making a move, in milliseconds.
 // This is just to make the computer's moves feel less instantaneous and robotic,
 // which makes the game more evenly paced and enjoyable:
-const COMPUTER_MOVE_DELAY_MS = 2000;
+const COMPUTER_MOVE_DELAY_MS = 4250;
 const COMPUTER_MOVE_STEP_MS = 140;
 const COMPUTER_MOVE_MIN_ANIMATION_MS = 420;
 const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+function getComputerMoveDelayMs(computerColour: Colour): number {
+  const gameStatus = board.getGameStatus();
+
+  if (gameStatus.status === "check" && gameStatus.sideInCheck === computerColour) {
+    return COMPUTER_MOVE_DELAY_MS + CHECK_STATUS_MODAL_DELAY_MS;
+  }
+
+  return COMPUTER_MOVE_DELAY_MS;
+}
 
 
 function getLegalMovesForCoord(coord: string | null): Move[] {
@@ -478,7 +492,7 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
 // // Computer-move trigger. It:
 // - checks whether it's currently the computer's turn
 // - checks the game isn't already over
-// - waits 2000ms
+// - waits 2000ms, plus an extra check-modal delay if the computer is in check
 // - checks those conditions again
 // - creates a computer player and tells it to make a move
 // - re-renders the UI
@@ -601,7 +615,7 @@ function playComputerTurnIfNeeded(
           renderGame();
         });
       });
-  }, COMPUTER_MOVE_DELAY_MS);
+  }, getComputerMoveDelayMs(computerColour));
 }
 
 // startup flow:

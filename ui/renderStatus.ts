@@ -12,7 +12,7 @@ import { showReplayModal, showTimedStatusModal } from "./modalPopupWindow.js";
 let lastAnnouncedStatusKey: string | null = null;
 let pendingStatusAnnouncementTimeoutId: number | null = null;
 let pendingStatusAnnouncementKey: string | null = null;
-const CHECK_STATUS_MODAL_DELAY_MS = 320;
+export const CHECK_STATUS_MODAL_DELAY_MS = 1320;
 
 // Types related to rendering the game status and the team-mate panel:
 type RenderStatusOptions = {
@@ -44,10 +44,10 @@ function getStatusAnnouncementKey(gameStatus: GameResult): string {
 }
 
 // // This function ensures that the 'check' audio effect occurs
-// before the 'check' modal appears, and that if the player moves 
-// out of check before the modal appears, the modal will not be 
-// shown at all. It also clears any pending status announcements 
-// when the status changes:
+// before the 'check' modal appears, with an extra one-second gap
+// before the modal shows. If the player moves out of check before
+// the modal appears, the modal will not be shown at all. It also
+// clears any pending status announcements when the status changes:
 function clearPendingStatusAnnouncement(): void {
   if (pendingStatusAnnouncementTimeoutId !== null) {
     window.clearTimeout(pendingStatusAnnouncementTimeoutId);
