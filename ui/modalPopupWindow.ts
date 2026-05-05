@@ -1,6 +1,7 @@
 import type { ComputerDifficulty } from "../src/player/ComputerPlayer.js";
 import type { Colour } from "../src/types/colour.js";
 import type { PromotionPiece } from "../src/types/Move.js";
+import { pieceSymbols } from "./renderBoard.js";
 
 // // This file contains functions for creating and managing pop-up modal 
 // windows in the UI, such as the game setup dialog, promotion choice dialog, 
@@ -418,6 +419,14 @@ export function choosePromotionPiece(colour: Colour): Promise<PromotionPiece> {
       button.type = "button";
       button.value = optionData.value;
 
+      const icon = document.createElement("span");
+      icon.className = "setup-dialog__promotion-icon";
+      icon.textContent = pieceSymbols[colour][optionData.value];
+      icon.setAttribute("aria-hidden", "true");
+
+      const content = document.createElement("span");
+      content.className = "setup-dialog__promotion-copy";
+
       const label = document.createElement("span");
       label.className = "setup-dialog__promotion-name";
       label.textContent = optionData.label;
@@ -426,7 +435,8 @@ export function choosePromotionPiece(colour: Colour): Promise<PromotionPiece> {
       detail.className = "setup-dialog__promotion-detail";
       detail.textContent = optionData.description;
 
-      button.append(label, detail);
+      content.append(label, detail);
+      button.append(icon, content);
       button.addEventListener("click", () => {
         cleanup();
         resolve(optionData.value);

@@ -16,6 +16,7 @@ import {
   playCheckmateSound,
   playCheckSound,
   playOrdinaryMoveSound,
+  resetAudioCacheForTests,
   isQuitGameSoundState,
   isStalemateSoundState,
 } from "../../src/audio/moveSound.js";
@@ -133,8 +134,9 @@ describe("moveSound", () => {
         return Promise.resolve();
       }
     }
-
+    
     const originalAudio = globalThis.Audio;
+    resetAudioCacheForTests();
     globalThis.Audio = MockAudio as unknown as typeof Audio;
 
     try {
@@ -190,6 +192,7 @@ describe("moveSound", () => {
       expect(isCheckmateSoundState(captureCheckmateBoard)).toBe(true);
       expect(checkmateSource).not.toBe(captureSource);
     } finally {
+      resetAudioCacheForTests();
       globalThis.Audio = originalAudio;
     }
   });

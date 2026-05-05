@@ -34,6 +34,18 @@ const SOUND_PATHS: Record<SoundKey, string> = {
 };
 // 
 const audioCache: Partial<Record<SoundKey, HTMLAudioElement>> = {};
+// // This module provides functions to manage audio playback for various 
+// chess move events and game end conditions. It includes functions 
+// to determine the type of move (e.g., castling, promotion, en passant) 
+// and the game state (e.g., check, checkmate, stalemate) to play the 
+// appropriate sound effects. Audio elements are cached for performance, 
+// and there are functions to preload sounds and reset the cache for 
+// testing purposes:
+export function resetAudioCacheForTests(): void {
+  for (const sound of Object.keys(audioCache) as SoundKey[]) {
+    delete audioCache[sound];
+  }
+}
 
 function getAudio(sound: SoundKey): HTMLAudioElement | null {
   if (typeof Audio === "undefined") {
