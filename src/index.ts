@@ -66,8 +66,8 @@ import type { PieceType } from "./pieces/Piece.js";
 
 // single ChessBoard instance for the whole app:
 const board = new ChessBoard();
-// grabs DOM elements like the board container and status labels:
-const { boardRoot, status, turnBadge, capturedPieces } = getAppElements();
+// grabs DOM elements that we'll need to update as the game goes on:
+const { boardRoot, status, turnBadge, capturedPieces, newGameButton } = getAppElements();
 let sideLabels: SideLabels = {
   white: "White",
   black: "Black",
@@ -92,6 +92,27 @@ const COMPUTER_MOVE_STEP_MS = 140;
 const COMPUTER_MOVE_MIN_ANIMATION_MS = 420;
 const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+let pendingComputerTurnTimeoutId: number | null = null;
+let computerActionToken = 0;
+
+// // Clears any pending computer-turn timeout, preventing the computer 
+// from making a move if the timeout hasn't already completed. 
+// This is used when the game state changes in a way that would 
+// invalidate a pending computer move, for example when the player 
+// makes a move while the computer is still "thinking" about its 
+// previous move, or when the player starts a new game while the 
+// computer is still thinking about its move in the previous game:
+function clearPendingComputerTurnTimeout(): void {
+  if (pendingComputerTurnTimeoutId !== null) {
+    window.clearTimeout(pendingComputerTurnTimeoutId);
+    pendingComputerTurnTimeoutId = null;
+  }
+}
+
+function invalidatePendingComputerActions(): void {
+  clearPendingComputerTurnTimeout();
+  computerActionToken += 1;
+}
 
 function getComputerMoveDelayMs(computerColour: Colour): number {
   const gameStatus = board.getGameStatus();
@@ -192,7 +213,13 @@ function renderSetupError(message: string): void {
   renderCapturedPieces(board, capturedPieces);
 }
 
+// // Resets the board and all relevant state to start a new game. 
+// It also clears any pending computer actions, so that if the player 
+// starts a new game while the computer is still "thinking" about 
+// its move in the previous game, the computer won't suddenly make 
+// its move in the new game:
 function resetBoardForNewGame(): void {
+  invalidatePendingComputerActions();
   board.loadFEN(INITIAL_POSITION_FEN);
   selectedCoord = null;
   computerMovingCoord = null;
@@ -364,7 +391,12 @@ function applyMove(move: Move): void {
 // // computer has "finished thinking" and is ready to make its move. 
 // Its purpose is so that the human player can see which piece the 
 // computer is moving, and track it across the board:
-async function animateComputerMove(move: Move, pieceType: PieceType, colour: Colour): Promise<void> {
+async function animateComputerMove(
+  move: Move,
+  pieceType: PieceType,
+  colour: Colour,
+  actionToken: number,
+): Promise<boolean> {
   const originCoord = board.getSquare(move.fromRank, move.fromFile).coord;
   const traversalCoords = getComputerMoveTraversalCoords(move, pieceType);
   const stepDelayMs = Math.max(
@@ -382,6 +414,10 @@ async function animateComputerMove(move: Move, pieceType: PieceType, colour: Col
   renderGame();
 
   for (const currentCoord of traversalCoords) {
+    if (actionToken !== computerActionToken) {
+      return false;
+    }
+
     computerMovePreview = {
       originCoord,
       currentCoord,
@@ -392,6 +428,8 @@ async function animateComputerMove(move: Move, pieceType: PieceType, colour: Col
     renderGame();
     await delay(stepDelayMs);
   }
+
+  return actionToken === computerActionToken;
 }
 
 // // Click handler for the board. It handles piece selection, move attempts, 
@@ -520,6 +558,8 @@ function playComputerTurnIfNeeded(
     return;
   }
 
+  clearPendingComputerTurnTimeout();
+  const actionToken = ++computerActionToken;
   isComputerThinking = true;
   computerThinkingCoord = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).coord;
   computerMovingCoord = null;
@@ -527,7 +567,13 @@ function playComputerTurnIfNeeded(
   computerDestinationCoord = null;
   renderGame();
 
-  window.setTimeout(() => {
+  pendingComputerTurnTimeoutId = window.setTimeout(() => {
+    pendingComputerTurnTimeoutId = null;
+
+    if (actionToken !== computerActionToken) {
+      return;
+    }
+
     if (board.getSideToMove() !== computerColour) {
       isComputerThinking = false;
       computerThinkingCoord = null;
@@ -560,8 +606,12 @@ function playComputerTurnIfNeeded(
     }
 
     computerMovingCoord = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).coord;
-    void animateComputerMove(chosenMove, movingPiece.type, computerColour)
-      .then(() => {
+    void animateComputerMove(chosenMove, movingPiece.type, computerColour, actionToken)
+      .then((animationCompleted) => {
+        if (!animationCompleted || actionToken !== computerActionToken) {
+          return;
+        }
+
         if (board.getSideToMove() !== computerColour) {
           isComputerThinking = false;
           computerThinkingCoord = null;
@@ -668,4 +718,7 @@ preloadDrawByInsufficientMaterialSound();
 preloadStalemateSound();
 preloadQuitGameSound();
 boardRoot.addEventListener("click", handleBoardClick);
+newGameButton.addEventListener("click", () => {
+  void initialiseGame(false);
+});
 void initialiseGame();

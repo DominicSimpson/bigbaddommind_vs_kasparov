@@ -5,6 +5,7 @@ export type AppElements = {
   status: HTMLParagraphElement; // a paragraph for status text
   turnBadge: HTMLDivElement; // a div showing whose turn it is
   capturedPieces: HTMLElement; // captured pieces panel
+  newGameButton: HTMLButtonElement; // starts a brand-new game flow
 };
 
 // generic helper that returns element from document.querySelector:
@@ -18,7 +19,7 @@ function requireElement<T extends Element>(selector: string): T {
   return element;
 }
 
-// Gathers three required elements by ID and returns them as 
+// Gathers required elements by ID and returns them as 
 // one typed object - otherwise the app fails:
 export function getAppElements(): AppElements {
   return {
@@ -26,5 +27,6 @@ export function getAppElements(): AppElements {
     status: requireElement<HTMLParagraphElement>("#status"),
     turnBadge: requireElement<HTMLDivElement>("#turn-badge"),
     capturedPieces: requireElement<HTMLElement>("#captured-pieces"),
+    newGameButton: requireElement<HTMLButtonElement>('button[aria-label="New Game"]'),
   };
 }
