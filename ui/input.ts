@@ -6,6 +6,7 @@ export type AppElements = {
   turnBadge: HTMLDivElement; // a div showing whose turn it is
   capturedPieces: HTMLElement; // captured pieces panel
   newGameButton: HTMLButtonElement; // starts a brand-new game flow
+  undoMoveButton: HTMLButtonElement; // rewinds the game to the player's prior turn
 };
 
 // generic helper that returns element from document.querySelector:
@@ -27,6 +28,7 @@ export function getAppElements(): AppElements {
     status: requireElement<HTMLParagraphElement>("#status"),
     turnBadge: requireElement<HTMLDivElement>("#turn-badge"),
     capturedPieces: requireElement<HTMLElement>("#captured-pieces"),
-    newGameButton: requireElement<HTMLButtonElement>('button[aria-label="New Game"]'),
+    newGameButton: requireElement<HTMLButtonElement>("#new-game-button"),
+    undoMoveButton: requireElement<HTMLButtonElement>("#undo-move-button"),
   };
 }

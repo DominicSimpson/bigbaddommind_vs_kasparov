@@ -49,6 +49,7 @@ import {
   chooseGameOptions,
   choosePromotionPiece,
   resetStatusDialogs,
+  showInformationalModal,
 } from "../ui/modalPopupWindow.js";
 import { getAppElements } from "../ui/input.js";
 import type { ComputerAxisLight, ComputerMovePreview } from "../ui/renderBoard.js";
@@ -67,7 +68,14 @@ import type { PieceType } from "./pieces/Piece.js";
 // single ChessBoard instance for the whole app:
 const board = new ChessBoard();
 // grabs DOM elements that we'll need to update as the game goes on:
-const { boardRoot, status, turnBadge, capturedPieces, newGameButton } = getAppElements();
+const {
+  boardRoot,
+  status,
+  turnBadge,
+  capturedPieces,
+  newGameButton,
+  undoMoveButton,
+} = getAppElements();
 let sideLabels: SideLabels = {
   white: "White",
   black: "Black",
@@ -230,6 +238,14 @@ function resetBoardForNewGame(): void {
   isAwaitingPromotionChoice = false;
   resetStatusDialogs();
   resetStatusAnnouncements();
+}
+
+function resetComputerTurnVisualState(): void {
+  isComputerThinking = false;
+  computerThinkingCoord = null;
+  computerMovingCoord = null;
+  computerMovePreview = null;
+  computerDestinationCoord = null;
 }
 
 function getSquareByCoord(coord: string): Square | null {
@@ -527,6 +543,53 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
   }
 }
 
+function handleUndoMove(): void {
+  if (isAwaitingPromotionChoice) {
+    return;
+  }
+
+  // // Until both sides have completed a full move, don't allow undo.
+  // This covers both:
+  // - the initial position, including when the computer's first move is still pending
+  // - positions where exactly one side has moved and the reply has not happened yet
+  const moveHistory = board.getMoveHistory();
+  if (moveHistory.length <= 1) {
+    showInformationalModal("You can only undo after both sides have moved.");
+    return;
+  }
+
+  invalidatePendingComputerActions();
+
+  const latestMove = moveHistory[moveHistory.length - 1];
+
+  if (!latestMove) {
+    resetComputerTurnVisualState();
+    selectedCoord = null;
+    renderGame();
+    return;
+  }
+
+  if (latestMove.movedPiece.colour === playerColour) {
+    board.undoMove();
+  } else {
+    const priorMove = moveHistory[moveHistory.length - 2];
+
+    if (!priorMove || priorMove.movedPiece.colour !== playerColour) {
+      resetComputerTurnVisualState();
+      selectedCoord = null;
+      renderGame();
+      return;
+    }
+
+    board.undoMove();
+    board.undoMove();
+  }
+
+  resetComputerTurnVisualState();
+  selectedCoord = null;
+  renderGame();
+}
+
 // // Computer-move trigger. It:
 // - checks whether it's currently the computer's turn
 // - checks the game isn't already over
@@ -721,4 +784,5 @@ boardRoot.addEventListener("click", handleBoardClick);
 newGameButton.addEventListener("click", () => {
   void initialiseGame(false);
 });
+undoMoveButton.addEventListener("click", handleUndoMove);
 void initialiseGame();

@@ -128,6 +128,41 @@ export function resetStatusDialogs(): void {
   closeActiveStatusDialog();
 }
 
+export function showInformationalModal(
+  message: string,
+  title = "Undo move",
+): void {
+  closeActiveStatusDialog();
+
+  const { dialog, actions } = createStatusDialog(title, message);
+  const closeButton = document.createElement("button");
+  closeButton.className = "setup-dialog__button setup-dialog__button--primary";
+  closeButton.type = "button";
+  closeButton.textContent = "OK";
+  closeButton.addEventListener("click", () => {
+    dialog.close();
+  });
+
+  actions.append(closeButton);
+  document.body.append(dialog);
+  activeStatusDialog = dialog;
+
+  dialog.addEventListener("close", () => {
+    if (activeStatusDialog === dialog) {
+      activeStatusDialog = null;
+    }
+
+    dialog.remove();
+  }, { once: true });
+
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    dialog.close();
+  });
+
+  dialog.showModal();
+}
+
 // This function displays a temporary modal with a 
 // status message (e.g. "White is in check") for three seconds:
 export function showTimedStatusModal(
