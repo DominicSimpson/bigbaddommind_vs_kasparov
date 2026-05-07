@@ -188,7 +188,7 @@ body {
   position: relative;
   appearance: none;
   width: 100%;
-  min-height: 1.6rem;
+  min-height: 2rem;
   padding: 0;
   border: 1px solid rgba(0, 0, 0, 0.8);
   border-radius: 999px;
