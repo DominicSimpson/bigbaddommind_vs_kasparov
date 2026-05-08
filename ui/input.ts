@@ -7,6 +7,7 @@ export type AppElements = {
   capturedPieces: HTMLElement; // captured pieces panel
   newGameButton: HTMLButtonElement; // starts a brand-new game flow
   undoMoveButton: HTMLButtonElement; // rewinds the game to the player's prior turn
+  exitGameButton: HTMLButtonElement; // exits the current game and returns to idle state
 };
 
 // generic helper that returns element from document.querySelector:
@@ -30,5 +31,6 @@ export function getAppElements(): AppElements {
     capturedPieces: requireElement<HTMLElement>("#captured-pieces"),
     newGameButton: requireElement<HTMLButtonElement>("#new-game-button"),
     undoMoveButton: requireElement<HTMLButtonElement>("#undo-move-button"),
+    exitGameButton: requireElement<HTMLButtonElement>("#exit-game-button"),
   };
 }

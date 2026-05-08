@@ -163,6 +163,63 @@ export function showInformationalModal(
   dialog.showModal();
 }
 
+export function showConfirmationModal(
+  message: string,
+  options: {
+    title?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+  } = {},
+): Promise<boolean> {
+  return new Promise<boolean>((resolve) => {
+    closeActiveStatusDialog();
+
+    const {
+      title = "Confirm",
+      confirmLabel = "Confirm",
+      cancelLabel = "Cancel",
+    } = options;
+    const { dialog, actions } = createStatusDialog(title, message);
+
+    const cancelButton = document.createElement("button");
+    cancelButton.className = "setup-dialog__button setup-dialog__button--secondary";
+    cancelButton.type = "button";
+    cancelButton.textContent = cancelLabel;
+    cancelButton.addEventListener("click", () => {
+      dialog.close("cancel");
+    });
+
+    const confirmButton = document.createElement("button");
+    confirmButton.className = "setup-dialog__button setup-dialog__button--primary";
+    confirmButton.type = "button";
+    confirmButton.textContent = confirmLabel;
+    confirmButton.addEventListener("click", () => {
+      dialog.close("confirm");
+    });
+
+    actions.append(cancelButton, confirmButton);
+    document.body.append(dialog);
+    activeStatusDialog = dialog;
+
+    dialog.addEventListener("cancel", (event) => {
+      event.preventDefault();
+      dialog.close("cancel");
+    });
+
+    dialog.addEventListener("close", () => {
+      if (activeStatusDialog === dialog) {
+        activeStatusDialog = null;
+      }
+
+      const wasConfirmed = dialog.returnValue === "confirm";
+      dialog.remove();
+      resolve(wasConfirmed);
+    }, { once: true });
+
+    dialog.showModal();
+  });
+}
+
 // This function displays a temporary modal with a 
 // status message (e.g. "White is in check") for three seconds:
 export function showTimedStatusModal(

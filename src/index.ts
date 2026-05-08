@@ -49,6 +49,7 @@ import {
   chooseGameOptions,
   choosePromotionPiece,
   resetStatusDialogs,
+  showConfirmationModal,
   showInformationalModal,
 } from "../ui/modalPopupWindow.js";
 import { getAppElements } from "../ui/input.js";
@@ -75,6 +76,7 @@ const {
   capturedPieces,
   newGameButton,
   undoMoveButton,
+  exitGameButton,
 } = getAppElements();
 let sideLabels: SideLabels = {
   white: "White",
@@ -85,6 +87,7 @@ let selectedCoord: string | null = null;
 let computerColour: Colour | null = null;
 let computerDifficulty: ComputerDifficulty | null = null;
 let isAwaitingPromotionChoice = false;
+let isGameActive = false;
 let isComputerThinking = false;
 let computerThinkingCoord: string | null = null;
 // // This is used to trigger the "moving..." visual effect on the
@@ -206,6 +209,29 @@ function renderGame(): void {
   renderCapturedPieces(board, capturedPieces);
 }
 
+function syncControlAvailability(): void {
+  newGameButton.disabled = false;
+  undoMoveButton.disabled = !isGameActive;
+  exitGameButton.disabled = !isGameActive;
+}
+
+// // Renders the board in its idle state, with no game in progress. 
+// It also updates the status text to prompt the user to start a new game, 
+// and clears the turn badge and captured pieces display:
+function renderIdleState(): void {
+  renderBoard(board, boardRoot, {
+    selectedCoord,
+    computerMovingCoord,
+    computerMovePreview,
+    computerAxisLight: getComputerAxisLight(),
+    computerDestinationCoord,
+  });
+  status.textContent = "No game in progress. Press New Game to begin.";
+  turnBadge.replaceChildren();
+  renderCapturedPieces(board, capturedPieces);
+  syncControlAvailability();
+}
+
 // // If setup fails, it still renders the board, shows the error text, 
 // and clears the turn badge:
 function renderSetupError(message: string): void {
@@ -238,6 +264,18 @@ function resetBoardForNewGame(): void {
   isAwaitingPromotionChoice = false;
   resetStatusDialogs();
   resetStatusAnnouncements();
+}
+
+function enterIdleState(): void {
+  resetBoardForNewGame();
+  isGameActive = false;
+  computerColour = null;
+  computerDifficulty = null;
+  sideLabels = {
+    white: "White",
+    black: "Black",
+  };
+  renderIdleState();
 }
 
 function resetComputerTurnVisualState(): void {
@@ -456,6 +494,10 @@ async function animateComputerMove(
 // involves a promotion, it waits for the user to choose a promotion piece 
 // before making the move:
 async function handleBoardClick(event: MouseEvent): Promise<void> {
+  if (!isGameActive) {
+    return;
+  }
+
   if (board.getSideToMove() !== playerColour || isAwaitingPromotionChoice) {
     return;
   }
@@ -544,6 +586,10 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
 }
 
 function handleUndoMove(): void {
+  if (!isGameActive) {
+    return;
+  }
+
   if (isAwaitingPromotionChoice) {
     return;
   }
@@ -588,6 +634,32 @@ function handleUndoMove(): void {
   resetComputerTurnVisualState();
   selectedCoord = null;
   renderGame();
+}
+
+async function handleExitGame(): Promise<void> {
+  if (!isGameActive || isAwaitingPromotionChoice) {
+    return;
+  }
+
+  const shouldExit = await showConfirmationModal(
+    "Are you sure that you want to exit the current game and return the board to its idle state?",
+    {
+      title: "Exit game",
+      confirmLabel: "Exit game",
+      cancelLabel: "Stay here",
+    },
+  );
+
+  if (!shouldExit) {
+    renderGame();
+    return;
+  }
+
+  if (isQuitGameSoundState(board)) {
+    playQuitGameSound();
+  }
+
+  enterIdleState();
 }
 
 // // Computer-move trigger. It:
@@ -732,7 +804,7 @@ function playComputerTurnIfNeeded(
 }
 
 // startup flow:
-async function initialiseGame(showSetupErrorOnCancel = true): Promise<void> {
+async function initialiseGame(returnToIdleOnCancel = false): Promise<void> {
   try {
     const {
       playerColour: chosenPlayerColour,
@@ -741,22 +813,30 @@ async function initialiseGame(showSetupErrorOnCancel = true): Promise<void> {
     } = await chooseGameOptions();
     const setup = createGameSetup(chosenPlayerColour, chosenComputerDifficulty, playerName);
     resetBoardForNewGame();
+    isGameActive = true;
     playerColour = setup.playerColour;
     computerColour = setup.computerColour;
     computerDifficulty = setup.computerDifficulty;
     sideLabels = setup.sideLabels;
 
     renderGame();
+    syncControlAvailability();
     playComputerTurnIfNeeded(setup.computerColour, setup.computerDifficulty);
   } catch (error) {
     const setupWasCancelled = error instanceof Error && error.message === "Player colour selection was cancelled.";
 
-    if (setupWasCancelled && isQuitGameSoundState(board)) {
-      playQuitGameSound();
-    }
+    if (setupWasCancelled) {
+      if (returnToIdleOnCancel) {
+        if (isQuitGameSoundState(board)) {
+          playQuitGameSound();
+        }
 
-    if (!showSetupErrorOnCancel && setupWasCancelled) {
+        enterIdleState();
+        return;
+      }
+
       renderGame();
+      syncControlAvailability();
       return;
     }
 
@@ -782,7 +862,11 @@ preloadStalemateSound();
 preloadQuitGameSound();
 boardRoot.addEventListener("click", handleBoardClick);
 newGameButton.addEventListener("click", () => {
-  void initialiseGame(false);
+  void initialiseGame(!isGameActive);
 });
 undoMoveButton.addEventListener("click", handleUndoMove);
-void initialiseGame();
+exitGameButton.addEventListener("click", () => {
+  void handleExitGame();
+});
+enterIdleState();
+void initialiseGame(true);

@@ -33,17 +33,33 @@
         <div class="panel-sidebar">
           <div id="turn-badge" class="turn-badge" aria-live="polite"></div>
           <div class="control-panel" aria-label="Game controls">
-            <div class="control-panel__labels" aria-hidden="true">
-              <span class="control-panel__label">New Game</span>
-              <span class="control-panel__label">Undo Move</span>
-              <span class="control-panel__label">Exit Game</span>
-              <span class="control-panel__label">Game Info</span>
+            <div class="control-panel__controls">
+              <div class="control-panel__control">
+                <span class="control-panel__label" aria-hidden="true">New Game</span>
+              </div>
+              <div class="control-panel__control">
+                <span class="control-panel__label" aria-hidden="true">Undo Move</span>
+              </div>
+              <div class="control-panel__control">
+                <span class="control-panel__label" aria-hidden="true">Exit Game</span>
+              </div>
+              <div class="control-panel__control">
+                <span class="control-panel__label" aria-hidden="true">Game Info</span>
+              </div>
             </div>
             <div class="control-panel__trough">
-              <button id="new-game-button" type="button" class="control-panel__button" aria-label="New Game"></button>
-              <button id="undo-move-button" type="button" class="control-panel__button" aria-label="Undo the last move"></button>
-              <button type="button" class="control-panel__button" aria-label="Exit the current game"></button>
-              <button type="button" class="control-panel__button" aria-label="View game information"></button>
+              <div class="control-panel__button-slot">
+                <button id="new-game-button" type="button" class="control-panel__button" aria-label="New Game"></button>
+              </div>
+              <div class="control-panel__button-slot">
+                <button id="undo-move-button" type="button" class="control-panel__button" aria-label="Undo the last move"></button>
+              </div>
+              <div class="control-panel__button-slot">
+                <button id="exit-game-button" type="button" class="control-panel__button" aria-label="Exit the current game"></button>
+              </div>
+              <div class="control-panel__button-slot">
+                <button type="button" class="control-panel__button" aria-label="View game information"></button>
+              </div>
             </div>
           </div>
         </div>
