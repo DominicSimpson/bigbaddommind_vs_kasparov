@@ -74,6 +74,11 @@ function renderAppShell(): void {
     <button id="new-game-button" type="button"></button>
     <button id="undo-move-button" type="button"></button>
     <button id="exit-game-button" type="button"></button>
+    <form id="move-entry-form">
+      <input id="move-from-input" />
+      <input id="move-to-input" />
+      <button id="move-entry-submit-button" type="submit"></button>
+    </form>
   `;
 }
 
@@ -99,7 +104,7 @@ function queueGameSetup(...results: Array<SetupChoice | "cancel">): void {
 
 async function loadApp(): Promise<void> {
   renderAppShell();
-  await import("../../src/index.ts");
+  await import("../../src/index.js");
   await flushPromises();
 }
 
@@ -193,6 +198,29 @@ describe("control panel buttons", () => {
     );
   });
 
+  it("records both squares in the move-entry readouts after a board move", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+
+    await loadApp();
+
+    const moveFromInput = document.querySelector<HTMLInputElement>("#move-from-input");
+    const moveToInput = document.querySelector<HTMLInputElement>("#move-to-input");
+
+    if (!moveFromInput || !moveToInput) {
+      throw new Error("Expected move entry inputs to exist.");
+    }
+
+    getSquare("e2").click();
+    getSquare("e4").click();
+
+    expect(moveFromInput.value).toBe("e2");
+    expect(moveToInput.value).toBe("e4");
+  });
+
   it("returns to the idle state when Exit Game is confirmed", async () => {
     queueGameSetup({
       playerColour: "white",
@@ -220,5 +248,36 @@ describe("control panel buttons", () => {
     );
     expect(getButton("#undo-move-button").disabled).toBe(true);
     expect(getButton("#exit-game-button").disabled).toBe(true);
+  });
+
+  it("lets the player enter a move through the coordinate readouts", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+
+    await loadApp();
+
+    const moveFromInput = document.querySelector<HTMLInputElement>("#move-from-input");
+    const moveToInput = document.querySelector<HTMLInputElement>("#move-to-input");
+    const moveEntryForm = document.querySelector<HTMLFormElement>("#move-entry-form");
+
+    if (!moveFromInput || !moveToInput || !moveEntryForm) {
+      throw new Error("Expected move entry controls to exist.");
+    }
+
+    moveFromInput.value = "e2";
+    moveFromInput.dispatchEvent(new Event("input", { bubbles: true }));
+    moveToInput.value = "e4";
+    moveToInput.dispatchEvent(new Event("input", { bubbles: true }));
+    moveEntryForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(getSquare("e4").querySelector(".piece")?.getAttribute("aria-label")).toBe(
+      "white pawn on e4",
+    );
+    expect(moveFromInput.value).toBe("");
+    expect(moveToInput.value).toBe("");
   });
 });

@@ -77,6 +77,10 @@ const {
   newGameButton,
   undoMoveButton,
   exitGameButton,
+  moveEntryForm,
+  moveFromInput,
+  moveToInput,
+  moveEntrySubmitButton,
 } = getAppElements();
 let sideLabels: SideLabels = {
   white: "White",
@@ -84,6 +88,8 @@ let sideLabels: SideLabels = {
 };
 let playerColour: Colour = "white";
 let selectedCoord: string | null = null;
+let moveEntryFromCoord = "";
+let moveEntryToCoord = "";
 let computerColour: Colour | null = null;
 let computerDifficulty: ComputerDifficulty | null = null;
 let isAwaitingPromotionChoice = false;
@@ -149,6 +155,38 @@ function getLegalMovesForCoord(coord: string | null): Move[] {
   return board.getLegalMoves(square.rank, square.file);
 }
 
+function normaliseMoveEntryValue(value: string): string {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "")
+    .slice(0, 2);
+}
+
+function isBoardCoord(value: string): boolean {
+  return /^[a-h][1-8]$/.test(value);
+}
+
+function clearMoveEntry(): void {
+  moveEntryFromCoord = "";
+  moveEntryToCoord = "";
+}
+
+function syncMoveEntryAvailability(): void {
+  const canEnterMove = (
+    isGameActive
+    && !isAwaitingPromotionChoice
+    && !isComputerThinking
+    && board.getSideToMove() === playerColour
+  );
+
+  moveFromInput.value = moveEntryFromCoord;
+  moveToInput.value = moveEntryToCoord;
+  moveFromInput.disabled = !canEnterMove;
+  moveToInput.disabled = !canEnterMove;
+  moveEntrySubmitButton.disabled = !canEnterMove;
+}
+
 function getComputerAxisLight(): ComputerAxisLight | null {
   if (computerMovePreview) {
     return {
@@ -207,6 +245,7 @@ function renderGame(): void {
     },
   });
   renderCapturedPieces(board, capturedPieces);
+  syncMoveEntryAvailability();
 }
 
 function syncControlAvailability(): void {
@@ -230,6 +269,7 @@ function renderIdleState(): void {
   turnBadge.replaceChildren();
   renderCapturedPieces(board, capturedPieces);
   syncControlAvailability();
+  syncMoveEntryAvailability();
 }
 
 // // If setup fails, it still renders the board, shows the error text, 
@@ -245,6 +285,7 @@ function renderSetupError(message: string): void {
   status.textContent = message;
   turnBadge.textContent = "";
   renderCapturedPieces(board, capturedPieces);
+  syncMoveEntryAvailability();
 }
 
 // // Resets the board and all relevant state to start a new game. 
@@ -256,6 +297,7 @@ function resetBoardForNewGame(): void {
   invalidatePendingComputerActions();
   board.loadFEN(INITIAL_POSITION_FEN);
   selectedCoord = null;
+  clearMoveEntry();
   computerMovingCoord = null;
   computerMovePreview = null;
   computerThinkingCoord = null;
@@ -437,6 +479,74 @@ function applyMove(move: Move): void {
   }
 }
 
+async function completePlayerMove(
+  originCoord: string,
+  destinationCoord: string,
+  options: {
+    preserveReadoutsOnSuccess?: boolean;
+  } = {},
+): Promise<boolean> {
+  const { preserveReadoutsOnSuccess = false } = options;
+  const legalMoves = getLegalMovesForCoord(originCoord);
+  const candidateMoves = legalMoves.filter(move => (
+    board.getSquare(move.toRank, move.toFile).coord === destinationCoord
+  ));
+
+  if (candidateMoves.length === 0) {
+    return false;
+  }
+
+  let chosenMove = candidateMoves[0];
+
+  if (candidateMoves.some(move => move.promotion)) {
+    const promotingPiece = getSquareByCoord(originCoord)?.piece;
+    if (!promotingPiece) {
+      return false;
+    }
+
+    isAwaitingPromotionChoice = true;
+    syncMoveEntryAvailability();
+
+    try {
+      const promotionChoice = await choosePromotionPiece(promotingPiece.colour);
+      const matchingMove = candidateMoves.find(move => move.promotion === promotionChoice);
+
+      if (!matchingMove) {
+        return false;
+      }
+
+      chosenMove = matchingMove;
+    } catch {
+      selectedCoord = null;
+      clearMoveEntry();
+      renderGame();
+      return false;
+    } finally {
+      isAwaitingPromotionChoice = false;
+      syncMoveEntryAvailability();
+    }
+  }
+
+  applyMove(chosenMove);
+  selectedCoord = null;
+  if (preserveReadoutsOnSuccess) {
+    moveEntryFromCoord = originCoord;
+    moveEntryToCoord = destinationCoord;
+  } else {
+    clearMoveEntry();
+  }
+  computerMovingCoord = null;
+  computerMovePreview = null;
+  computerDestinationCoord = null;
+  renderGame();
+
+  if (computerColour && computerDifficulty) {
+    playComputerTurnIfNeeded(computerColour, computerDifficulty);
+  }
+
+  return true;
+}
+
 // // Animates the computer's move by updating the computerMovePreview 
 // // state with intermediate coordinates. The piece then visually "moves" 
 // // across the board by re-rendering the board for each intermediate coordinate.
@@ -524,64 +634,96 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
     }
 
     selectedCoord = coord;
+    moveEntryFromCoord = coord;
+    moveEntryToCoord = "";
     renderGame();
     return;
   }
 
   if (square?.piece?.colour === playerColour) {
     selectedCoord = selectedCoord === coord ? null : coord;
+    moveEntryFromCoord = selectedCoord ?? "";
+    moveEntryToCoord = "";
+    renderGame();
+    return;
+  }
+  moveEntryToCoord = coord;
+  await completePlayerMove(selectedCoord, coord, {
+    preserveReadoutsOnSuccess: true,
+  });
+}
+
+function handleMoveFromInput(): void {
+  moveEntryFromCoord = normaliseMoveEntryValue(moveFromInput.value);
+  moveFromInput.value = moveEntryFromCoord;
+
+  if (!isBoardCoord(moveEntryFromCoord)) {
+    selectedCoord = null;
     renderGame();
     return;
   }
 
-  const legalMoves = getLegalMovesForCoord(selectedCoord);
-  const candidateMoves = legalMoves.filter(move => (
-    board.getSquare(move.toRank, move.toFile).coord === coord
-  ));
+  const square = getSquareByCoord(moveEntryFromCoord);
 
-  if (candidateMoves.length === 0) {
+  if (!square?.piece || square.piece.colour !== playerColour) {
+    selectedCoord = null;
+    renderGame();
     return;
   }
 
-  let chosenMove = candidateMoves[0];
+  selectedCoord = moveEntryFromCoord;
+  renderGame();
+}
 
-  if (candidateMoves.some(move => move.promotion)) {
-    const promotingPiece = getSquareByCoord(selectedCoord)?.piece;
-    if (!promotingPiece) {
-      return;
-    }
+function handleMoveToInput(): void {
+  moveEntryToCoord = normaliseMoveEntryValue(moveToInput.value);
+  moveToInput.value = moveEntryToCoord;
+}
 
-    isAwaitingPromotionChoice = true;
+async function handleMoveEntrySubmit(event: Event): Promise<void> {
+  event.preventDefault();
 
-    try {
-      const promotionChoice = await choosePromotionPiece(promotingPiece.colour);
-      const matchingMove = candidateMoves.find(move => move.promotion === promotionChoice);
-
-      if (!matchingMove) {
-        return;
-      }
-
-      chosenMove = matchingMove;
-    } catch {
-      selectedCoord = null;
-      renderGame();
-      return;
-    } finally {
-      isAwaitingPromotionChoice = false;
-    }
+  if (!isGameActive) {
+    showInformationalModal("Start a new game before entering a move.");
+    return;
   }
-  // // At this point, we have the player's chosen move, and if it was a promotion,
-  // we've already asked the player which piece they want to promote to and updated 
-  // the chosen move accordingly. So now we can just apply the move and update the UI:
-  applyMove(chosenMove);
-  selectedCoord = null;
-  computerMovingCoord = null;
-  computerMovePreview = null;
-  computerDestinationCoord = null;
+
+  if (isComputerThinking || board.getSideToMove() !== playerColour) {
+    showInformationalModal("Wait until it is your turn before entering a move.");
+    return;
+  }
+
+  const originCoord = normaliseMoveEntryValue(moveFromInput.value);
+  const destinationCoord = normaliseMoveEntryValue(moveToInput.value);
+  moveEntryFromCoord = originCoord;
+  moveEntryToCoord = destinationCoord;
+
+  if (!isBoardCoord(originCoord) || !isBoardCoord(destinationCoord)) {
+    showInformationalModal("Enter both move coordinates in chess notation, for example e2 to e4.");
+    renderGame();
+    return;
+  }
+
+  const square = getSquareByCoord(originCoord);
+
+  if (!square?.piece || square.piece.colour !== playerColour) {
+    showInformationalModal("Choose one of your own pieces as the starting square.");
+    selectedCoord = null;
+    renderGame();
+    return;
+  }
+
+  selectedCoord = originCoord;
   renderGame();
 
-  if (computerColour && computerDifficulty) {
-    playComputerTurnIfNeeded(computerColour, computerDifficulty);
+  const moveWasCompleted = await completePlayerMove(originCoord, destinationCoord);
+
+  if (!moveWasCompleted) {
+    selectedCoord = originCoord;
+    moveEntryFromCoord = originCoord;
+    moveEntryToCoord = destinationCoord;
+    renderGame();
+    showInformationalModal(`The move ${originCoord} to ${destinationCoord} is not legal in this position.`);
   }
 }
 
@@ -611,6 +753,7 @@ function handleUndoMove(): void {
   if (!latestMove) {
     resetComputerTurnVisualState();
     selectedCoord = null;
+    clearMoveEntry();
     renderGame();
     return;
   }
@@ -623,6 +766,7 @@ function handleUndoMove(): void {
     if (!priorMove || priorMove.movedPiece.colour !== playerColour) {
       resetComputerTurnVisualState();
       selectedCoord = null;
+      clearMoveEntry();
       renderGame();
       return;
     }
@@ -633,6 +777,7 @@ function handleUndoMove(): void {
 
   resetComputerTurnVisualState();
   selectedCoord = null;
+  clearMoveEntry();
   renderGame();
 }
 
@@ -753,6 +898,7 @@ function playComputerTurnIfNeeded(
           computerMovingCoord = null;
           computerMovePreview = null;
           computerDestinationCoord = null;
+          clearMoveEntry();
           renderGame();
           return;
         }
@@ -763,6 +909,7 @@ function playComputerTurnIfNeeded(
           computerMovingCoord = null;
           computerMovePreview = null;
           computerDestinationCoord = null;
+          clearMoveEntry();
           renderGame();
           return;
         }
@@ -794,6 +941,7 @@ function playComputerTurnIfNeeded(
           isComputerThinking = false;
           computerThinkingCoord = null;
           selectedCoord = null;
+          clearMoveEntry();
           computerMovingCoord = null;
           computerMovePreview = null;
           computerDestinationCoord = null;
@@ -867,6 +1015,11 @@ newGameButton.addEventListener("click", () => {
 undoMoveButton.addEventListener("click", handleUndoMove);
 exitGameButton.addEventListener("click", () => {
   void handleExitGame();
+});
+moveFromInput.addEventListener("input", handleMoveFromInput);
+moveToInput.addEventListener("input", handleMoveToInput);
+moveEntryForm.addEventListener("submit", event => {
+  void handleMoveEntrySubmit(event);
 });
 enterIdleState();
 void initialiseGame(true);
