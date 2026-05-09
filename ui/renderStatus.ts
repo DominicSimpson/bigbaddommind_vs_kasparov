@@ -168,6 +168,9 @@ export function renderStatus(
   lastAnnouncedStatusKey = statusAnnouncementKey;
 
   switch (gameStatus.status) {
+    case "active":
+      statusElement.textContent = "";
+      return;
     case "check":
       statusElement.textContent = "";
       if (shouldAnnounceStatus) {

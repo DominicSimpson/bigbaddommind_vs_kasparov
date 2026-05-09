@@ -174,6 +174,7 @@ describe("control panel buttons", () => {
     expect(chooseGameOptionsMock).toHaveBeenCalledTimes(1);
     expect(undoMoveButton.disabled).toBe(false);
     expect(exitGameButton.disabled).toBe(false);
+    expect(document.querySelector("#status")?.textContent).toBe("");
   });
 
   it("shows the undo warning when only one side has moved", async () => {

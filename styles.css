@@ -202,6 +202,63 @@ body {
   gap: 0.34rem;
 }
 
+.move-entry-panel__display-well {
+  position: relative;
+  display: block;
+  padding: 1rem 0.4rem 1rem 0.75rem;
+  border-radius: 0.2rem;
+  /* border: 1px solid rgba(132, 24, 24, 0.88); */
+  overflow: hidden;
+  background:
+    linear-gradient(90deg, rgba(58, 63, 67, 0.24) 0%, rgba(58, 63, 67, 0.12) 14%, rgba(0, 0, 0, 0) 30%),
+    linear-gradient(180deg, rgba(36, 40, 43, 0.97) 0%, rgba(25, 28, 31, 0.98) 45%, rgba(16, 18, 20, 0.99) 100%);
+  box-shadow:
+    inset 0 0.16rem 0.28rem rgba(255, 255, 255, 0.08),
+    inset 0 -0.16rem 0.28rem rgba(255, 255, 255, 0.08),
+    inset 0 0.28rem 0.42rem rgba(0, 0, 0, 0.86),
+    inset 0 -0.28rem 0.42rem rgba(0, 0, 0, 0.86),
+    inset 0.2rem 0 0.34rem rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(255, 255, 255, 0.03);
+}
+
+.move-entry-panel__display-well::before,
+.move-entry-panel__display-well::after {
+  content: "";
+  position: absolute;
+  left: 0.28rem;
+  width: 1rem;
+  height: 1px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.3) 0%, rgba(150, 158, 164, 0.32) 38%, rgba(0, 0, 0, 0.45) 100%);
+  transform-origin: left center;
+  pointer-events: none;
+  opacity: 0.95;
+}
+
+.move-entry-panel__display-well::before {
+  top: 0.38rem;
+  transform: rotate(-30deg);
+}
+
+.move-entry-panel__display-well::after {
+  bottom: 0.38rem;
+  transform: rotate(30deg);
+}
+
+.move-entry-panel__display-well:focus-within {
+  border-color: rgba(255, 110, 110, 0.94);
+  box-shadow:
+    inset 0 0.16rem 0.28rem rgba(255, 255, 255, 0.08),
+    inset 0 -0.16rem 0.28rem rgba(255, 255, 255, 0.08),
+    inset 0 0.28rem 0.42rem rgba(0, 0, 0, 0.86),
+    inset 0 -0.28rem 0.42rem rgba(0, 0, 0, 0.86),
+    inset 0.2rem 0 0.34rem rgba(255, 255, 255, 0.14),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.58),
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    0 0 0 2px rgba(255, 88, 88, 0.12),
+    0 0 0.9rem rgba(255, 56, 56, 0.14);
+}
+
 .move-entry-panel__label {
   font-size: 0.64rem;
   letter-spacing: 0.16em;
@@ -211,15 +268,15 @@ body {
 .move-entry-panel__input {
   width: 100%;
   min-width: 0;
-  padding: 0.62rem 0.7rem 0.55rem;
-  border: 1px solid rgba(111, 18, 18, 0.85);
-  border-radius: 8px;
+  padding: 0.64rem 0.7rem 0.57rem;
+  border: 0;
+  border-radius: 0.58rem;
   background:
-    linear-gradient(180deg, rgba(6, 6, 7, 0.96) 0%, rgba(22, 10, 10, 0.98) 100%);
+    linear-gradient(180deg, rgba(8, 8, 9, 0.98) 0%, rgba(24, 11, 11, 0.99) 48%, rgba(10, 6, 6, 1) 100%);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
-    inset 0 0.12rem 0.25rem rgba(0, 0, 0, 0.72),
-    0 0 0 1px rgba(0, 0, 0, 0.5);
+    inset 0 0.08rem 0.12rem rgba(255, 255, 255, 0.03),
+    inset 0 0.18rem 0.36rem rgba(0, 0, 0, 0.78),
+    inset 0 -0.08rem 0.18rem rgba(255, 74, 74, 0.1);
   color: #ff4d4d;
   font-family: "Courier New", monospace;
   font-size: 1.35rem;
@@ -240,17 +297,14 @@ body {
 
 .move-entry-panel__input:focus {
   outline: none;
-  border-color: rgba(255, 112, 112, 0.96);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.03),
-    inset 0 0.12rem 0.25rem rgba(0, 0, 0, 0.72),
-    0 0 0 2px rgba(255, 85, 85, 0.18),
-    0 0 0.85rem rgba(255, 52, 52, 0.16);
+    inset 0 0.08rem 0.12rem rgba(255, 255, 255, 0.03),
+    inset 0 0.18rem 0.36rem rgba(0, 0, 0, 0.78),
+    inset 0 -0.08rem 0.2rem rgba(255, 98, 98, 0.16);
 }
 
 .move-entry-panel__input:disabled {
   color: rgba(255, 93, 93, 0.38);
-  border-color: rgba(90, 28, 28, 0.74);
   background:
     linear-gradient(180deg, rgba(10, 10, 11, 0.95) 0%, rgba(18, 15, 15, 0.98) 100%);
   cursor: not-allowed;

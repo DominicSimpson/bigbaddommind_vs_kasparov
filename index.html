@@ -67,40 +67,40 @@
             class="move-entry-panel"
             aria-label="Accessible move entry"
           >
-            <div class="move-entry-panel__header">
-              <span class="move-entry-panel__title">Move Entry</span>
-              <span class="move-entry-panel__subtitle">Type origin and destination</span>
-            </div>
             <div class="move-entry-panel__readouts">
               <label class="move-entry-panel__readout">
                 <span class="move-entry-panel__label">From</span>
-                <input
-                  id="move-from-input"
-                  class="move-entry-panel__input"
-                  type="text"
-                  inputmode="text"
-                  autocomplete="off"
-                  autocapitalize="characters"
-                  spellcheck="false"
-                  maxlength="2"
-                  placeholder="A2"
-                  aria-label="Enter the piece starting square"
-                />
+                <span class="move-entry-panel__display-well">
+                  <input
+                    id="move-from-input"
+                    class="move-entry-panel__input"
+                    type="text"
+                    inputmode="text"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    maxlength="2"
+                    placeholder="A2"
+                    aria-label="Enter the piece starting square"
+                  />
+                </span>
               </label>
               <label class="move-entry-panel__readout">
                 <span class="move-entry-panel__label">To</span>
-                <input
-                  id="move-to-input"
-                  class="move-entry-panel__input"
-                  type="text"
-                  inputmode="text"
-                  autocomplete="off"
-                  autocapitalize="characters"
-                  spellcheck="false"
-                  maxlength="2"
-                  placeholder="A4"
-                  aria-label="Enter the piece destination square"
-                />
+                <span class="move-entry-panel__display-well">
+                  <input
+                    id="move-to-input"
+                    class="move-entry-panel__input"
+                    type="text"
+                    inputmode="text"
+                    autocomplete="off"
+                    autocapitalize="characters"
+                    spellcheck="false"
+                    maxlength="2"
+                    placeholder="A4"
+                    aria-label="Enter the piece destination square"
+                  />
+                </span>
               </label>
             </div>
             <button
