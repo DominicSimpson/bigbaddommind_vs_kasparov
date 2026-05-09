@@ -80,6 +80,10 @@ const {
   moveEntryForm,
   moveFromInput,
   moveToInput,
+  moveFromDecrementButton,
+  moveFromIncrementButton,
+  moveToDecrementButton,
+  moveToIncrementButton,
   moveEntrySubmitButton,
 } = getAppElements();
 let sideLabels: SideLabels = {
@@ -109,6 +113,7 @@ const COMPUTER_MOVE_STEP_MS = 140;
 const COMPUTER_MOVE_MIN_ANIMATION_MS = 420;
 const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const BOARD_COORD_SEQUENCE = FILES.flatMap(file => RANKS.map(rank => `${file}${rank + 1}`));
 let pendingComputerTurnTimeoutId: number | null = null;
 let computerActionToken = 0;
 
@@ -184,7 +189,24 @@ function syncMoveEntryAvailability(): void {
   moveToInput.value = moveEntryToCoord;
   moveFromInput.disabled = !canEnterMove;
   moveToInput.disabled = !canEnterMove;
+  moveFromDecrementButton.disabled = !canEnterMove;
+  moveFromIncrementButton.disabled = !canEnterMove;
+  moveToDecrementButton.disabled = !canEnterMove;
+  moveToIncrementButton.disabled = !canEnterMove;
   moveEntrySubmitButton.disabled = !canEnterMove;
+}
+
+function getSteppedBoardCoord(currentValue: string, step: 1 | -1): string {
+  const currentIndex = BOARD_COORD_SEQUENCE.indexOf(currentValue);
+
+  if (currentIndex === -1) {
+    return step > 0
+      ? BOARD_COORD_SEQUENCE[0]
+      : BOARD_COORD_SEQUENCE[BOARD_COORD_SEQUENCE.length - 1];
+  }
+
+  const nextIndex = (currentIndex + step + BOARD_COORD_SEQUENCE.length) % BOARD_COORD_SEQUENCE.length;
+  return BOARD_COORD_SEQUENCE[nextIndex];
 }
 
 function getComputerAxisLight(): ComputerAxisLight | null {
@@ -680,6 +702,19 @@ function handleMoveToInput(): void {
   moveToInput.value = moveEntryToCoord;
 }
 
+function stepMoveFromInput(step: 1 | -1): void {
+  moveFromInput.value = getSteppedBoardCoord(moveEntryFromCoord, step);
+  handleMoveFromInput();
+  moveFromInput.focus();
+}
+
+function stepMoveToInput(step: 1 | -1): void {
+  moveToInput.value = getSteppedBoardCoord(moveEntryToCoord, step);
+  handleMoveToInput();
+  renderGame();
+  moveToInput.focus();
+}
+
 async function handleMoveEntrySubmit(event: Event): Promise<void> {
   event.preventDefault();
 
@@ -1018,6 +1053,18 @@ exitGameButton.addEventListener("click", () => {
 });
 moveFromInput.addEventListener("input", handleMoveFromInput);
 moveToInput.addEventListener("input", handleMoveToInput);
+moveFromDecrementButton.addEventListener("click", () => {
+  stepMoveFromInput(-1);
+});
+moveFromIncrementButton.addEventListener("click", () => {
+  stepMoveFromInput(1);
+});
+moveToDecrementButton.addEventListener("click", () => {
+  stepMoveToInput(-1);
+});
+moveToIncrementButton.addEventListener("click", () => {
+  stepMoveToInput(1);
+});
 moveEntryForm.addEventListener("submit", event => {
   void handleMoveEntrySubmit(event);
 });

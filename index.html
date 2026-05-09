@@ -68,9 +68,27 @@
             aria-label="Accessible move entry"
           >
             <div class="move-entry-panel__readouts">
-              <label class="move-entry-panel__readout">
-                <span class="move-entry-panel__label">From</span>
+              <div class="move-entry-panel__readout">
+                <label class="move-entry-panel__label" for="move-from-input">From</label>
                 <span class="move-entry-panel__display-well">
+                  <span class="move-entry-panel__stepper">
+                    <button
+                      id="move-from-increment-button"
+                      class="move-entry-panel__stepper-button"
+                      type="button"
+                      aria-label="Select the next starting square"
+                    >
+                      +
+                    </button>
+                    <button
+                      id="move-from-decrement-button"
+                      class="move-entry-panel__stepper-button"
+                      type="button"
+                      aria-label="Select the previous starting square"
+                    >
+                      -
+                    </button>
+                  </span>
                   <input
                     id="move-from-input"
                     class="move-entry-panel__input"
@@ -84,10 +102,28 @@
                     aria-label="Enter the piece starting square"
                   />
                 </span>
-              </label>
-              <label class="move-entry-panel__readout">
-                <span class="move-entry-panel__label">To</span>
+              </div>
+              <div class="move-entry-panel__readout">
+                <label class="move-entry-panel__label" for="move-to-input">To</label>
                 <span class="move-entry-panel__display-well">
+                  <span class="move-entry-panel__stepper">
+                    <button
+                      id="move-to-increment-button"
+                      class="move-entry-panel__stepper-button"
+                      type="button"
+                      aria-label="Select the next destination square"
+                    >
+                      +
+                    </button>
+                    <button
+                      id="move-to-decrement-button"
+                      class="move-entry-panel__stepper-button"
+                      type="button"
+                      aria-label="Select the previous destination square"
+                    >
+                      -
+                    </button>
+                  </span>
                   <input
                     id="move-to-input"
                     class="move-entry-panel__input"
@@ -101,7 +137,7 @@
                     aria-label="Enter the piece destination square"
                   />
                 </span>
-              </label>
+              </div>
             </div>
             <button
               id="move-entry-submit-button"

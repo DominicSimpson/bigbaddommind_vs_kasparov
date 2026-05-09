@@ -11,6 +11,10 @@ export type AppElements = {
   moveEntryForm: HTMLFormElement; // accessible typed move form
   moveFromInput: HTMLInputElement; // typed move origin square
   moveToInput: HTMLInputElement; // typed move destination square
+  moveFromDecrementButton: HTMLButtonElement; // steps origin square backwards
+  moveFromIncrementButton: HTMLButtonElement; // steps origin square forwards
+  moveToDecrementButton: HTMLButtonElement; // steps destination square backwards
+  moveToIncrementButton: HTMLButtonElement; // steps destination square forwards
   moveEntrySubmitButton: HTMLButtonElement; // submits the typed move
 };
 
@@ -39,6 +43,10 @@ export function getAppElements(): AppElements {
     moveEntryForm: requireElement<HTMLFormElement>("#move-entry-form"),
     moveFromInput: requireElement<HTMLInputElement>("#move-from-input"),
     moveToInput: requireElement<HTMLInputElement>("#move-to-input"),
+    moveFromDecrementButton: requireElement<HTMLButtonElement>("#move-from-decrement-button"),
+    moveFromIncrementButton: requireElement<HTMLButtonElement>("#move-from-increment-button"),
+    moveToDecrementButton: requireElement<HTMLButtonElement>("#move-to-decrement-button"),
+    moveToIncrementButton: requireElement<HTMLButtonElement>("#move-to-increment-button"),
     moveEntrySubmitButton: requireElement<HTMLButtonElement>("#move-entry-submit-button"),
   };
 }
