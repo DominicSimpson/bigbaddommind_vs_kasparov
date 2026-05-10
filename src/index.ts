@@ -108,6 +108,7 @@ let suppressNextBoardClick = false;
 let computerMovingCoord: string | null = null;
 let computerMovePreview: ComputerMovePreview | null = null;
 let computerDestinationCoord: string | null = null;
+let pendingCastlingReadoutTimeoutId: number | null = null;
 // // How long the computer "thinks" for before making a move, in milliseconds.
 // This is just to make the computer's moves feel less instantaneous and robotic,
 // which makes the game more evenly paced and enjoyable:
@@ -115,6 +116,7 @@ const COMPUTER_MOVE_DELAY_MS = 4250;
 const COMPUTER_MOVE_STEP_MS = 140;
 const COMPUTER_MOVE_MIN_ANIMATION_MS = 420;
 const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
+const CASTLING_READOUT_SWAP_DELAY_MS = 900;
 const BOARD_DRAG_THRESHOLD_PX = 6;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const BOARD_COORD_SEQUENCE = FILES.flatMap(file => RANKS.map(rank => (
@@ -134,6 +136,13 @@ function clearPendingComputerTurnTimeout(): void {
   if (pendingComputerTurnTimeoutId !== null) {
     window.clearTimeout(pendingComputerTurnTimeoutId);
     pendingComputerTurnTimeoutId = null;
+  }
+}
+
+function clearPendingCastlingReadoutTimeout(): void {
+  if (pendingCastlingReadoutTimeoutId !== null) {
+    window.clearTimeout(pendingCastlingReadoutTimeoutId);
+    pendingCastlingReadoutTimeoutId = null;
   }
 }
 
@@ -179,13 +188,50 @@ function isBoardCoord(value: string): boolean {
 }
 
 function clearMoveEntry(): void {
+  clearPendingCastlingReadoutTimeout();
   moveEntryFromCoord = "";
   moveEntryToCoord = "";
 }
 
 function setMoveEntryReadouts(originCoord: string, destinationCoord: string): void {
+  clearPendingCastlingReadoutTimeout();
   moveEntryFromCoord = originCoord;
   moveEntryToCoord = destinationCoord;
+}
+
+function getCastlingRookReadout(move: Move): { originCoord: string; destinationCoord: string } | null {
+  if (!move.castle) {
+    return null;
+  }
+
+  const homeRank = move.fromRank;
+
+  if (move.castle === "K") {
+    return {
+      originCoord: toBoardCoord(homeRank, 7),
+      destinationCoord: toBoardCoord(homeRank, 5),
+    };
+  }
+
+  return {
+    originCoord: toBoardCoord(homeRank, 0),
+    destinationCoord: toBoardCoord(homeRank, 3),
+  };
+}
+
+function scheduleCastlingReadoutSwap(move: Move): void {
+  const rookReadout = getCastlingRookReadout(move);
+
+  if (!rookReadout) {
+    return;
+  }
+
+  pendingCastlingReadoutTimeoutId = window.setTimeout(() => {
+    pendingCastlingReadoutTimeoutId = null;
+    moveEntryFromCoord = rookReadout.originCoord;
+    moveEntryToCoord = rookReadout.destinationCoord;
+    renderGame();
+  }, CASTLING_READOUT_SWAP_DELAY_MS);
 }
 
 function syncMoveEntryAvailability(): void {
@@ -328,6 +374,7 @@ function renderSetupError(message: string): void {
 // its move in the new game:
 function resetBoardForNewGame(): void {
   invalidatePendingComputerActions();
+  clearPendingCastlingReadoutTimeout();
   board.loadFEN(INITIAL_POSITION_FEN);
   selectedCoord = null;
   clearMoveEntry();
@@ -576,6 +623,7 @@ async function completePlayerMove(
   selectedCoord = null;
   if (preserveReadoutsOnSuccess) {
     setMoveEntryReadouts(originCoord, destinationCoord);
+    scheduleCastlingReadoutSwap(chosenMove);
   } else {
     clearMoveEntry();
   }

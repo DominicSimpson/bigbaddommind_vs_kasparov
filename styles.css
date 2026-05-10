@@ -23,7 +23,7 @@
   --led-dim: #50634a;
   --panel-sidebar-base-width: 25rem;
   --panel-sidebar-offset: -10rem;
-  --panel-sidebar-right-extend: 25rem;
+  --panel-sidebar-right-extend: 15rem;
   --panel-sidebar-y-offset: 0.05rem;
   --board-panel-surface: linear-gradient(180deg, rgba(38, 42, 45, 0.96) 0%, rgba(19, 22, 24, 0.96) 100%);
 
@@ -121,7 +121,10 @@ body {
 }
 
 .board-panel {
-  padding: 1.5rem;
+  padding-top: 1.5rem;
+  padding-right: 1.5rem;
+  padding-bottom: 23rem;
+  padding-left: 1.5rem;
 }
 
 .board-layout {

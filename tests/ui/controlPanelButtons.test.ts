@@ -7,6 +7,7 @@ const showConfirmationModalMock = vi.fn();
 const showInformationalModalMock = vi.fn();
 const playQuitGameSoundMock = vi.fn();
 const isQuitGameSoundStateMock = vi.fn();
+const chooseComputerMoveMock = vi.fn();
 
 vi.mock("../../ui/modalPopupWindow.js", async () => {
   const actual = await vi.importActual<typeof import("../../ui/modalPopupWindow.js")>(
@@ -59,6 +60,14 @@ vi.mock("../../src/audio/moveSound.js", () => ({
   preloadStalemateSound: vi.fn(),
 }));
 
+vi.mock("../../src/player/ComputerPlayer.js", () => ({
+  createComputerPlayer: vi.fn(() => ({
+    chooseMove: chooseComputerMoveMock,
+  })),
+}));
+
+const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
 type SetupChoice = {
   playerColour: "white" | "black";
   computerDifficulty: "easy" | "medium" | "hard";
@@ -107,8 +116,21 @@ function queueGameSetup(...results: Array<SetupChoice | "cancel">): void {
   }
 }
 
-async function loadApp(): Promise<void> {
+async function loadApp(options: { initialFen?: string } = {}): Promise<void> {
   renderAppShell();
+
+  if (options.initialFen) {
+    const { ChessBoard } = await import("../../src/board/ChessBoard.js");
+    const originalLoadFEN = ChessBoard.prototype.loadFEN;
+
+    vi.spyOn(ChessBoard.prototype, "loadFEN").mockImplementation(function loadPatchedFen(fen) {
+      return originalLoadFEN.call(
+        this,
+        fen === INITIAL_POSITION_FEN ? options.initialFen ?? fen : fen,
+      );
+    });
+  }
+
   await import("../../src/index.js");
   await flushPromises();
 }
@@ -141,12 +163,15 @@ describe("control panel buttons", () => {
     showInformationalModalMock.mockReset();
     playQuitGameSoundMock.mockReset();
     isQuitGameSoundStateMock.mockReset();
+    chooseComputerMoveMock.mockReset();
+    chooseComputerMoveMock.mockReturnValue(null);
     isQuitGameSoundStateMock.mockReturnValue(true);
   });
 
   afterEach(() => {
     vi.clearAllTimers();
     vi.useRealTimers();
+    vi.restoreAllMocks();
     document.body.innerHTML = "";
   });
 
@@ -340,5 +365,43 @@ describe("control panel buttons", () => {
     );
     expect(moveFromInput.value).toBe("e2");
     expect(moveToInput.value).toBe("e4");
+  });
+
+  it("swaps the move-entry readout to the rook leg after castling is confirmed", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+
+    await loadApp({
+      initialFen: "4k3/8/8/8/8/8/8/R3K2R w KQ - 0 1",
+    });
+
+    const moveFromInput = document.querySelector<HTMLInputElement>("#move-from-input");
+    const moveToInput = document.querySelector<HTMLInputElement>("#move-to-input");
+
+    if (!moveFromInput || !moveToInput) {
+      throw new Error("Expected move entry inputs to exist.");
+    }
+
+    getSquare("e1").click();
+    getSquare("g1").click();
+    await flushPromises();
+
+    expect(getSquare("g1").querySelector(".piece")?.getAttribute("aria-label")).toBe(
+      "white king on g1",
+    );
+    expect(getSquare("f1").querySelector(".piece")?.getAttribute("aria-label")).toBe(
+      "white rook on f1",
+    );
+    expect(moveFromInput.value).toBe("e1");
+    expect(moveToInput.value).toBe("g1");
+
+    vi.advanceTimersByTime(900);
+    await flushPromises();
+
+    expect(moveFromInput.value).toBe("h1");
+    expect(moveToInput.value).toBe("f1");
   });
 });
