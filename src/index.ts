@@ -100,6 +100,9 @@ let isAwaitingPromotionChoice = false;
 let isGameActive = false;
 let isComputerThinking = false;
 let computerThinkingCoord: string | null = null;
+let dragOriginCoord: string | null = null;
+let dragStartPoint: { x: number; y: number } | null = null;
+let suppressNextBoardClick = false;
 // // This is used to trigger the "moving..." visual effect on the
 // piece while its move animation is actively running:
 let computerMovingCoord: string | null = null;
@@ -112,6 +115,7 @@ const COMPUTER_MOVE_DELAY_MS = 4250;
 const COMPUTER_MOVE_STEP_MS = 140;
 const COMPUTER_MOVE_MIN_ANIMATION_MS = 420;
 const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
+const BOARD_DRAG_THRESHOLD_PX = 6;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const BOARD_COORD_SEQUENCE = FILES.flatMap(file => RANKS.map(rank => (
   `${"abcdefgh"[file]}${rank + 1}`
@@ -177,6 +181,11 @@ function isBoardCoord(value: string): boolean {
 function clearMoveEntry(): void {
   moveEntryFromCoord = "";
   moveEntryToCoord = "";
+}
+
+function setMoveEntryReadouts(originCoord: string, destinationCoord: string): void {
+  moveEntryFromCoord = originCoord;
+  moveEntryToCoord = destinationCoord;
 }
 
 function syncMoveEntryAvailability(): void {
@@ -322,6 +331,9 @@ function resetBoardForNewGame(): void {
   board.loadFEN(INITIAL_POSITION_FEN);
   selectedCoord = null;
   clearMoveEntry();
+  dragOriginCoord = null;
+  dragStartPoint = null;
+  suppressNextBoardClick = false;
   computerMovingCoord = null;
   computerMovePreview = null;
   computerThinkingCoord = null;
@@ -370,6 +382,15 @@ function delay(ms: number): Promise<void> {
   return new Promise(resolve => {
     window.setTimeout(resolve, ms);
   });
+}
+
+function getSquareCoordFromEventTarget(target: EventTarget | null): string | null {
+  if (!(target instanceof Element)) {
+    return null;
+  }
+
+  const squareElement = target.closest<HTMLElement>(".square");
+  return squareElement?.dataset.coord ?? null;
 }
 
 function toBoardCoord(rank: number, file: number): string {
@@ -510,7 +531,7 @@ async function completePlayerMove(
     preserveReadoutsOnSuccess?: boolean;
   } = {},
 ): Promise<boolean> {
-  const { preserveReadoutsOnSuccess = false } = options;
+  const { preserveReadoutsOnSuccess = true } = options;
   const legalMoves = getLegalMovesForCoord(originCoord);
   const candidateMoves = legalMoves.filter(move => (
     board.getSquare(move.toRank, move.toFile).coord === destinationCoord
@@ -554,8 +575,7 @@ async function completePlayerMove(
   applyMove(chosenMove);
   selectedCoord = null;
   if (preserveReadoutsOnSuccess) {
-    moveEntryFromCoord = originCoord;
-    moveEntryToCoord = destinationCoord;
+    setMoveEntryReadouts(originCoord, destinationCoord);
   } else {
     clearMoveEntry();
   }
@@ -628,6 +648,11 @@ async function animateComputerMove(
 // involves a promotion, it waits for the user to choose a promotion piece 
 // before making the move:
 async function handleBoardClick(event: MouseEvent): Promise<void> {
+  if (suppressNextBoardClick) {
+    suppressNextBoardClick = false;
+    return;
+  }
+
   if (!isGameActive) {
     return;
   }
@@ -673,6 +698,74 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
   }
   moveEntryToCoord = coord;
   await completePlayerMove(selectedCoord, coord, {
+    preserveReadoutsOnSuccess: true,
+  });
+}
+
+function handleBoardMouseDown(event: MouseEvent): void {
+  dragOriginCoord = null;
+  dragStartPoint = null;
+
+  if (!isGameActive || isAwaitingPromotionChoice || board.getSideToMove() !== playerColour) {
+    return;
+  }
+
+  const coord = getSquareCoordFromEventTarget(event.target);
+
+  if (!coord) {
+    return;
+  }
+
+  const square = getSquareByCoord(coord);
+
+  if (!square?.piece || square.piece.colour !== playerColour) {
+    return;
+  }
+
+  dragOriginCoord = coord;
+  dragStartPoint = { x: event.clientX, y: event.clientY };
+}
+
+async function handleBoardMouseUp(event: MouseEvent): Promise<void> {
+  const originCoord = dragOriginCoord;
+  const startPoint = dragStartPoint;
+
+  dragOriginCoord = null;
+  dragStartPoint = null;
+
+  if (!originCoord || !startPoint) {
+    return;
+  }
+
+  if (!isGameActive || isAwaitingPromotionChoice || board.getSideToMove() !== playerColour) {
+    return;
+  }
+
+  const deltaX = event.clientX - startPoint.x;
+  const deltaY = event.clientY - startPoint.y;
+  const pointerTravel = Math.hypot(deltaX, deltaY);
+
+  if (pointerTravel < BOARD_DRAG_THRESHOLD_PX) {
+    return;
+  }
+
+  const destinationCoord = getSquareCoordFromEventTarget(event.target);
+
+  if (!destinationCoord || destinationCoord === originCoord) {
+    return;
+  }
+
+  const originSquare = getSquareByCoord(originCoord);
+
+  if (!originSquare?.piece || originSquare.piece.colour !== playerColour) {
+    return;
+  }
+
+  selectedCoord = originCoord;
+  moveEntryFromCoord = originCoord;
+  moveEntryToCoord = destinationCoord;
+  suppressNextBoardClick = true;
+  await completePlayerMove(originCoord, destinationCoord, {
     preserveReadoutsOnSuccess: true,
   });
 }
@@ -753,7 +846,9 @@ async function handleMoveEntrySubmit(event: Event): Promise<void> {
   selectedCoord = originCoord;
   renderGame();
 
-  const moveWasCompleted = await completePlayerMove(originCoord, destinationCoord);
+  const moveWasCompleted = await completePlayerMove(originCoord, destinationCoord, {
+    preserveReadoutsOnSuccess: true,
+  });
 
   if (!moveWasCompleted) {
     selectedCoord = originCoord;
@@ -1045,6 +1140,10 @@ preloadDrawByThreefoldRepetitionSound();
 preloadDrawByInsufficientMaterialSound();
 preloadStalemateSound();
 preloadQuitGameSound();
+boardRoot.addEventListener("mousedown", handleBoardMouseDown);
+boardRoot.addEventListener("mouseup", event => {
+  void handleBoardMouseUp(event);
+});
 boardRoot.addEventListener("click", handleBoardClick);
 newGameButton.addEventListener("click", () => {
   void initialiseGame(!isGameActive);

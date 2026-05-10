@@ -296,7 +296,49 @@ describe("control panel buttons", () => {
     expect(getSquare("e4").querySelector(".piece")?.getAttribute("aria-label")).toBe(
       "white pawn on e4",
     );
-    expect(moveFromInput.value).toBe("");
-    expect(moveToInput.value).toBe("");
+    expect(moveFromInput.value).toBe("e2");
+    expect(moveToInput.value).toBe("e4");
+  });
+
+  it("keeps both move-entry readouts lit after a mouse drag move is confirmed", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+
+    await loadApp();
+
+    const moveFromInput = document.querySelector<HTMLInputElement>("#move-from-input");
+    const moveToInput = document.querySelector<HTMLInputElement>("#move-to-input");
+    const originSquare = getSquare("e2");
+    const destinationSquare = getSquare("e4");
+
+    if (!moveFromInput || !moveToInput) {
+      throw new Error("Expected move entry inputs to exist.");
+    }
+
+    originSquare.dispatchEvent(new MouseEvent("mousedown", {
+      bubbles: true,
+      clientX: 12,
+      clientY: 12,
+    }));
+    destinationSquare.dispatchEvent(new MouseEvent("mouseup", {
+      bubbles: true,
+      clientX: 44,
+      clientY: 54,
+    }));
+    destinationSquare.dispatchEvent(new MouseEvent("click", {
+      bubbles: true,
+      clientX: 44,
+      clientY: 54,
+    }));
+    await flushPromises();
+
+    expect(getSquare("e4").querySelector(".piece")?.getAttribute("aria-label")).toBe(
+      "white pawn on e4",
+    );
+    expect(moveFromInput.value).toBe("e2");
+    expect(moveToInput.value).toBe("e4");
   });
 });
