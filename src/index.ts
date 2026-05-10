@@ -113,7 +113,9 @@ const COMPUTER_MOVE_STEP_MS = 140;
 const COMPUTER_MOVE_MIN_ANIMATION_MS = 420;
 const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const BOARD_COORD_SEQUENCE = FILES.flatMap(file => RANKS.map(rank => `${file}${rank + 1}`));
+const BOARD_COORD_SEQUENCE = FILES.flatMap(file => RANKS.map(rank => (
+  `${"abcdefgh"[file]}${rank + 1}`
+)));
 let pendingComputerTurnTimeoutId: number | null = null;
 let computerActionToken = 0;
 

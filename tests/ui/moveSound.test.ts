@@ -181,7 +181,7 @@ describe("moveSound", () => {
       expect(isCheckmateSoundState(captureCheckBoard)).toBe(false);
       expect(checkSource).not.toBe(captureSource);
 
-      const captureCheckmateBoard = createBoard("7k/6pp/5Q2/8/8/8/8/6K1 w - - 0 1");
+      const captureCheckmateBoard = createBoard("7k/6pp/5Q1K/8/8/8/8/8 w - - 0 1");
       const captureCheckmateMove = getMove(captureCheckmateBoard, "f6", "g7");
 
       expect(captureCheckmateMove).toBeTruthy();

@@ -77,6 +77,11 @@ function renderAppShell(): void {
     <form id="move-entry-form">
       <input id="move-from-input" />
       <input id="move-to-input" />
+      <button id="move-from-increment-button" type="button"></button>
+      <button id="move-from-decrement-button" type="button"></button>
+      <button id="move-to-increment-button" type="button"></button>
+      <button id="move-to-decrement-button" type="button"></button>
+
       <button id="move-entry-submit-button" type="submit"></button>
     </form>
   `;
@@ -159,9 +164,18 @@ describe("control panel buttons", () => {
 
     const newGameButton = getButton("#new-game-button");
     const undoMoveButton = getButton("#undo-move-button");
+    const incrementButton = getButton("#move-from-increment-button");
+    const decrementButton = getButton("#move-from-decrement-button");
+    const moveToIncrementButton = getButton("#move-to-increment-button");
+    const moveToDecrementButton = getButton("#move-to-decrement-button");
+
     const exitGameButton = getButton("#exit-game-button");
 
     expect(undoMoveButton.disabled).toBe(true);
+    expect(incrementButton.disabled).toBe(true);
+    expect(decrementButton.disabled).toBe(true);
+    expect(moveToIncrementButton.disabled).toBe(true);
+    expect(moveToDecrementButton.disabled).toBe(true);
     expect(exitGameButton.disabled).toBe(true);
     expect(document.querySelector("#status")?.textContent).toBe(
       "No game in progress. Press New Game to begin.",
@@ -173,6 +187,10 @@ describe("control panel buttons", () => {
 
     expect(chooseGameOptionsMock).toHaveBeenCalledTimes(1);
     expect(undoMoveButton.disabled).toBe(false);
+    expect(incrementButton.disabled).toBe(false);
+    expect(decrementButton.disabled).toBe(false);
+    expect(moveToIncrementButton.disabled).toBe(false);
+    expect(moveToDecrementButton.disabled).toBe(false);
     expect(exitGameButton.disabled).toBe(false);
     expect(document.querySelector("#status")?.textContent).toBe("");
   });

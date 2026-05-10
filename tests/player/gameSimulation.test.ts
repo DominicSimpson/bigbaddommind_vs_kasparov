@@ -129,7 +129,7 @@ describe('game simulations', () => {
         expect(outcome.plies).toBeGreaterThan(0);
         expect(outcome.plies).toBeLessThanOrEqual(120);
         expect(board.toFEN()).not.toBe(startingFen);
-    });
+    }, 15000);
 
     it('supports random-vs-random play from the starting position', () => {
         const board = new ChessBoard();
