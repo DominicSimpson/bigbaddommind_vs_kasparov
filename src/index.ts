@@ -44,17 +44,18 @@ import type { Square } from "./board/Square.js";
 import { isTerminalGameResult } from "./types/GameResult.js";
 import type { Colour } from "./types/colour.js";
 import { FILES, RANKS } from "./types/coords.js";
-import type { Move } from "./types/Move.js";
+import type { Move, PromotionPiece } from "./types/Move.js";
 import {
   chooseGameOptions,
   choosePromotionPiece,
+  submitPromotionChoice,
   resetStatusDialogs,
   showConfirmationModal,
   showInformationalModal,
 } from "../ui/modalPopupWindow.js";
 import { getAppElements } from "../ui/input.js";
 import type { ComputerAxisLight, ComputerMovePreview } from "../ui/renderBoard.js";
-import { renderBoard } from "../ui/renderBoard.js";
+import { pieceSymbols, renderBoard } from "../ui/renderBoard.js";
 import { renderCapturedPieces } from "../ui/renderCapturedPieces.js";
 import {
   CHECK_STATUS_MODAL_DELAY_MS,
@@ -85,6 +86,9 @@ const {
   moveToDecrementButton,
   moveToIncrementButton,
   moveEntrySubmitButton,
+  promotionChoicePanel,
+  promotionChoiceStatus,
+  promotionChoiceButtons,
 } = getAppElements();
 let sideLabels: SideLabels = {
   white: "White",
@@ -97,6 +101,7 @@ let moveEntryToCoord = "";
 let computerColour: Colour | null = null;
 let computerDifficulty: ComputerDifficulty | null = null;
 let isAwaitingPromotionChoice = false;
+let pendingPromotionColour: Colour | null = null;
 let isGameActive = false;
 let isComputerThinking = false;
 let computerThinkingCoord: string | null = null;
@@ -251,6 +256,43 @@ function syncMoveEntryAvailability(): void {
   moveToDecrementButton.disabled = !canEnterMove;
   moveToIncrementButton.disabled = !canEnterMove;
   moveEntrySubmitButton.disabled = !canEnterMove;
+  syncPromotionChoiceAvailability();
+}
+
+function syncPromotionChoiceAvailability(): void {
+  const shouldShowPromotionChoices = isAwaitingPromotionChoice && pendingPromotionColour !== null;
+
+  promotionChoiceStatus.textContent = shouldShowPromotionChoices
+    ? `${pendingPromotionColour === "white" ? "White" : "Black"} pawn is awaiting promotion. Choose the piece to confirm the move.`
+    : "Promotion buttons stay on standby until a pawn reaches the final rank.";
+  promotionChoicePanel.setAttribute("aria-disabled", shouldShowPromotionChoices ? "false" : "true");
+
+  for (const button of promotionChoiceButtons) {
+    const piece = button.dataset.promotionPiece;
+    const symbol = button.querySelector<HTMLElement>(".move-entry-panel__promotion-symbol");
+
+    if (
+      piece !== "queen"
+      && piece !== "rook"
+      && piece !== "bishop"
+      && piece !== "knight"
+    ) {
+      button.disabled = true;
+      if (symbol) {
+        symbol.textContent = "";
+      }
+      continue;
+    }
+
+    button.disabled = !shouldShowPromotionChoices;
+    button.setAttribute("aria-label", `Promote to ${piece}`);
+
+    if (symbol) {
+      symbol.textContent = pendingPromotionColour
+        ? pieceSymbols[pendingPromotionColour][piece]
+        : "";
+    }
+  }
 }
 
 function getSteppedBoardCoord(currentValue: string, step: 1 | -1): string {
@@ -324,13 +366,14 @@ function renderGame(): void {
     },
   });
   renderCapturedPieces(board, capturedPieces);
+  syncControlAvailability();
   syncMoveEntryAvailability();
 }
 
 function syncControlAvailability(): void {
-  newGameButton.disabled = false;
-  undoMoveButton.disabled = !isGameActive;
-  exitGameButton.disabled = !isGameActive;
+  newGameButton.disabled = isAwaitingPromotionChoice;
+  undoMoveButton.disabled = !isGameActive || isAwaitingPromotionChoice;
+  exitGameButton.disabled = !isGameActive || isAwaitingPromotionChoice;
 }
 
 // // Renders the board in its idle state, with no game in progress. 
@@ -387,6 +430,7 @@ function resetBoardForNewGame(): void {
   computerDestinationCoord = null;
   isComputerThinking = false;
   isAwaitingPromotionChoice = false;
+  pendingPromotionColour = null;
   resetStatusDialogs();
   resetStatusAnnouncements();
 }
@@ -597,7 +641,10 @@ async function completePlayerMove(
     }
 
     isAwaitingPromotionChoice = true;
+    pendingPromotionColour = promotingPiece.colour;
     syncMoveEntryAvailability();
+    syncControlAvailability();
+    renderGame();
 
     try {
       const promotionChoice = await choosePromotionPiece(promotingPiece.colour);
@@ -615,7 +662,9 @@ async function completePlayerMove(
       return false;
     } finally {
       isAwaitingPromotionChoice = false;
+      pendingPromotionColour = null;
       syncMoveEntryAvailability();
+      syncControlAvailability();
     }
   }
 
@@ -856,6 +905,14 @@ function stepMoveToInput(step: 1 | -1): void {
   handleMoveToInput();
   renderGame();
   moveToInput.focus();
+}
+
+function handlePromotionChoiceClick(piece: PromotionPiece): void {
+  if (!isAwaitingPromotionChoice) {
+    return;
+  }
+
+  submitPromotionChoice(piece);
 }
 
 async function handleMoveEntrySubmit(event: Event): Promise<void> {
@@ -1217,5 +1274,19 @@ moveToIncrementButton.addEventListener("click", () => {
 moveEntryForm.addEventListener("submit", event => {
   void handleMoveEntrySubmit(event);
 });
+for (const button of promotionChoiceButtons) {
+  button.addEventListener("click", () => {
+    const piece = button.dataset.promotionPiece;
+
+    if (
+      piece === "queen"
+      || piece === "rook"
+      || piece === "bishop"
+      || piece === "knight"
+    ) {
+      handlePromotionChoiceClick(piece);
+    }
+  });
+}
 enterIdleState();
 void initialiseGame(true);

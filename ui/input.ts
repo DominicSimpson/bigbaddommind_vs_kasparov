@@ -16,6 +16,9 @@ export type AppElements = {
   moveToDecrementButton: HTMLButtonElement; // steps destination square backwards
   moveToIncrementButton: HTMLButtonElement; // steps destination square forwards
   moveEntrySubmitButton: HTMLButtonElement; // submits the typed move
+  promotionChoicePanel: HTMLElement; // manual promotion controls beneath move entry
+  promotionChoiceStatus: HTMLParagraphElement; // announces promotion fallback state
+  promotionChoiceButtons: NodeListOf<HTMLButtonElement>; // one button per promotion piece
 };
 
 // generic helper that returns element from document.querySelector:
@@ -48,5 +51,8 @@ export function getAppElements(): AppElements {
     moveToDecrementButton: requireElement<HTMLButtonElement>("#move-to-decrement-button"),
     moveToIncrementButton: requireElement<HTMLButtonElement>("#move-to-increment-button"),
     moveEntrySubmitButton: requireElement<HTMLButtonElement>("#move-entry-submit-button"),
+    promotionChoicePanel: requireElement<HTMLElement>("#promotion-choice-panel"),
+    promotionChoiceStatus: requireElement<HTMLParagraphElement>("#promotion-choice-status"),
+    promotionChoiceButtons: document.querySelectorAll<HTMLButtonElement>("[data-promotion-piece]"),
   };
 }

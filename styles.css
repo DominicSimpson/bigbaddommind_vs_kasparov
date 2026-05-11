@@ -461,6 +461,98 @@ body {
   filter: grayscale(0.28);
 }
 
+.move-entry-panel__promotion {
+  display: grid;
+  gap: 0.75rem;
+  padding: 0.85rem 0.9rem 0.95rem;
+  border-radius: 0.85rem;
+  background:
+    linear-gradient(180deg, rgba(57, 18, 18, 0.94) 0%, rgba(23, 8, 8, 0.98) 100%);
+  border: 1px solid rgba(255, 120, 120, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.42),
+    0 0.7rem 1.5rem rgba(0, 0, 0, 0.24);
+}
+
+.move-entry-panel__promotion-status,
+.move-entry-panel__promotion-name {
+  font-family: "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  text-transform: uppercase;
+}
+
+.move-entry-panel__promotion-status {
+  margin: 0;
+  color: #ffd7d7;
+  font-size: 0.67rem;
+  letter-spacing: 0.11em;
+  line-height: 1.55;
+}
+
+.move-entry-panel__promotion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.7rem;
+}
+
+.move-entry-panel__promotion-button {
+  display: grid;
+  justify-items: center;
+  gap: 0.28rem;
+  min-width: 0;
+  padding: 0.78rem 0.6rem 0.72rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.8rem;
+  background:
+    linear-gradient(180deg, rgba(67, 72, 76, 0.98) 0%, rgba(18, 20, 22, 0.98) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.58),
+    0 0.16rem 0 rgba(0, 0, 0, 0.62);
+  color: #f3f3ef;
+  cursor: pointer;
+  transition: filter 120ms ease, transform 120ms ease;
+}
+
+.move-entry-panel__promotion-button:hover {
+  filter: brightness(1.09);
+}
+
+.move-entry-panel__promotion-button:active {
+  transform: translateY(0.08rem) scaleY(0.96);
+}
+
+.move-entry-panel__promotion-button:focus-visible {
+  outline: 2px solid #ff8a8a;
+  outline-offset: 2px;
+}
+
+.move-entry-panel__promotion-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+  filter: grayscale(0.48) saturate(0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.62),
+    0 0.12rem 0 rgba(0, 0, 0, 0.56);
+}
+
+.move-entry-panel__promotion-button:disabled .move-entry-panel__promotion-symbol,
+.move-entry-panel__promotion-button:disabled .move-entry-panel__promotion-name {
+  opacity: 0.72;
+}
+
+.move-entry-panel__promotion-symbol {
+  min-height: 1.5rem;
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.move-entry-panel__promotion-name {
+  font-size: 0.66rem;
+  letter-spacing: 0.13em;
+}
+
 .control-panel__controls {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));

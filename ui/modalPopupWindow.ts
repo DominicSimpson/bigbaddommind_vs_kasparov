@@ -37,6 +37,12 @@ const PROMOTION_OPTIONS: ReadonlyArray<{
   { value: "knight", label: "Knight", description: "L-shaped moves for tricky forks." },
 ];
 
+let activePromotionDialog: HTMLDialogElement | null = null;
+let activePromotionResolve: ((piece: PromotionPiece) => void) | null = null;
+let activePromotionReject: ((reason?: unknown) => void) | null = null;
+
+export { PROMOTION_OPTIONS };
+
 
 // checkboxes
 function createRadioOption(
@@ -88,6 +94,32 @@ function closeActiveStatusDialog(): void {
   }
 }
 
+function clearActivePromotionChoice(
+  reason: "resolved" | "cancelled",
+  piece?: PromotionPiece,
+): void {
+  const dialog = activePromotionDialog;
+  const resolve = activePromotionResolve;
+  const reject = activePromotionReject;
+
+  activePromotionDialog = null;
+  activePromotionResolve = null;
+  activePromotionReject = null;
+
+  if (dialog) {
+    dialog.remove();
+  }
+
+  if (reason === "resolved" && piece && resolve) {
+    resolve(piece);
+    return;
+  }
+
+  if (reason === "cancelled" && reject) {
+    reject(new Error("Promotion selection was cancelled."));
+  }
+}
+
 // // This helper function creates a standardized structure for status dialogs, 
 // including a title, description, and actions section. It returns the created 
 // dialog element along with references to the form and actions container for 
@@ -126,6 +158,10 @@ function createStatusDialog(titleText: string | null, descriptionText: string): 
 
 export function resetStatusDialogs(): void {
   closeActiveStatusDialog();
+
+  if (activePromotionDialog) {
+    clearActivePromotionChoice("cancelled");
+  }
 }
 
 export function showInformationalModal(
@@ -481,6 +517,10 @@ export function chooseGameOptions(): Promise<SelectedGameOptions> {
 // for handling user interactions:
 export function choosePromotionPiece(colour: Colour): Promise<PromotionPiece> {
   return new Promise<PromotionPiece>((resolve, reject) => {
+    if (activePromotionDialog) {
+      clearActivePromotionChoice("cancelled");
+    }
+
     const dialog = document.createElement("dialog");
     dialog.className = "setup-dialog";
 
@@ -530,27 +570,54 @@ export function choosePromotionPiece(colour: Colour): Promise<PromotionPiece> {
       content.append(label, detail);
       button.append(icon, content);
       button.addEventListener("click", () => {
-        cleanup();
-        resolve(optionData.value);
+        clearActivePromotionChoice("resolved", optionData.value);
       });
       choices.append(button);
     }
 
+    const actions = document.createElement("div");
+    actions.className = "setup-dialog__actions";
+
+    const cancelButton = document.createElement("button");
+    cancelButton.className = "setup-dialog__button setup-dialog__button--secondary";
+    cancelButton.type = "button";
+    cancelButton.textContent = "Cancel";
+    cancelButton.addEventListener("click", () => {
+      clearActivePromotionChoice("cancelled");
+    });
+
+    actions.append(cancelButton);
     section.append(legend, choices);
-    form.append(title, description, section);
+    form.append(title, description, section, actions);
     dialog.append(form);
     document.body.append(dialog);
 
-    const cleanup = (): void => {
-      dialog.remove();
-    };
+    activePromotionDialog = dialog;
+    activePromotionResolve = resolve;
+    activePromotionReject = reject;
 
     dialog.addEventListener("cancel", (event) => {
       event.preventDefault();
-      cleanup();
-      reject(new Error("Promotion selection was cancelled."));
+      clearActivePromotionChoice("cancelled");
     }, { once: true });
 
-    dialog.showModal();
+    dialog.addEventListener("close", () => {
+      if (activePromotionDialog === dialog) {
+        clearActivePromotionChoice("cancelled");
+      }
+    }, { once: true });
+
+    dialog.show();
+    const firstChoice = choices.querySelector<HTMLButtonElement>("button");
+    firstChoice?.focus();
   });
+}
+
+export function submitPromotionChoice(piece: PromotionPiece): boolean {
+  if (!activePromotionDialog || !activePromotionResolve) {
+    return false;
+  }
+
+  clearActivePromotionChoice("resolved", piece);
+  return true;
 }

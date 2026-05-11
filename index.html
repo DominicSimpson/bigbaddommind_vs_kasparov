@@ -146,6 +146,57 @@
             >
               Enter Move
             </button>
+            <section
+              id="promotion-choice-panel"
+              class="move-entry-panel__promotion"
+              aria-label="Manual promotion choices"
+            >
+              <p id="promotion-choice-status" class="move-entry-panel__promotion-status">
+                Promotion pending. Choose the piece to confirm the move.
+              </p>
+              <div class="move-entry-panel__promotion-grid" role="group" aria-labelledby="promotion-choice-status">
+                <button
+                  type="button"
+                  class="move-entry-panel__promotion-button"
+                  data-promotion-piece="queen"
+                  aria-label="Promote to queen"
+                  disabled
+                >
+                  <span class="move-entry-panel__promotion-symbol" aria-hidden="true"></span>
+                  <span class="move-entry-panel__promotion-name">Queen</span>
+                </button>
+                <button
+                  type="button"
+                  class="move-entry-panel__promotion-button"
+                  data-promotion-piece="rook"
+                  aria-label="Promote to rook"
+                  disabled
+                >
+                  <span class="move-entry-panel__promotion-symbol" aria-hidden="true"></span>
+                  <span class="move-entry-panel__promotion-name">Rook</span>
+                </button>
+                <button
+                  type="button"
+                  class="move-entry-panel__promotion-button"
+                  data-promotion-piece="bishop"
+                  aria-label="Promote to bishop"
+                  disabled
+                >
+                  <span class="move-entry-panel__promotion-symbol" aria-hidden="true"></span>
+                  <span class="move-entry-panel__promotion-name">Bishop</span>
+                </button>
+                <button
+                  type="button"
+                  class="move-entry-panel__promotion-button"
+                  data-promotion-piece="knight"
+                  aria-label="Promote to knight"
+                  disabled
+                >
+                  <span class="move-entry-panel__promotion-symbol" aria-hidden="true"></span>
+                  <span class="move-entry-panel__promotion-name">Knight</span>
+                </button>
+              </div>
+            </section>
           </form>
         </div>
       </div>
