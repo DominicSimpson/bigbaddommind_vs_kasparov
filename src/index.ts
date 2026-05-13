@@ -264,7 +264,7 @@ function syncPromotionChoiceAvailability(): void {
 
   promotionChoiceStatus.textContent = shouldShowPromotionChoices
     ? `${pendingPromotionColour === "white" ? "White" : "Black"} pawn is awaiting promotion. Choose the piece to confirm the move.`
-    : "Promotion buttons stay on standby until a pawn reaches the final rank.";
+    : "";
   promotionChoicePanel.setAttribute("aria-disabled", shouldShowPromotionChoices ? "false" : "true");
 
   for (const button of promotionChoiceButtons) {
@@ -1063,6 +1063,8 @@ function playComputerTurnIfNeeded(
     return;
   }
 
+  const turnStartTime = performance.now();
+  const minimumTotalDelayMs = getComputerMoveDelayMs(computerColour);
   const computerPlayer = createComputerPlayer(computerDifficulty);
   const chosenMove = computerPlayer.chooseMove(board, computerColour);
 
@@ -1083,6 +1085,11 @@ function playComputerTurnIfNeeded(
   computerMovePreview = null;
   computerDestinationCoord = null;
   renderGame();
+
+  // Keep the total pause consistent from the start of the computer's turn,
+  // even when move selection itself takes variable time.
+  const elapsedBeforeDelayMs = performance.now() - turnStartTime;
+  const remainingDelayMs = Math.max(0, minimumTotalDelayMs - elapsedBeforeDelayMs);
 
   pendingComputerTurnTimeoutId = window.setTimeout(() => {
     pendingComputerTurnTimeoutId = null;
@@ -1185,7 +1192,7 @@ function playComputerTurnIfNeeded(
           renderGame();
         });
       });
-  }, getComputerMoveDelayMs(computerColour));
+  }, remainingDelayMs);
 }
 
 // startup flow:
