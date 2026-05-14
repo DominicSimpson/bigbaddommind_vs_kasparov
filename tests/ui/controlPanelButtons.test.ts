@@ -3,11 +3,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const chooseGameOptionsMock = vi.fn();
+const choosePromotionPieceMock = vi.fn();
 const showConfirmationModalMock = vi.fn();
 const showInformationalModalMock = vi.fn();
+const submitPromotionChoiceMock = vi.fn();
 const playQuitGameSoundMock = vi.fn();
 const isQuitGameSoundStateMock = vi.fn();
 const chooseComputerMoveMock = vi.fn();
+let pendingPromotionResolve: ((piece: "queen" | "rook" | "bishop" | "knight") => void) | null = null;
 
 vi.mock("../../ui/modalPopupWindow.js", async () => {
   const actual = await vi.importActual<typeof import("../../ui/modalPopupWindow.js")>(
@@ -17,8 +20,10 @@ vi.mock("../../ui/modalPopupWindow.js", async () => {
   return {
     ...actual,
     chooseGameOptions: chooseGameOptionsMock,
+    choosePromotionPiece: choosePromotionPieceMock,
     showConfirmationModal: showConfirmationModalMock,
     showInformationalModal: showInformationalModalMock,
+    submitPromotionChoice: submitPromotionChoiceMock,
   };
 });
 
@@ -92,6 +97,40 @@ function renderAppShell(): void {
       <button id="move-to-decrement-button" type="button"></button>
 
       <button id="move-entry-submit-button" type="submit"></button>
+      <section
+        id="promotion-choice-panel"
+        class="move-entry-panel__promotion"
+        aria-label="Manual promotion choices"
+        aria-disabled="true"
+      >
+        <p id="promotion-choice-status" class="move-entry-panel__promotion-status"></p>
+        <div class="move-entry-panel__promotion-grid" role="group" aria-labelledby="promotion-choice-status">
+          <div class="move-entry-panel__promotion-control">
+            <span class="move-entry-panel__promotion-name">Queen</span>
+            <button type="button" class="move-entry-panel__promotion-button" data-promotion-piece="queen" disabled>
+              <span class="move-entry-panel__promotion-symbol" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="move-entry-panel__promotion-control">
+            <span class="move-entry-panel__promotion-name">Rook</span>
+            <button type="button" class="move-entry-panel__promotion-button" data-promotion-piece="rook" disabled>
+              <span class="move-entry-panel__promotion-symbol" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="move-entry-panel__promotion-control">
+            <span class="move-entry-panel__promotion-name">Bishop</span>
+            <button type="button" class="move-entry-panel__promotion-button" data-promotion-piece="bishop" disabled>
+              <span class="move-entry-panel__promotion-symbol" aria-hidden="true"></span>
+            </button>
+          </div>
+          <div class="move-entry-panel__promotion-control">
+            <span class="move-entry-panel__promotion-name">Knight</span>
+            <button type="button" class="move-entry-panel__promotion-button" data-promotion-piece="knight" disabled>
+              <span class="move-entry-panel__promotion-symbol" aria-hidden="true"></span>
+            </button>
+          </div>
+        </div>
+      </section>
     </form>
   `;
 }
@@ -99,6 +138,12 @@ function renderAppShell(): void {
 async function flushPromises(): Promise<void> {
   await Promise.resolve();
   await Promise.resolve();
+}
+
+function armPendingPromotionChoice(): void {
+  choosePromotionPieceMock.mockImplementationOnce(() => new Promise((resolve) => {
+    pendingPromotionResolve = resolve as typeof pendingPromotionResolve;
+  }));
 }
 
 function queueGameSetup(...results: Array<SetupChoice | "cancel">): void {
@@ -159,13 +204,21 @@ describe("control panel buttons", () => {
   beforeEach(() => {
     vi.resetModules();
     vi.useFakeTimers();
+    choosePromotionPieceMock.mockReset();
     showConfirmationModalMock.mockReset();
     showInformationalModalMock.mockReset();
+    submitPromotionChoiceMock.mockReset();
     playQuitGameSoundMock.mockReset();
     isQuitGameSoundStateMock.mockReset();
     chooseComputerMoveMock.mockReset();
     chooseComputerMoveMock.mockReturnValue(null);
     isQuitGameSoundStateMock.mockReturnValue(true);
+    pendingPromotionResolve = null;
+    choosePromotionPieceMock.mockResolvedValue("queen");
+    submitPromotionChoiceMock.mockImplementation((piece: "queen" | "rook" | "bishop" | "knight") => {
+      pendingPromotionResolve?.(piece);
+      pendingPromotionResolve = null;
+    });
   });
 
   afterEach(() => {
@@ -403,5 +456,100 @@ describe("control panel buttons", () => {
 
     expect(moveFromInput.value).toBe("h1");
     expect(moveToInput.value).toBe("f1");
+  });
+
+  it("steps the move-entry coordinates through the right-hand stepper buttons", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+
+    await loadApp();
+
+    const moveFromInput = document.querySelector<HTMLInputElement>("#move-from-input");
+    const moveToInput = document.querySelector<HTMLInputElement>("#move-to-input");
+
+    if (!moveFromInput || !moveToInput) {
+      throw new Error("Expected move entry inputs to exist.");
+    }
+
+    getButton("#move-from-increment-button").click();
+    getButton("#move-to-increment-button").click();
+
+    expect(moveFromInput.value).toBe("a1");
+    expect(moveToInput.value).toBe("a1");
+
+    getButton("#move-from-decrement-button").click();
+    getButton("#move-to-decrement-button").click();
+
+    expect(moveFromInput.value).toBe("h8");
+    expect(moveToInput.value).toBe("h8");
+  });
+
+  it("uses the manual promotion buttons in the right-hand panel to complete a promotion move", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+    armPendingPromotionChoice();
+
+    await loadApp({
+      initialFen: "4k3/2P5/8/8/8/8/8/4K3 w - - 0 1",
+    });
+
+    const moveFromInput = document.querySelector<HTMLInputElement>("#move-from-input");
+    const moveToInput = document.querySelector<HTMLInputElement>("#move-to-input");
+    const moveEntryForm = document.querySelector<HTMLFormElement>("#move-entry-form");
+    const promotionChoicePanel = document.querySelector<HTMLElement>("#promotion-choice-panel");
+    const promotionChoiceStatus = document.querySelector<HTMLElement>("#promotion-choice-status");
+    const knightButton = document.querySelector<HTMLButtonElement>('[data-promotion-piece="knight"]');
+    const queenSymbol = document.querySelector<HTMLElement>('[data-promotion-piece="queen"] .move-entry-panel__promotion-symbol');
+    const knightSymbol = document.querySelector<HTMLElement>('[data-promotion-piece="knight"] .move-entry-panel__promotion-symbol');
+
+    if (
+      !moveFromInput
+      || !moveToInput
+      || !moveEntryForm
+      || !promotionChoicePanel
+      || !promotionChoiceStatus
+      || !knightButton
+      || !queenSymbol
+      || !knightSymbol
+    ) {
+      throw new Error("Expected promotion controls to exist.");
+    }
+
+    moveFromInput.value = "c7";
+    moveFromInput.dispatchEvent(new Event("input", { bubbles: true }));
+    moveToInput.value = "c8";
+    moveToInput.dispatchEvent(new Event("input", { bubbles: true }));
+    moveEntryForm.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true }));
+    await flushPromises();
+
+    expect(choosePromotionPieceMock).toHaveBeenCalledWith("white");
+    expect(promotionChoicePanel.getAttribute("aria-disabled")).toBe("false");
+    expect(promotionChoiceStatus.textContent).toContain("White pawn is awaiting promotion");
+    expect(getButton("#new-game-button").disabled).toBe(true);
+    expect(getButton("#undo-move-button").disabled).toBe(true);
+    expect(getButton("#exit-game-button").disabled).toBe(true);
+    expect(queenSymbol.textContent).toBe("♕");
+    expect(knightSymbol.textContent).toBe("♘");
+    expect(knightButton.disabled).toBe(false);
+
+    knightButton.click();
+    await flushPromises();
+
+    expect(submitPromotionChoiceMock).toHaveBeenCalledWith("knight");
+    expect(getSquare("c8").querySelector(".piece")?.getAttribute("aria-label")).toBe(
+      "white knight on c8",
+    );
+    expect(promotionChoicePanel.getAttribute("aria-disabled")).toBe("true");
+    expect(promotionChoiceStatus.textContent).toBe("");
+    expect(knightButton.disabled).toBe(true);
+    expect(getButton("#new-game-button").disabled).toBe(false);
+    expect(getButton("#undo-move-button").disabled).toBe(false);
+    expect(getButton("#exit-game-button").disabled).toBe(false);
   });
 });
