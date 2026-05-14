@@ -9,10 +9,13 @@
     "dev": "vite",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },
   "devDependencies": {
+    "@playwright/test": "^1.53.2",
     "@types/node": "^22.0.0",
     "@vitest/expect": "^4.1.0",
     "jsdom": "^26.1.0",

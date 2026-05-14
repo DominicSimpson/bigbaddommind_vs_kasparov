@@ -72,11 +72,31 @@ vi.mock("../../src/player/ComputerPlayer.js", () => ({
 }));
 
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const COMPUTER_MOVE_DELAY_MS = 4250;
+const COMPUTER_MOVE_MIN_ANIMATION_MS = 420;
+const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
+const TWO_SQUARE_PAWN_TRAVERSAL_STEPS = 2;
+const TWO_SQUARE_PAWN_STEP_DELAY_MS = Math.ceil(
+  COMPUTER_MOVE_MIN_ANIMATION_MS / TWO_SQUARE_PAWN_TRAVERSAL_STEPS,
+);
+const TWO_SQUARE_PAWN_TOTAL_COMPUTER_MOVE_MS = (
+  COMPUTER_MOVE_DELAY_MS
+  + (TWO_SQUARE_PAWN_STEP_DELAY_MS * TWO_SQUARE_PAWN_TRAVERSAL_STEPS)
+  + COMPUTER_MOVE_DESTINATION_HOLD_MS
+);
 
 type SetupChoice = {
   playerColour: "white" | "black";
   computerDifficulty: "easy" | "medium" | "hard";
   playerName: string | null;
+};
+
+type MoveLookupBoard = {
+  getLegalMoves: (rank: number, file: number) => Array<{
+    toRank: number;
+    toFile: number;
+  }>;
+  getSquare: (rank: number, file: number) => { coord: string };
 };
 
 function renderAppShell(): void {
@@ -198,6 +218,34 @@ function getSquare(coord: string): HTMLElement {
   }
 
   return square;
+}
+
+function getPieceAriaLabel(coord: string): string | null {
+  return getSquare(coord).querySelector(".piece")?.getAttribute("aria-label") ?? null;
+}
+
+function algebraicToCoords(coord: string): { rank: number; file: number } {
+  const file = coord.charCodeAt(0) - "a".charCodeAt(0);
+  const rank = Number(coord[1]) - 1;
+
+  return { rank, file };
+}
+
+function getLegalMoveByCoords(
+  board: MoveLookupBoard,
+  from: string,
+  to: string,
+) {
+  const { rank, file } = algebraicToCoords(from);
+
+  return board.getLegalMoves(rank, file).find(move => (
+    board.getSquare(move.toRank, move.toFile).coord === to
+  )) ?? null;
+}
+
+async function advanceAndFlush(ms: number): Promise<void> {
+  await vi.advanceTimersByTimeAsync(ms);
+  await flushPromises();
 }
 
 describe("control panel buttons", () => {
@@ -551,5 +599,58 @@ describe("control panel buttons", () => {
     expect(getButton("#new-game-button").disabled).toBe(false);
     expect(getButton("#undo-move-button").disabled).toBe(false);
     expect(getButton("#exit-game-button").disabled).toBe(false);
+  });
+
+  it("keeps the computer move timing aligned whether the computer is white or black", async () => {
+    chooseComputerMoveMock.mockImplementation((board: MoveLookupBoard, colour: "white" | "black") => {
+      if (colour === "white") {
+        return getLegalMoveByCoords(board, "e2", "e4");
+      }
+
+      return getLegalMoveByCoords(board, "e7", "e5");
+    });
+
+    queueGameSetup({
+      playerColour: "black",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+
+    await loadApp();
+
+    expect(getPieceAriaLabel("e2")).toBe("white pawn on e2");
+    expect(getPieceAriaLabel("e4")).toBeNull();
+
+    await advanceAndFlush(TWO_SQUARE_PAWN_TOTAL_COMPUTER_MOVE_MS - 1);
+
+    expect(getPieceAriaLabel("e4")).not.toBe("white pawn on e4");
+
+    await advanceAndFlush(1);
+
+    expect(getPieceAriaLabel("e4")).toBe("white pawn on e4");
+
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+
+    getButton("#new-game-button").click();
+    await flushPromises();
+
+    getSquare("e2").click();
+    getSquare("e4").click();
+    await flushPromises();
+
+    expect(getPieceAriaLabel("e7")).toBe("black pawn on e7");
+    expect(getPieceAriaLabel("e5")).toBeNull();
+
+    await advanceAndFlush(TWO_SQUARE_PAWN_TOTAL_COMPUTER_MOVE_MS - 1);
+
+    expect(getPieceAriaLabel("e5")).not.toBe("black pawn on e5");
+
+    await advanceAndFlush(1);
+
+    expect(getPieceAriaLabel("e5")).toBe("black pawn on e5");
   });
 });
