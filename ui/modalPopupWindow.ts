@@ -40,8 +40,48 @@ const PROMOTION_OPTIONS: ReadonlyArray<{
 let activePromotionDialog: HTMLDialogElement | null = null;
 let activePromotionResolve: ((piece: PromotionPiece) => void) | null = null;
 let activePromotionReject: ((reason?: unknown) => void) | null = null;
+let activePromotionButtons: Partial<Record<PromotionPiece, HTMLButtonElement>> = {};
+let pendingPromotionSubmitTimeoutId: number | null = null;
+const PROMOTION_SUBMIT_PREVIEW_MS = 140;
 
 export { PROMOTION_OPTIONS };
+
+function clearPendingPromotionSubmitTimeout(): void {
+  if (pendingPromotionSubmitTimeoutId !== null) {
+    window.clearTimeout(pendingPromotionSubmitTimeoutId);
+    pendingPromotionSubmitTimeoutId = null;
+  }
+}
+
+function setActivePromotionButtonSelection(piece: PromotionPiece | null): void {
+  const promotionPieces: PromotionPiece[] = ["queen", "rook", "bishop", "knight"];
+
+  for (const promotionPiece of promotionPieces) {
+    const button = activePromotionButtons[promotionPiece];
+    if (!button) {
+      continue;
+    }
+
+    const isSelected = piece === promotionPiece;
+    button.classList.toggle("setup-dialog__promotion-option--selected", isSelected);
+    button.setAttribute("aria-pressed", isSelected ? "true" : "false");
+  }
+}
+
+function queuePromotionChoiceSubmission(piece: PromotionPiece): boolean {
+  if (!activePromotionDialog || !activePromotionResolve) {
+    return false;
+  }
+
+  clearPendingPromotionSubmitTimeout();
+  setActivePromotionButtonSelection(piece);
+  pendingPromotionSubmitTimeoutId = window.setTimeout(() => {
+    pendingPromotionSubmitTimeoutId = null;
+    clearActivePromotionChoice("resolved", piece);
+  }, PROMOTION_SUBMIT_PREVIEW_MS);
+
+  return true;
+}
 
 
 // checkboxes
@@ -105,6 +145,8 @@ function clearActivePromotionChoice(
   activePromotionDialog = null;
   activePromotionResolve = null;
   activePromotionReject = null;
+  activePromotionButtons = {};
+  clearPendingPromotionSubmitTimeout();
 
   if (dialog) {
     dialog.remove();
@@ -522,7 +564,7 @@ export function choosePromotionPiece(colour: Colour): Promise<PromotionPiece> {
     }
 
     const dialog = document.createElement("dialog");
-    dialog.className = "setup-dialog";
+    dialog.className = "setup-dialog setup-dialog--promotion";
 
     const form = document.createElement("form");
     form.className = "setup-dialog__form";
@@ -550,6 +592,7 @@ export function choosePromotionPiece(colour: Colour): Promise<PromotionPiece> {
       button.className = "setup-dialog__promotion-option";
       button.type = "button";
       button.value = optionData.value;
+      button.setAttribute("aria-pressed", "false");
 
       const icon = document.createElement("span");
       icon.className = "setup-dialog__promotion-icon";
@@ -570,8 +613,9 @@ export function choosePromotionPiece(colour: Colour): Promise<PromotionPiece> {
       content.append(label, detail);
       button.append(icon, content);
       button.addEventListener("click", () => {
-        clearActivePromotionChoice("resolved", optionData.value);
+        queuePromotionChoiceSubmission(optionData.value);
       });
+      activePromotionButtons[optionData.value] = button;
       choices.append(button);
     }
 
@@ -614,10 +658,5 @@ export function choosePromotionPiece(colour: Colour): Promise<PromotionPiece> {
 }
 
 export function submitPromotionChoice(piece: PromotionPiece): boolean {
-  if (!activePromotionDialog || !activePromotionResolve) {
-    return false;
-  }
-
-  clearActivePromotionChoice("resolved", piece);
-  return true;
+  return queuePromotionChoiceSubmission(piece);
 }
