@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { getAppElements } from "../../ui/input.js";
 
 function loadIndexMarkup(): void {
-  const indexPath = fileURLToPath(new URL("../../index.html", import.meta.url));
+  const indexPath = path.resolve(process.cwd(), "index.html");
   const html = readFileSync(indexPath, "utf8");
   const parsed = new DOMParser().parseFromString(html, "text/html");
 
@@ -55,7 +55,7 @@ describe("app panel sections", () => {
 
     expect(homagePanel).not.toBeNull();
     expect(dots).toHaveLength(4);
-    expect(logo?.textContent?.trim()).toBe("Kasparov");
+    expect(logo?.textContent?.trim()).toBe("DomDeepBlue");
   });
 
   it("still exposes the required app elements when the full page markup is loaded", () => {
