@@ -8,6 +8,7 @@ export type AppElements = {
   newGameButton: HTMLButtonElement; // starts a brand-new game flow
   undoMoveButton: HTMLButtonElement; // rewinds the game to the player's prior turn
   exitGameButton: HTMLButtonElement; // exits the current game and returns to idle state
+  gameInfoButton: HTMLButtonElement; // opens the game information modal
   moveEntryForm: HTMLFormElement; // accessible typed move form
   moveFromInput: HTMLInputElement; // typed move origin square
   moveToInput: HTMLInputElement; // typed move destination square
@@ -43,6 +44,7 @@ export function getAppElements(): AppElements {
     newGameButton: requireElement<HTMLButtonElement>("#new-game-button"),
     undoMoveButton: requireElement<HTMLButtonElement>("#undo-move-button"),
     exitGameButton: requireElement<HTMLButtonElement>("#exit-game-button"),
+    gameInfoButton: requireElement<HTMLButtonElement>("#game-info-button"),
     moveEntryForm: requireElement<HTMLFormElement>("#move-entry-form"),
     moveFromInput: requireElement<HTMLInputElement>("#move-from-input"),
     moveToInput: requireElement<HTMLInputElement>("#move-to-input"),

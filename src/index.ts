@@ -51,6 +51,7 @@ import {
   submitPromotionChoice,
   resetStatusDialogs,
   showConfirmationModal,
+  showGameInfoModal,
   showInformationalModal,
 } from "../ui/modalPopupWindow.js";
 import { getAppElements } from "../ui/input.js";
@@ -78,6 +79,7 @@ const {
   newGameButton,
   undoMoveButton,
   exitGameButton,
+  gameInfoButton,
   moveEntryForm,
   moveFromInput,
   moveToInput,
@@ -124,6 +126,7 @@ const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
 const CASTLING_READOUT_SWAP_DELAY_MS = 900;
 const BOARD_DRAG_THRESHOLD_PX = 6;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+const GAME_INFO_MOVE_GUIDANCE = "To move a piece, click and drag it to its destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.";
 const BOARD_COORD_SEQUENCE = FILES.flatMap(file => RANKS.map(rank => (
   `${"abcdefgh"[file]}${rank + 1}`
 )));
@@ -1263,6 +1266,9 @@ newGameButton.addEventListener("click", () => {
 undoMoveButton.addEventListener("click", handleUndoMove);
 exitGameButton.addEventListener("click", () => {
   void handleExitGame();
+});
+gameInfoButton.addEventListener("click", () => {
+  showGameInfoModal(GAME_INFO_MOVE_GUIDANCE);
 });
 moveFromInput.addEventListener("input", handleMoveFromInput);
 moveToInput.addEventListener("input", handleMoveToInput);

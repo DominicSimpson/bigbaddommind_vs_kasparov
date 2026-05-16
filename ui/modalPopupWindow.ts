@@ -241,6 +241,98 @@ export function showInformationalModal(
   dialog.showModal();
 }
 
+function createGameInfoMoveInputThumbnail(): HTMLDivElement {
+  const thumbnail = document.createElement("div");
+  thumbnail.className = "setup-dialog__move-thumbnail";
+  thumbnail.setAttribute("aria-hidden", "true");
+
+  const fromReadout = document.createElement("div");
+  fromReadout.className = "setup-dialog__move-thumbnail-readout";
+
+  const fromLabel = document.createElement("span");
+  fromLabel.className = "setup-dialog__move-thumbnail-label";
+  fromLabel.textContent = "From";
+
+  const fromValue = document.createElement("span");
+  fromValue.className = "setup-dialog__move-thumbnail-value";
+  fromValue.textContent = "E2";
+
+  fromReadout.append(fromLabel, fromValue);
+
+  const toReadout = document.createElement("div");
+  toReadout.className = "setup-dialog__move-thumbnail-readout";
+
+  const toLabel = document.createElement("span");
+  toLabel.className = "setup-dialog__move-thumbnail-label";
+  toLabel.textContent = "To";
+
+  const toValue = document.createElement("span");
+  toValue.className = "setup-dialog__move-thumbnail-value";
+  toValue.textContent = "E4";
+
+  toReadout.append(toLabel, toValue);
+
+  const submitButton = document.createElement("div");
+  submitButton.className = "setup-dialog__move-thumbnail-submit";
+  submitButton.textContent = "Enter Move";
+
+  thumbnail.append(fromReadout, toReadout, submitButton);
+  return thumbnail;
+}
+
+export function showGameInfoModal(message: string): void {
+  closeActiveStatusDialog();
+
+  const { dialog, form, actions } = createStatusDialog("Game info", message);
+  dialog.classList.add("setup-dialog--large");
+
+  const visualSection = document.createElement("section");
+  visualSection.className = "setup-dialog__section";
+
+  const visualLabel = document.createElement("p");
+  visualLabel.className = "setup-dialog__label";
+  visualLabel.textContent = "Using the move input";
+
+  const thumbnailCaption = document.createElement("p");
+  thumbnailCaption.className = "setup-dialog__description";
+  thumbnailCaption.textContent = "Example: entering e2 to e4 before selecting Enter Move.";
+
+  visualSection.append(
+    visualLabel,
+    createGameInfoMoveInputThumbnail(),
+    thumbnailCaption,
+  );
+
+  form.insertBefore(visualSection, actions);
+
+  const closeButton = document.createElement("button");
+  closeButton.className = "setup-dialog__button setup-dialog__button--primary";
+  closeButton.type = "button";
+  closeButton.textContent = "OK";
+  closeButton.addEventListener("click", () => {
+    dialog.close();
+  });
+
+  actions.append(closeButton);
+  document.body.append(dialog);
+  activeStatusDialog = dialog;
+
+  dialog.addEventListener("close", () => {
+    if (activeStatusDialog === dialog) {
+      activeStatusDialog = null;
+    }
+
+    dialog.remove();
+  }, { once: true });
+
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    dialog.close();
+  });
+
+  dialog.showModal();
+}
+
 export function showConfirmationModal(
   message: string,
   options: {

@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const chooseGameOptionsMock = vi.fn();
 const choosePromotionPieceMock = vi.fn();
 const showConfirmationModalMock = vi.fn();
+const showGameInfoModalMock = vi.fn();
 const showInformationalModalMock = vi.fn();
 const submitPromotionChoiceMock = vi.fn();
 const playQuitGameSoundMock = vi.fn();
@@ -22,6 +23,7 @@ vi.mock("../../ui/modalPopupWindow.js", async () => {
     chooseGameOptions: chooseGameOptionsMock,
     choosePromotionPiece: choosePromotionPieceMock,
     showConfirmationModal: showConfirmationModalMock,
+    showGameInfoModal: showGameInfoModalMock,
     showInformationalModal: showInformationalModalMock,
     submitPromotionChoice: submitPromotionChoiceMock,
   };
@@ -108,6 +110,7 @@ function renderAppShell(): void {
     <button id="new-game-button" type="button"></button>
     <button id="undo-move-button" type="button"></button>
     <button id="exit-game-button" type="button"></button>
+    <button id="game-info-button" type="button"></button>
     <form id="move-entry-form">
       <input id="move-from-input" />
       <input id="move-to-input" />
@@ -254,6 +257,7 @@ describe("control panel buttons", () => {
     vi.useFakeTimers();
     choosePromotionPieceMock.mockReset();
     showConfirmationModalMock.mockReset();
+    showGameInfoModalMock.mockReset();
     showInformationalModalMock.mockReset();
     submitPromotionChoiceMock.mockReset();
     playQuitGameSoundMock.mockReset();
@@ -393,6 +397,22 @@ describe("control panel buttons", () => {
     );
     expect(getButton("#undo-move-button").disabled).toBe(true);
     expect(getButton("#exit-game-button").disabled).toBe(true);
+  });
+
+  it("opens the game info modal when Game Info is pressed", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+
+    await loadApp();
+
+    getButton("#game-info-button").click();
+
+    expect(showGameInfoModalMock).toHaveBeenCalledWith(
+      "To move a piece, click and drag it to its destination square. You can also enter the move manually using the move input: type the piece’s starting square, then its destination square, and click ‘Enter Move’.",
+    );
   });
 
   it("lets the player enter a move through the coordinate readouts", async () => {
