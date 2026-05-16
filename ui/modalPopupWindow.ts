@@ -280,10 +280,45 @@ function createGameInfoMoveInputThumbnail(): HTMLDivElement {
   return thumbnail;
 }
 
-export function showGameInfoModal(message: string): void {
+function createGameInfoPromotionThumbnail(): HTMLDivElement {
+  const thumbnail = document.createElement("div");
+  thumbnail.className = "setup-dialog__promotion-thumbnail";
+  thumbnail.setAttribute("aria-hidden", "true");
+
+  const promotionPieces: PromotionPiece[] = ["queen", "rook", "bishop", "knight"];
+
+  for (const piece of promotionPieces) {
+    const control = document.createElement("div");
+    control.className = "setup-dialog__promotion-thumbnail-control";
+
+    const name = document.createElement("span");
+    name.className = "setup-dialog__promotion-thumbnail-name";
+    name.textContent = piece.charAt(0).toUpperCase() + piece.slice(1);
+
+    const button = document.createElement("div");
+    button.className = "setup-dialog__promotion-thumbnail-button";
+
+    const symbol = document.createElement("span");
+    symbol.className = "setup-dialog__promotion-thumbnail-symbol";
+    symbol.textContent = pieceSymbols.white[piece];
+
+    button.append(symbol);
+    control.append(name, button);
+    thumbnail.append(control);
+  }
+
+  return thumbnail;
+}
+
+export function showGameInfoModal(content: {
+  moveGuidance: string;
+  promotionGuidance: string;
+  promotionThumbnailCaption: string;
+}): void {
   closeActiveStatusDialog();
 
-  const { dialog, form, actions } = createStatusDialog("Game info", message);
+  const { moveGuidance, promotionGuidance, promotionThumbnailCaption } = content;
+  const { dialog, form, actions } = createStatusDialog("Game info", moveGuidance);
   dialog.classList.add("setup-dialog--large");
 
   const visualSection = document.createElement("section");
@@ -295,7 +330,7 @@ export function showGameInfoModal(message: string): void {
 
   const thumbnailCaption = document.createElement("p");
   thumbnailCaption.className = "setup-dialog__description";
-  thumbnailCaption.textContent = "Example: entering e2 to e4 before selecting Enter Move.";
+  thumbnailCaption.textContent = "Example: entering e2 to e4 before selecting 'Enter Move' will move the piece from e2 to e4.";
 
   visualSection.append(
     visualLabel,
@@ -304,6 +339,30 @@ export function showGameInfoModal(message: string): void {
   );
 
   form.insertBefore(visualSection, actions);
+
+  const promotionDescription = document.createElement("p");
+  promotionDescription.className = "setup-dialog__description";
+  promotionDescription.textContent = promotionGuidance;
+  form.insertBefore(promotionDescription, actions);
+
+  const promotionSection = document.createElement("section");
+  promotionSection.className = "setup-dialog__section";
+
+  const promotionLabel = document.createElement("p");
+  promotionLabel.className = "setup-dialog__label";
+  promotionLabel.textContent = "Using the promotion buttons";
+
+  const promotionThumbnailCaptionElement = document.createElement("p");
+  promotionThumbnailCaptionElement.className = "setup-dialog__description";
+  promotionThumbnailCaptionElement.textContent = promotionThumbnailCaption;
+
+  promotionSection.append(
+    promotionLabel,
+    createGameInfoPromotionThumbnail(),
+    promotionThumbnailCaptionElement,
+  );
+
+  form.insertBefore(promotionSection, actions);
 
   const closeButton = document.createElement("button");
   closeButton.className = "setup-dialog__button setup-dialog__button--primary";

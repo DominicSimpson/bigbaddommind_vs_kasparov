@@ -298,8 +298,8 @@ describe("control panel buttons", () => {
     const decrementButton = getButton("#move-from-decrement-button");
     const moveToIncrementButton = getButton("#move-to-increment-button");
     const moveToDecrementButton = getButton("#move-to-decrement-button");
-
     const exitGameButton = getButton("#exit-game-button");
+    const gameInfoButton = getButton("#game-info-button");
 
     expect(undoMoveButton.disabled).toBe(true);
     expect(incrementButton.disabled).toBe(true);
@@ -307,6 +307,7 @@ describe("control panel buttons", () => {
     expect(moveToIncrementButton.disabled).toBe(true);
     expect(moveToDecrementButton.disabled).toBe(true);
     expect(exitGameButton.disabled).toBe(true);
+    expect(gameInfoButton.disabled).toBe(true);
     expect(document.querySelector("#status")?.textContent).toBe(
       "No game in progress. Press New Game to begin.",
     );
@@ -322,6 +323,7 @@ describe("control panel buttons", () => {
     expect(moveToIncrementButton.disabled).toBe(false);
     expect(moveToDecrementButton.disabled).toBe(false);
     expect(exitGameButton.disabled).toBe(false);
+    expect(gameInfoButton.disabled).toBe(false);
     expect(document.querySelector("#status")?.textContent).toBe("");
   });
 
@@ -397,6 +399,7 @@ describe("control panel buttons", () => {
     );
     expect(getButton("#undo-move-button").disabled).toBe(true);
     expect(getButton("#exit-game-button").disabled).toBe(true);
+    expect(getButton("#game-info-button").disabled).toBe(true);
   });
 
   it("opens the game info modal when Game Info is pressed", async () => {
@@ -410,9 +413,11 @@ describe("control panel buttons", () => {
 
     getButton("#game-info-button").click();
 
-    expect(showGameInfoModalMock).toHaveBeenCalledWith(
-      "To move a piece, click and drag it to its destination square. You can also enter the move manually using the move input: type the piece’s starting square, then its destination square, and click ‘Enter Move’.",
-    );
+    expect(showGameInfoModalMock).toHaveBeenCalledWith({
+      moveGuidance: "To move a piece, click and drag it to its destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.",
+      promotionGuidance: "To promote a pawn that reaches the opposite side of the board, select one of the four piece options shown in the pop-up window. You can also use the piece buttons below the move input when they come into focus.",
+      promotionThumbnailCaption: "Example: choosing the queen button will result in you promoting the pawn to a queen.",
+    });
   });
 
   it("lets the player enter a move through the coordinate readouts", async () => {

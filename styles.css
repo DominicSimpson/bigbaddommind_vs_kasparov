@@ -1169,6 +1169,12 @@ body {
   width: min(94vw, 46rem);
 }
 
+.setup-dialog--large .setup-dialog__form {
+  max-height: min(86vh, 52rem);
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+}
+
 @media (min-width: 1100px) {
   .setup-dialog--promotion[open] {
     transform: translateX(clamp(-12.5rem, -18vw, 6rem));
@@ -1516,6 +1522,58 @@ body {
   font-weight: 700;
   letter-spacing: 0.12em;
   text-align: center;
+}
+
+.setup-dialog__promotion-thumbnail {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(47, 42, 42, 0.96) 0%, rgba(16, 15, 16, 0.98) 100%);
+  border: 1px solid rgba(80, 27, 27, 0.42);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    inset 0 0 0 1px rgba(0, 0, 0, 0.34),
+    0 0.8rem 1.8rem rgba(0, 0, 0, 0.16);
+}
+
+.setup-dialog__promotion-thumbnail-control {
+  display: grid;
+  gap: 0.45rem;
+  justify-items: center;
+}
+
+.setup-dialog__promotion-thumbnail-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #c9cec7;
+  text-align: center;
+}
+
+.setup-dialog__promotion-thumbnail-button {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 4.5rem;
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(180deg, rgba(58, 63, 67, 0.95) 0%, rgba(16, 18, 20, 0.96) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.48),
+    0 0 0 1px rgba(0, 0, 0, 0.24);
+}
+
+.setup-dialog__promotion-thumbnail-symbol {
+  color: #f0f2ed;
+  font-size: 2rem;
+  line-height: 1;
+  text-shadow:
+    0 0 0.08rem rgba(255, 255, 255, 0.3),
+    0 0 0.32rem rgba(255, 255, 255, 0.15);
 }
 
 .board-grid {

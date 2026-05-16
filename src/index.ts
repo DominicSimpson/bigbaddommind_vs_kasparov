@@ -126,7 +126,9 @@ const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
 const CASTLING_READOUT_SWAP_DELAY_MS = 900;
 const BOARD_DRAG_THRESHOLD_PX = 6;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-const GAME_INFO_MOVE_GUIDANCE = "To move a piece, click and drag it to its destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.";
+const GAME_INFO_MOVE_GUIDANCE = "To move a piece, either click and drag it to its destination square, or click the piece and then click the destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.";
+const GAME_INFO_PROMOTION_GUIDANCE = "To promote a pawn that reaches the opposite side of the board, select one of the four piece options shown in the pop-up window. You can also use the piece buttons below the move input when they come into focus.";
+const GAME_INFO_PROMOTION_THUMBNAIL_CAPTION = "Example: choosing the queen button will result in you promoting the pawn to a queen.";
 const BOARD_COORD_SEQUENCE = FILES.flatMap(file => RANKS.map(rank => (
   `${"abcdefgh"[file]}${rank + 1}`
 )));
@@ -377,6 +379,7 @@ function syncControlAvailability(): void {
   newGameButton.disabled = isAwaitingPromotionChoice;
   undoMoveButton.disabled = !isGameActive || isAwaitingPromotionChoice;
   exitGameButton.disabled = !isGameActive || isAwaitingPromotionChoice;
+  gameInfoButton.disabled = !isGameActive;
 }
 
 // // Renders the board in its idle state, with no game in progress. 
@@ -390,7 +393,7 @@ function renderIdleState(): void {
     computerAxisLight: getComputerAxisLight(),
     computerDestinationCoord,
   });
-  status.textContent = "No game in progress. Press New Game to begin.";
+  status.textContent = "No game in progress. Press 'New Game' to begin.";
   turnBadge.replaceChildren();
   renderCapturedPieces(board, capturedPieces);
   syncControlAvailability();
@@ -1268,7 +1271,15 @@ exitGameButton.addEventListener("click", () => {
   void handleExitGame();
 });
 gameInfoButton.addEventListener("click", () => {
-  showGameInfoModal(GAME_INFO_MOVE_GUIDANCE);
+  if (!isGameActive) {
+    return;
+  }
+
+  showGameInfoModal({
+    moveGuidance: GAME_INFO_MOVE_GUIDANCE,
+    promotionGuidance: GAME_INFO_PROMOTION_GUIDANCE,
+    promotionThumbnailCaption: GAME_INFO_PROMOTION_THUMBNAIL_CAPTION,
+  });
 });
 moveFromInput.addEventListener("input", handleMoveFromInput);
 moveToInput.addEventListener("input", handleMoveToInput);
