@@ -3,6 +3,7 @@
     "target": "ES2020",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
 
     "rootDir": ".",
     "outDir": "./dist",
@@ -15,6 +16,6 @@
     "skipLibCheck": true
   },
   
-  "include": ["src", "tests", "vitest.config.ts", "playwright.config.ts"] 
+  "include": ["src", "tests", "ui", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"] 
 }
 

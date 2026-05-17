@@ -1,6 +1,10 @@
 import type { ComputerDifficulty } from "../src/player/ComputerPlayer.js";
 import type { Colour } from "../src/types/colour.js";
 import type { PromotionPiece } from "../src/types/Move.js";
+import {
+  isSoundOn,
+  toggleSoundEnabled,
+} from "../src/audio/moveSound.js";
 import { pieceSymbols } from "./renderBoard.js";
 
 // // This file contains functions for creating and managing pop-up modal 
@@ -310,14 +314,118 @@ function createGameInfoPromotionThumbnail(): HTMLDivElement {
   return thumbnail;
 }
 
+function createGameInfoColourThumbnail(colour: Colour): HTMLDivElement {
+  const thumbnail = document.createElement("div");
+  thumbnail.className = "setup-dialog__colour-thumbnail";
+  thumbnail.setAttribute("aria-hidden", "true");
+
+  const indicator = document.createElement("span");
+  indicator.className = "setup-dialog__colour-thumbnail-indicator";
+
+  const indicatorInner = document.createElement("span");
+  indicatorInner.className = "setup-dialog__colour-thumbnail-indicator-inner";
+  indicator.append(indicatorInner);
+
+  const text = document.createElement("span");
+  text.className = "setup-dialog__colour-thumbnail-text";
+  text.textContent = colour === "white" ? "White" : "Black";
+
+  thumbnail.append(indicator, text);
+  return thumbnail;
+}
+
+function createGameInfoDifficultyThumbnail(
+  difficulty: ComputerDifficulty,
+): HTMLDivElement {
+  const thumbnail = document.createElement("div");
+  thumbnail.className = "setup-dialog__difficulty-thumbnail";
+  thumbnail.setAttribute("aria-hidden", "true");
+
+  const text = document.createElement("span");
+  text.className = "setup-dialog__difficulty-thumbnail-text";
+  text.textContent = difficulty.charAt(0).toUpperCase() + difficulty.slice(1);
+
+  const chevron = document.createElement("span");
+  chevron.className = "setup-dialog__difficulty-thumbnail-chevron";
+  chevron.textContent = "v";
+
+  thumbnail.append(text, chevron);
+  return thumbnail;
+}
+
+function createGameInfoSoundThumbnail(enabled: boolean): HTMLButtonElement {
+  const thumbnail = document.createElement("button");
+  thumbnail.className = "setup-dialog__sound-thumbnail";
+  thumbnail.type = "button";
+  thumbnail.setAttribute("aria-pressed", enabled ? "true" : "false");
+  thumbnail.setAttribute("aria-label", enabled ? "Turn sound off" : "Turn sound on");
+
+  const indicator = document.createElement("span");
+  indicator.className = "setup-dialog__sound-thumbnail-indicator";
+  indicator.setAttribute("aria-hidden", "true");
+
+  const indicatorInner = document.createElement("span");
+  indicatorInner.className = "setup-dialog__sound-thumbnail-indicator-inner";
+  indicator.append(indicatorInner);
+
+  const icon = document.createElement("span");
+  icon.className = "setup-dialog__sound-thumbnail-icon";
+  icon.textContent = enabled ? "SND" : "MUTE";
+  icon.setAttribute("aria-hidden", "true");
+
+  const text = document.createElement("span");
+  text.className = "setup-dialog__sound-thumbnail-text";
+  text.textContent = enabled ? "On" : "Off";
+
+  thumbnail.append(indicator, icon, text);
+  return thumbnail;
+}
+
+function createGameInfoFenThumbnail(expanded: boolean): HTMLButtonElement {
+  const thumbnail = document.createElement("button");
+  thumbnail.className = "setup-dialog__fen-thumbnail";
+  thumbnail.type = "button";
+  thumbnail.setAttribute("aria-expanded", expanded ? "true" : "false");
+  thumbnail.setAttribute("aria-label", expanded ? "Hide FEN position" : "Show FEN position");
+
+  const text = document.createElement("span");
+  text.className = "setup-dialog__fen-thumbnail-text";
+  text.textContent = expanded ? "Hide position" : "View position";
+
+  const chevron = document.createElement("span");
+  chevron.className = "setup-dialog__fen-thumbnail-chevron";
+  chevron.textContent = expanded ? "^" : "v";
+  chevron.setAttribute("aria-hidden", "true");
+
+  thumbnail.append(text, chevron);
+  return thumbnail;
+}
+
 export function showGameInfoModal(content: {
   moveGuidance: string;
   promotionGuidance: string;
   promotionThumbnailCaption: string;
+  playerName: string;
+  playerColour: Colour;
+  computerDifficulty: ComputerDifficulty;
+  currentFen: string;
+  leaderboardEntries: Array<{
+    name: string;
+    points: number;
+  }>;
 }): void {
   closeActiveStatusDialog();
 
-  const { moveGuidance, promotionGuidance, promotionThumbnailCaption } = content;
+  const {
+    moveGuidance,
+    promotionGuidance,
+    promotionThumbnailCaption,
+    playerName,
+    playerColour,
+    computerDifficulty,
+    currentFen,
+    leaderboardEntries,
+  } = content;
   const { dialog, form, actions } = createStatusDialog("Game info", moveGuidance);
   dialog.classList.add("setup-dialog--large");
 
@@ -363,6 +471,165 @@ export function showGameInfoModal(content: {
   );
 
   form.insertBefore(promotionSection, actions);
+
+  const gameDetailsSection = document.createElement("section");
+  gameDetailsSection.className = "setup-dialog__game-details";
+
+  const divider = document.createElement("hr");
+  divider.className = "setup-dialog__divider";
+
+  const gameDetailsLabel = document.createElement("p");
+  gameDetailsLabel.className = "setup-dialog__label";
+  gameDetailsLabel.textContent = "This game";
+
+  const playerNameRow = document.createElement("p");
+  playerNameRow.className = "setup-dialog__detail-row";
+
+  const playerNameRowLabel = document.createElement("span");
+  playerNameRowLabel.className = "setup-dialog__detail-label";
+  playerNameRowLabel.textContent = "Name:";
+
+  const playerNameRowValue = document.createElement("span");
+  playerNameRowValue.className = "setup-dialog__detail-value";
+  playerNameRowValue.textContent = playerName;
+
+  playerNameRow.append(playerNameRowLabel, playerNameRowValue);
+
+  const playerColourRow = document.createElement("div");
+  playerColourRow.className = "setup-dialog__detail-row";
+
+  const playerColourRowLabel = document.createElement("span");
+  playerColourRowLabel.className = "setup-dialog__detail-label";
+  playerColourRowLabel.textContent = "Colour:";
+
+  const playerColourRowValue = document.createElement("div");
+  playerColourRowValue.className = "setup-dialog__detail-value";
+  playerColourRowValue.append(createGameInfoColourThumbnail(playerColour));
+
+  playerColourRow.append(playerColourRowLabel, playerColourRowValue);
+
+  const difficultyRow = document.createElement("div");
+  difficultyRow.className = "setup-dialog__detail-row";
+
+  const difficultyRowLabel = document.createElement("span");
+  difficultyRowLabel.className = "setup-dialog__detail-label";
+  difficultyRowLabel.textContent = "Level:";
+
+  const difficultyRowValue = document.createElement("div");
+  difficultyRowValue.className = "setup-dialog__detail-value";
+  difficultyRowValue.append(createGameInfoDifficultyThumbnail(computerDifficulty));
+
+  difficultyRow.append(difficultyRowLabel, difficultyRowValue);
+
+  const soundRow = document.createElement("div");
+  soundRow.className = "setup-dialog__detail-row";
+
+  const soundRowLabel = document.createElement("span");
+  soundRowLabel.className = "setup-dialog__detail-label";
+  soundRowLabel.textContent = "Sound:";
+
+  const soundRowValue = document.createElement("div");
+  soundRowValue.className = "setup-dialog__detail-value";
+  let soundThumbnail = createGameInfoSoundThumbnail(isSoundOn());
+  const handleSoundToggle = (): void => {
+    const enabled = toggleSoundEnabled();
+    const nextSoundThumbnail = createGameInfoSoundThumbnail(enabled);
+    nextSoundThumbnail.addEventListener("click", handleSoundToggle);
+    soundThumbnail.replaceWith(nextSoundThumbnail);
+    soundThumbnail = nextSoundThumbnail;
+  };
+
+  soundThumbnail.addEventListener("click", handleSoundToggle);
+  soundRowValue.append(soundThumbnail);
+  soundRow.append(soundRowLabel, soundRowValue);
+
+  const fenRow = document.createElement("div");
+  fenRow.className = "setup-dialog__detail-row setup-dialog__detail-row--fen";
+
+  const fenRowLabel = document.createElement("span");
+  fenRowLabel.className = "setup-dialog__detail-label";
+  fenRowLabel.textContent = "FEN:";
+
+  const fenRowValue = document.createElement("div");
+  fenRowValue.className = "setup-dialog__detail-value setup-dialog__detail-value--fen";
+
+  const fenReadout = document.createElement("p");
+  fenReadout.className = "setup-dialog__fen-readout";
+  fenReadout.hidden = true;
+  fenReadout.textContent = currentFen;
+
+  let fenThumbnail = createGameInfoFenThumbnail(false);
+  
+  function handleFenToggle(): void {
+    const nextExpandedState: boolean = fenReadout.hidden;
+    fenReadout.hidden = !nextExpandedState;
+
+    const nextFenThumbnail = createGameInfoFenThumbnail(nextExpandedState);
+    nextFenThumbnail.addEventListener("click", handleFenToggle);
+    fenThumbnail.replaceWith(nextFenThumbnail);
+    fenThumbnail = nextFenThumbnail;
+  }
+
+  fenThumbnail.addEventListener("click", handleFenToggle);
+  fenRowValue.append(fenThumbnail, fenReadout);
+  fenRow.append(fenRowLabel, fenRowValue);
+
+  gameDetailsSection.append(
+    divider,
+    gameDetailsLabel,
+    playerNameRow,
+    playerColourRow,
+    difficultyRow,
+    soundRow,
+    fenRow,
+  );
+  form.insertBefore(gameDetailsSection, actions);
+
+  const leaderboardSection = document.createElement("section");
+  leaderboardSection.className = "setup-dialog__leaderboard";
+
+  const leaderboardDivider = document.createElement("hr");
+  leaderboardDivider.className = "setup-dialog__divider";
+
+  const leaderboardLabel = document.createElement("p");
+  leaderboardLabel.className = "setup-dialog__label";
+  leaderboardLabel.textContent = "Leaderboard";
+
+  const leaderboardDescription = document.createElement("p");
+  leaderboardDescription.className = "setup-dialog__description";
+  leaderboardDescription.textContent = "Wins are weighted by difficulty levels: Easy = 1 point, Medium = 2 points, Hard = 4 points.";
+
+  leaderboardSection.append(leaderboardDivider, leaderboardLabel, leaderboardDescription);
+
+  if (leaderboardEntries.length === 0) {
+    const leaderboardEmptyState = document.createElement("p");
+    leaderboardEmptyState.className = "setup-dialog__leaderboard-empty";
+    leaderboardEmptyState.textContent = "No named player wins have been recorded yet.";
+    leaderboardSection.append(leaderboardEmptyState);
+  } else {
+    const leaderboardList = document.createElement("ol");
+    leaderboardList.className = "setup-dialog__leaderboard-list";
+
+    for (const entry of leaderboardEntries) {
+      const leaderboardItem = document.createElement("li");
+      leaderboardItem.className = "setup-dialog__leaderboard-item";
+
+      const player = document.createElement("span");
+      player.className = "setup-dialog__leaderboard-name";
+      player.textContent = entry.name;
+
+      const score = document.createElement("span");
+      score.className = "setup-dialog__leaderboard-score";
+      score.textContent = `${entry.points} ${entry.points === 1 ? "point" : "points"}`;
+
+      leaderboardItem.append(player, score);
+      leaderboardList.append(leaderboardItem);
+    }
+
+    leaderboardSection.append(leaderboardList);
+  }
+
+  form.insertBefore(leaderboardSection, actions);
 
   const closeButton = document.createElement("button");
   closeButton.className = "setup-dialog__button setup-dialog__button--primary";

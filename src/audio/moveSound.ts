@@ -34,6 +34,7 @@ const SOUND_PATHS: Record<SoundKey, string> = {
 };
 // 
 const audioCache: Partial<Record<SoundKey, HTMLAudioElement>> = {};
+let isSoundEnabled = true;
 // // This module provides functions to manage audio playback for various 
 // chess move events and game end conditions. It includes functions 
 // to determine the type of move (e.g., castling, promotion, en passant) 
@@ -45,6 +46,19 @@ export function resetAudioCacheForTests(): void {
   for (const sound of Object.keys(audioCache) as SoundKey[]) {
     delete audioCache[sound];
   }
+}
+
+export function isSoundOn(): boolean {
+  return isSoundEnabled;
+}
+
+export function setSoundEnabled(enabled: boolean): void {
+  isSoundEnabled = enabled;
+}
+
+export function toggleSoundEnabled(): boolean {
+  isSoundEnabled = !isSoundEnabled;
+  return isSoundEnabled;
 }
 
 function getAudio(sound: SoundKey): HTMLAudioElement | null {
@@ -73,6 +87,10 @@ function preloadAudio(sound: SoundKey): void {
 }
 
 function playAudio(sound: SoundKey): void {
+  if (!isSoundEnabled) {
+    return;
+  }
+
   const audio = getAudio(sound);
   if (!audio) {
     return;

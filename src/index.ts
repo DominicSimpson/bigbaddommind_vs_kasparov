@@ -37,9 +37,16 @@ import {
   isStalemateSoundState,
   isDrawByThreefoldRepetitionSoundState,
   isDrawByInsufficientMaterialSoundState,
+  setSoundEnabled,
 } from "./audio/moveSound.js";
 import { createComputerPlayer } from "./player/ComputerPlayer.js";
 import type { ComputerDifficulty } from "./player/ComputerPlayer.js";
+import {
+  fetchLeaderboardEntries,
+  recordLeaderboardWin,
+  revokeLeaderboardWin,
+} from "./leaderboard/api.js";
+import type { LeaderboardEntry } from "./leaderboard/api.js";
 import type { Square } from "./board/Square.js";
 import { isTerminalGameResult } from "./types/GameResult.js";
 import type { Colour } from "./types/colour.js";
@@ -134,6 +141,13 @@ const BOARD_COORD_SEQUENCE = FILES.flatMap(file => RANKS.map(rank => (
 )));
 let pendingComputerTurnTimeoutId: number | null = null;
 let computerActionToken = 0;
+let leaderboardSessionToken = 0;
+let currentPlayerName: string | null = null;
+let leaderboardEntries: LeaderboardEntry[] = [];
+let currentGameLeaderboardAward: {
+  name: string;
+  difficulty: ComputerDifficulty;
+} | null = null;
 
 // // Clears any pending computer-turn timeout, preventing the computer 
 // from making a move if the timeout hasn't already completed. 
@@ -159,6 +173,58 @@ function clearPendingCastlingReadoutTimeout(): void {
 function invalidatePendingComputerActions(): void {
   clearPendingComputerTurnTimeout();
   computerActionToken += 1;
+}
+
+async function revokeCurrentGameLeaderboardAward(): Promise<void> {
+  if (!currentGameLeaderboardAward) {
+    return;
+  }
+
+  const sessionToken = leaderboardSessionToken;
+  const awardToRevoke = currentGameLeaderboardAward;
+  currentGameLeaderboardAward = null;
+
+  try {
+    leaderboardEntries = await revokeLeaderboardWin(
+      awardToRevoke.name,
+      awardToRevoke.difficulty,
+    );
+  } catch (error) {
+    console.error("Unable to revoke leaderboard win.", error);
+    if (sessionToken === leaderboardSessionToken) {
+      currentGameLeaderboardAward = awardToRevoke;
+    }
+  }
+}
+
+async function maybeRecordLeaderboardWin(): Promise<void> {
+  if (currentGameLeaderboardAward || !currentPlayerName || !computerDifficulty) {
+    return;
+  }
+
+  const gameStatus = board.getGameStatus();
+
+  if (gameStatus.status !== "checkmate" || gameStatus.winner !== playerColour) {
+    return;
+  }
+
+  const sessionToken = leaderboardSessionToken;
+  try {
+    leaderboardEntries = await recordLeaderboardWin(
+      currentPlayerName,
+      computerDifficulty,
+    );
+    if (sessionToken !== leaderboardSessionToken) {
+      return;
+    }
+
+    currentGameLeaderboardAward = {
+      name: currentPlayerName,
+      difficulty: computerDifficulty,
+    };
+  } catch (error) {
+    console.error("Unable to record leaderboard win.", error);
+  }
 }
 
 function getComputerMoveDelayMs(computerColour: Colour): number {
@@ -424,7 +490,9 @@ function renderSetupError(message: string): void {
 function resetBoardForNewGame(): void {
   invalidatePendingComputerActions();
   clearPendingCastlingReadoutTimeout();
+  leaderboardSessionToken += 1;
   board.loadFEN(INITIAL_POSITION_FEN);
+  currentGameLeaderboardAward = null;
   selectedCoord = null;
   clearMoveEntry();
   dragOriginCoord = null;
@@ -444,6 +512,7 @@ function resetBoardForNewGame(): void {
 function enterIdleState(): void {
   resetBoardForNewGame();
   isGameActive = false;
+  currentPlayerName = null;
   computerColour = null;
   computerDifficulty = null;
   sideLabels = {
@@ -564,6 +633,7 @@ function applyMove(move: Move): void {
   const shouldPlayMoveSound = isOrdinaryMoveCandidate(board, move);
 
   board.makeMove(move);
+  void maybeRecordLeaderboardWin();
   const gameStatus = board.getGameStatus();
 
   if (gameStatus.status === "checkmate") {
@@ -991,6 +1061,10 @@ function handleUndoMove(): void {
 
   invalidatePendingComputerActions();
 
+  if (isTerminalGameResult(board.getGameStatus())) {
+    void revokeCurrentGameLeaderboardAward();
+  }
+
   const latestMove = moveHistory[moveHistory.length - 1];
 
   if (!latestMove) {
@@ -1209,9 +1283,11 @@ async function initialiseGame(returnToIdleOnCancel = false): Promise<void> {
       computerDifficulty: chosenComputerDifficulty,
       playerName,
     } = await chooseGameOptions();
+    setSoundEnabled(true);
     const setup = createGameSetup(chosenPlayerColour, chosenComputerDifficulty, playerName);
     resetBoardForNewGame();
     isGameActive = true;
+    currentPlayerName = setup.playerName;
     playerColour = setup.playerColour;
     computerColour = setup.computerColour;
     computerDifficulty = setup.computerDifficulty;
@@ -1275,11 +1351,28 @@ gameInfoButton.addEventListener("click", () => {
     return;
   }
 
-  showGameInfoModal({
-    moveGuidance: GAME_INFO_MOVE_GUIDANCE,
-    promotionGuidance: GAME_INFO_PROMOTION_GUIDANCE,
-    promotionThumbnailCaption: GAME_INFO_PROMOTION_THUMBNAIL_CAPTION,
-  });
+  void (async () => {
+    try {
+      leaderboardEntries = await fetchLeaderboardEntries();
+    } catch (error) {
+      console.error("Unable to load leaderboard entries.", error);
+    }
+
+    if (!isGameActive) {
+      return;
+    }
+
+    showGameInfoModal({
+      moveGuidance: GAME_INFO_MOVE_GUIDANCE,
+      promotionGuidance: GAME_INFO_PROMOTION_GUIDANCE,
+      promotionThumbnailCaption: GAME_INFO_PROMOTION_THUMBNAIL_CAPTION,
+      playerName: sideLabels[playerColour],
+      playerColour,
+      computerDifficulty: computerDifficulty ?? "medium",
+      currentFen: board.toFEN(),
+      leaderboardEntries,
+    });
+  })();
 });
 moveFromInput.addEventListener("input", handleMoveFromInput);
 moveToInput.addEventListener("input", handleMoveToInput);
