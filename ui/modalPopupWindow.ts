@@ -597,7 +597,7 @@ export function showGameInfoModal(content: {
 
   const leaderboardDescription = document.createElement("p");
   leaderboardDescription.className = "setup-dialog__description";
-  leaderboardDescription.textContent = "Wins are weighted by difficulty levels: Easy = 1 point, Medium = 2 points, Hard = 4 points.";
+  leaderboardDescription.textContent = "Wins are weighted by difficulty levels: Easy = 1 point, Medium = 2 points, Hard = 4 points. You have to enter a name to feature on the leaderboard.";
 
   leaderboardSection.append(leaderboardDivider, leaderboardLabel, leaderboardDescription);
 

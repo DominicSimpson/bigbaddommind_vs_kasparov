@@ -309,7 +309,7 @@ describe("control panel buttons", () => {
     expect(exitGameButton.disabled).toBe(true);
     expect(gameInfoButton.disabled).toBe(true);
     expect(document.querySelector("#status")?.textContent).toBe(
-      "No game in progress. Press New Game to begin.",
+      "No game in progress. Press 'New Game' to begin.",
     );
 
     chooseGameOptionsMock.mockClear();
@@ -395,7 +395,7 @@ describe("control panel buttons", () => {
     );
     expect(playQuitGameSoundMock).toHaveBeenCalledTimes(1);
     expect(document.querySelector("#status")?.textContent).toBe(
-      "No game in progress. Press New Game to begin.",
+      "No game in progress. Press 'New Game' to begin.",
     );
     expect(getButton("#undo-move-button").disabled).toBe(true);
     expect(getButton("#exit-game-button").disabled).toBe(true);

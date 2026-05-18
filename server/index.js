@@ -130,16 +130,32 @@ function getDifficultyPoints(difficulty) {
   return pointsByDifficulty[difficulty];
 }
 
-const addLeaderboardWin = database.transaction((playerName, points) => {
-  upsertWinStatement.run(playerName, points);
-  return getLeaderboardEntries();
-});
+function addLeaderboardWin(playerName, points) {
+  database.exec("BEGIN");
+  try {
+    upsertWinStatement.run(playerName, points);
+    const entries = getLeaderboardEntries();
+    database.exec("COMMIT");
+    return entries;
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+}
 
-const revokeLeaderboardWin = database.transaction((playerName, points) => {
-  subtractPointsStatement.run(points, playerName);
-  deleteEmptyRowsStatement.run(playerName);
-  return getLeaderboardEntries();
-});
+function revokeLeaderboardWin(playerName, points) {
+  database.exec("BEGIN");
+  try {
+    subtractPointsStatement.run(points, playerName);
+    deleteEmptyRowsStatement.run(playerName);
+    const entries = getLeaderboardEntries();
+    database.exec("COMMIT");
+    return entries;
+  } catch (error) {
+    database.exec("ROLLBACK");
+    throw error;
+  }
+}
 
 async function handleApiRequest(request, response, pathname) {
   if (request.method === "OPTIONS") {
@@ -272,7 +288,16 @@ async function tryServeStaticFile(request, response, pathname) {
     return true;
   }
 
-  createReadStream(filePath).pipe(response);
+  const fileStream = createReadStream(filePath);
+  fileStream.on("error", () => {
+    if (!response.headersSent) {
+      sendText(response, 404, "File not found.");
+      return;
+    }
+
+    response.destroy();
+  });
+  fileStream.pipe(response);
   return true;
 }
 
@@ -290,6 +315,17 @@ const server = http.createServer(async (request, response) => {
   }
 
   await tryServeStaticFile(request, response, requestUrl.pathname);
+});
+
+server.on("error", error => {
+  if (error.code === "EADDRINUSE") {
+    console.error(`Port ${port} is already in use on ${host}.`);
+    process.exitCode = 1;
+    return;
+  }
+
+  console.error("Server failed to start:", error);
+  process.exitCode = 1;
 });
 
 server.listen(port, host, () => {
