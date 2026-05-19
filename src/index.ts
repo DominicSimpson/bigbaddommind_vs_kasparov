@@ -39,8 +39,8 @@ import {
   isDrawByInsufficientMaterialSoundState,
   setSoundEnabled,
 } from "./audio/moveSound.js";
-import { createComputerPlayer } from "./player/ComputerPlayer.js";
 import type { ComputerDifficulty } from "./player/ComputerPlayer.js";
+import { requestComputerMove } from "./player/requestComputerMove.js";
 import {
   fetchLeaderboardEntries,
   recordLeaderboardWin,
@@ -524,6 +524,13 @@ function enterIdleState(): void {
 
 function resetComputerTurnVisualState(): void {
   isComputerThinking = false;
+  computerThinkingCoord = null;
+  computerMovingCoord = null;
+  computerMovePreview = null;
+  computerDestinationCoord = null;
+}
+
+function clearComputerTurnVisualState(): void {
   computerThinkingCoord = null;
   computerMovingCoord = null;
   computerMovePreview = null;
@@ -1145,134 +1152,123 @@ function playComputerTurnIfNeeded(
 
   const turnStartTime = performance.now();
   const minimumTotalDelayMs = getComputerMoveDelayMs(computerColour);
-  const computerPlayer = createComputerPlayer(computerDifficulty);
-  const chosenMove = computerPlayer.chooseMove(board, computerColour);
-
-  if (!chosenMove) {
-    isComputerThinking = false;
-    computerThinkingCoord = null;
-    computerMovingCoord = null;
-    computerDestinationCoord = null;
-    renderGame();
-    return;
-  }
-
   clearPendingComputerTurnTimeout();
   const actionToken = ++computerActionToken;
   isComputerThinking = true;
-  computerThinkingCoord = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).coord;
-  computerMovingCoord = null;
-  computerMovePreview = null;
-  computerDestinationCoord = null;
+  clearComputerTurnVisualState();
   renderGame();
 
-  // Keep the total pause consistent from the start of the computer's turn,
-  // even when move selection itself takes variable time.
-  const elapsedBeforeDelayMs = performance.now() - turnStartTime;
-  const remainingDelayMs = Math.max(0, minimumTotalDelayMs - elapsedBeforeDelayMs);
+  void requestComputerMove(board, computerDifficulty, computerColour)
+    .then(chosenMove => {
+      if (actionToken !== computerActionToken) {
+        return;
+      }
 
-  pendingComputerTurnTimeoutId = window.setTimeout(() => {
-    pendingComputerTurnTimeoutId = null;
+      if (!chosenMove) {
+        isComputerThinking = false;
+        clearComputerTurnVisualState();
+        renderGame();
+        return;
+      }
 
-    if (actionToken !== computerActionToken) {
-      return;
-    }
-
-    if (board.getSideToMove() !== computerColour) {
-      isComputerThinking = false;
-      computerThinkingCoord = null;
-      computerMovingCoord = null;
-      computerMovePreview = null;
-      computerDestinationCoord = null;
+      computerThinkingCoord = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).coord;
       renderGame();
-      return;
-    }
 
-    if (isTerminalGameResult(board.getGameStatus())) {
-      isComputerThinking = false;
-      computerThinkingCoord = null;
-      computerMovingCoord = null;
-      computerMovePreview = null;
-      computerDestinationCoord = null;
-      renderGame();
-      return;
-    }
+      // Keep the total pause consistent from the start of the computer's turn,
+      // even when move selection itself takes variable time.
+      const elapsedBeforeDelayMs = performance.now() - turnStartTime;
+      const remainingDelayMs = Math.max(0, minimumTotalDelayMs - elapsedBeforeDelayMs);
 
-    const movingPiece = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).piece;
-    if (!movingPiece) {
-      isComputerThinking = false;
-      computerThinkingCoord = null;
-      computerMovingCoord = null;
-      computerMovePreview = null;
-      computerDestinationCoord = null;
-      renderGame();
-      return;
-    }
+      pendingComputerTurnTimeoutId = window.setTimeout(() => {
+        pendingComputerTurnTimeoutId = null;
 
-    computerMovingCoord = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).coord;
-    void animateComputerMove(chosenMove, movingPiece.type, computerColour, actionToken)
-      .then((animationCompleted) => {
-        if (!animationCompleted || actionToken !== computerActionToken) {
+        if (actionToken !== computerActionToken) {
           return;
         }
 
         if (board.getSideToMove() !== computerColour) {
           isComputerThinking = false;
-          computerThinkingCoord = null;
-          computerMovingCoord = null;
-          computerMovePreview = null;
-          computerDestinationCoord = null;
-          clearMoveEntry();
+          clearComputerTurnVisualState();
           renderGame();
           return;
         }
 
         if (isTerminalGameResult(board.getGameStatus())) {
           isComputerThinking = false;
-          computerThinkingCoord = null;
-          computerMovingCoord = null;
-          computerMovePreview = null;
-          computerDestinationCoord = null;
-          clearMoveEntry();
+          clearComputerTurnVisualState();
           renderGame();
           return;
         }
 
-        computerDestinationCoord = board.getSquare(chosenMove.toRank, chosenMove.toFile).coord;
-        renderGame();
-        return delay(COMPUTER_MOVE_DESTINATION_HOLD_MS).then(() => {
-          if (board.getSideToMove() !== computerColour) {
-            isComputerThinking = false;
-            computerThinkingCoord = null;
-            computerMovingCoord = null;
-            computerMovePreview = null;
-            computerDestinationCoord = null;
-            renderGame();
-            return;
-          }
-
-          if (isTerminalGameResult(board.getGameStatus())) {
-            isComputerThinking = false;
-            computerThinkingCoord = null;
-            computerMovingCoord = null;
-            computerMovePreview = null;
-            computerDestinationCoord = null;
-            renderGame();
-            return;
-          }
-
-          applyMove(chosenMove);
+        const movingPiece = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).piece;
+        if (!movingPiece) {
           isComputerThinking = false;
-          computerThinkingCoord = null;
-          selectedCoord = null;
-          clearMoveEntry();
-          computerMovingCoord = null;
-          computerMovePreview = null;
-          computerDestinationCoord = null;
+          clearComputerTurnVisualState();
           renderGame();
-        });
-      });
-  }, remainingDelayMs);
+          return;
+        }
+
+        computerMovingCoord = board.getSquare(chosenMove.fromRank, chosenMove.fromFile).coord;
+        void animateComputerMove(chosenMove, movingPiece.type, computerColour, actionToken)
+          .then((animationCompleted) => {
+            if (!animationCompleted || actionToken !== computerActionToken) {
+              return;
+            }
+
+            if (board.getSideToMove() !== computerColour) {
+              isComputerThinking = false;
+              clearComputerTurnVisualState();
+              clearMoveEntry();
+              renderGame();
+              return;
+            }
+
+            if (isTerminalGameResult(board.getGameStatus())) {
+              isComputerThinking = false;
+              clearComputerTurnVisualState();
+              clearMoveEntry();
+              renderGame();
+              return;
+            }
+
+            computerDestinationCoord = board.getSquare(chosenMove.toRank, chosenMove.toFile).coord;
+            renderGame();
+            return delay(COMPUTER_MOVE_DESTINATION_HOLD_MS).then(() => {
+              if (board.getSideToMove() !== computerColour) {
+                isComputerThinking = false;
+                clearComputerTurnVisualState();
+                renderGame();
+                return;
+              }
+
+              if (isTerminalGameResult(board.getGameStatus())) {
+                isComputerThinking = false;
+                clearComputerTurnVisualState();
+                renderGame();
+                return;
+              }
+
+              applyMove(chosenMove);
+              isComputerThinking = false;
+              selectedCoord = null;
+              clearMoveEntry();
+              clearComputerTurnVisualState();
+              renderGame();
+            });
+          });
+      }, remainingDelayMs);
+    })
+    .catch(error => {
+      console.error("Unable to choose a computer move.", error);
+
+      if (actionToken !== computerActionToken) {
+        return;
+      }
+
+      isComputerThinking = false;
+      clearComputerTurnVisualState();
+      renderGame();
+    });
 }
 
 // startup flow:

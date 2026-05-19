@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 
 const COMPUTER_TURN_TIMEOUT_MS = 10000;
 const ALLOWED_LATENCY_DIFFERENCE_MS = 250;
+const MAX_THINKING_STATE_ENTRY_MS = 350;
+const CPU_THROTTLE_RATE = 6;
 
 async function startGame(page: Page, playerColour: "white" | "black"): Promise<void> {
   await page.goto("/");
@@ -19,6 +21,18 @@ async function waitForPlayerControlsEnabled(page: Page): Promise<void> {
   await expect(page.locator("#move-entry-submit-button")).toBeEnabled({
     timeout: COMPUTER_TURN_TIMEOUT_MS,
   });
+}
+
+// // This test suite focuses on measuring the latency of the computer player's 
+// turn in a chess game. It includes tests to ensure that the latency is 
+// consistent regardless of whether the computer is playing as white or black, 
+// and that the computer enters the thinking state promptly even under CPU 
+// throttling conditions. By annotating the test results with relevant metrics, 
+// we can analyze the performance characteristics of the computer player's move 
+// calculation and identify any potential issues with visual latency:
+async function enableCpuThrottle(page: Page, rate: number): Promise<void> {
+  const session = await page.context().newCDPSession(page);
+  await session.send("Emulation.setCPUThrottlingRate", { rate });
 }
 
 async function measureComputerReplyMs(
@@ -61,4 +75,32 @@ test("computer reply latency stays close for white-side and black-side play", as
   );
 
   expect(latencyDifferenceMs).toBeLessThanOrEqual(ALLOWED_LATENCY_DIFFERENCE_MS);
+});
+
+test("computer turn enters the thinking state promptly under throttled CPU", async ({ page, browserName }) => {
+  test.setTimeout(60000);
+
+  test.skip(browserName !== "chromium", "CPU throttling via CDP is only supported in Chromium.");
+
+  await enableCpuThrottle(page, CPU_THROTTLE_RATE);
+  await startGame(page, "white");
+
+  const submitButton = page.locator("#move-entry-submit-button");
+  const startedAt = Date.now();
+
+  await clickSquare(page, "e2");
+  await clickSquare(page, "e4");
+  await expect(submitButton).toBeDisabled({
+    timeout: MAX_THINKING_STATE_ENTRY_MS,
+  });
+
+  const thinkingStateEntryMs = Date.now() - startedAt;
+
+  test.info().annotations.push(
+    { type: "cpu-throttle-rate", description: String(CPU_THROTTLE_RATE) },
+    { type: "thinking-state-entry-ms", description: String(thinkingStateEntryMs) },
+  );
+
+  expect(thinkingStateEntryMs).toBeLessThanOrEqual(MAX_THINKING_STATE_ENTRY_MS);
+  await waitForPlayerControlsEnabled(page);
 });
