@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 const chooseGameOptionsMock = vi.fn();
 const choosePromotionPieceMock = vi.fn();
@@ -11,6 +11,7 @@ const submitPromotionChoiceMock = vi.fn();
 const playQuitGameSoundMock = vi.fn();
 const isQuitGameSoundStateMock = vi.fn();
 const chooseComputerMoveMock = vi.fn();
+const fetchLeaderboardEntriesMock = vi.fn();
 let pendingPromotionResolve: ((piece: "queen" | "rook" | "bishop" | "knight") => void) | null = null;
 
 vi.mock("../../ui/modalPopupWindow.js", async () => {
@@ -65,12 +66,19 @@ vi.mock("../../src/audio/moveSound.js", () => ({
   preloadPromotionSound: vi.fn(),
   preloadQuitGameSound: vi.fn(),
   preloadStalemateSound: vi.fn(),
+  setSoundEnabled: vi.fn(),
 }));
 
 vi.mock("../../src/player/ComputerPlayer.js", () => ({
   createComputerPlayer: vi.fn(() => ({
     chooseMove: chooseComputerMoveMock,
   })),
+}));
+
+vi.mock("../../src/leaderboard/api.js", () => ({
+  fetchLeaderboardEntries: fetchLeaderboardEntriesMock,
+  recordLeaderboardWin: vi.fn(),
+  revokeLeaderboardWin: vi.fn(),
 }));
 
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -191,7 +199,10 @@ async function loadApp(options: { initialFen?: string } = {}): Promise<void> {
     const { ChessBoard } = await import("../../src/board/ChessBoard.js");
     const originalLoadFEN = ChessBoard.prototype.loadFEN;
 
-    vi.spyOn(ChessBoard.prototype, "loadFEN").mockImplementation(function loadPatchedFen(fen) {
+    vi.spyOn(ChessBoard.prototype, "loadFEN").mockImplementation(function loadPatchedFen(
+      this: InstanceType<typeof ChessBoard>,
+      fen,
+    ) {
       return originalLoadFEN.call(
         this,
         fen === INITIAL_POSITION_FEN ? options.initialFen ?? fen : fen,
@@ -252,6 +263,54 @@ async function advanceAndFlush(ms: number): Promise<void> {
 }
 
 describe("control panel buttons", () => {
+  beforeAll(() => {
+    if (typeof HTMLDialogElement === "undefined") {
+      class HTMLDialogElementStub extends HTMLElement {
+        open = false;
+        returnValue = "";
+
+        showModal(): void {
+          this.open = true;
+        }
+
+        show(): void {
+          this.open = true;
+        }
+
+        close(returnValue = ""): void {
+          this.open = false;
+          this.returnValue = returnValue;
+          this.dispatchEvent(new Event("close"));
+        }
+      }
+
+      Object.defineProperty(globalThis, "HTMLDialogElement", {
+        configurable: true,
+        value: HTMLDialogElementStub,
+      });
+    }
+
+    if (!HTMLDialogElement.prototype.showModal) {
+      HTMLDialogElement.prototype.showModal = function showModal(): void {
+        this.open = true;
+      };
+    }
+
+    if (!HTMLDialogElement.prototype.show) {
+      HTMLDialogElement.prototype.show = function show(): void {
+        this.open = true;
+      };
+    }
+
+    if (!HTMLDialogElement.prototype.close) {
+      HTMLDialogElement.prototype.close = function close(returnValue = ""): void {
+        this.open = false;
+        this.returnValue = returnValue;
+        this.dispatchEvent(new Event("close"));
+      };
+    }
+  });
+
   beforeEach(() => {
     vi.resetModules();
     vi.useFakeTimers();
@@ -263,8 +322,10 @@ describe("control panel buttons", () => {
     playQuitGameSoundMock.mockReset();
     isQuitGameSoundStateMock.mockReset();
     chooseComputerMoveMock.mockReset();
+    fetchLeaderboardEntriesMock.mockReset();
     chooseComputerMoveMock.mockReturnValue(null);
     isQuitGameSoundStateMock.mockReturnValue(true);
+    fetchLeaderboardEntriesMock.mockResolvedValue([]);
     pendingPromotionResolve = null;
     choosePromotionPieceMock.mockResolvedValue("queen");
     submitPromotionChoiceMock.mockImplementation((piece: "queen" | "rook" | "bishop" | "knight") => {
@@ -412,11 +473,17 @@ describe("control panel buttons", () => {
     await loadApp();
 
     getButton("#game-info-button").click();
+    await flushPromises();
 
     expect(showGameInfoModalMock).toHaveBeenCalledWith({
-      moveGuidance: "To move a piece, click and drag it to its destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.",
+      moveGuidance: "To move a piece, either click and drag it to its destination square, or click the piece and then click the destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.",
       promotionGuidance: "To promote a pawn that reaches the opposite side of the board, select one of the four piece options shown in the pop-up window. You can also use the piece buttons below the move input when they come into focus.",
       promotionThumbnailCaption: "Example: choosing the queen button will result in you promoting the pawn to a queen.",
+      playerName: "White",
+      playerColour: "white",
+      computerDifficulty: "medium",
+      currentFen: INITIAL_POSITION_FEN,
+      leaderboardEntries: [],
     });
   });
 
@@ -542,19 +609,31 @@ describe("control panel buttons", () => {
 
     const moveFromInput = document.querySelector<HTMLInputElement>("#move-from-input");
     const moveToInput = document.querySelector<HTMLInputElement>("#move-to-input");
+    const moveFromIncrementButton = getButton("#move-from-increment-button");
+    const moveToIncrementButton = getButton("#move-to-increment-button");
+    const moveFromDecrementButton = getButton("#move-from-decrement-button");
+    const moveToDecrementButton = getButton("#move-to-decrement-button");
 
-    if (!moveFromInput || !moveToInput) {
+    if (
+      !moveFromInput
+      || !moveToInput
+    ) {
       throw new Error("Expected move entry inputs to exist.");
     }
 
-    getButton("#move-from-increment-button").click();
-    getButton("#move-to-increment-button").click();
+    expect(moveFromIncrementButton.disabled).toBe(false);
+    expect(moveToIncrementButton.disabled).toBe(false);
+    expect(moveFromDecrementButton.disabled).toBe(false);
+    expect(moveToDecrementButton.disabled).toBe(false);
+
+    moveFromIncrementButton.click();
+    moveToIncrementButton.click();
 
     expect(moveFromInput.value).toBe("a1");
     expect(moveToInput.value).toBe("a1");
 
-    getButton("#move-from-decrement-button").click();
-    getButton("#move-to-decrement-button").click();
+    moveFromDecrementButton.click();
+    moveToDecrementButton.click();
 
     expect(moveFromInput.value).toBe("h8");
     expect(moveToInput.value).toBe("h8");
