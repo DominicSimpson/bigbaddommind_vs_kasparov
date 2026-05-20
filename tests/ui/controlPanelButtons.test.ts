@@ -475,7 +475,7 @@ describe("control panel buttons", () => {
     getButton("#game-info-button").click();
     await flushPromises();
 
-    expect(showGameInfoModalMock).toHaveBeenCalledWith({
+    expect(showGameInfoModalMock).toHaveBeenCalledWith(expect.objectContaining({
       moveGuidance: "To move a piece, either click and drag it to its destination square, or click the piece and then click the destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.",
       promotionGuidance: "To promote a pawn that reaches the opposite side of the board, select one of the four piece options shown in the pop-up window. You can also use the piece buttons below the move input when they come into focus.",
       promotionThumbnailCaption: "Example: choosing the queen button will result in you promoting the pawn to a queen.",
@@ -484,7 +484,40 @@ describe("control panel buttons", () => {
       computerDifficulty: "medium",
       currentFen: INITIAL_POSITION_FEN,
       leaderboardEntries: [],
+    }));
+  });
+
+  it("lights the Info indicator only while the Game Info modal is open", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
     });
+
+    await loadApp();
+
+    const getInfoLed = (): HTMLElement | null => {
+      const rows = Array.from(document.querySelectorAll<HTMLElement>(".team-mate-panel__row"));
+      const infoRow = rows.find(row => row.textContent?.includes("Info"));
+      return infoRow?.querySelector<HTMLElement>(".team-mate-panel__led") ?? null;
+    };
+
+    expect(getInfoLed()?.className).not.toContain("is-active");
+
+    getButton("#game-info-button").click();
+    await flushPromises();
+
+    const modalArgs = showGameInfoModalMock.mock.calls.at(-1)?.[0];
+
+    if (!modalArgs?.onOpen || !modalArgs.onClose) {
+      throw new Error("Expected game info modal callbacks to be provided.");
+    }
+
+    modalArgs.onOpen();
+    expect(getInfoLed()?.className).toContain("is-active");
+
+    modalArgs.onClose();
+    expect(getInfoLed()?.className).not.toContain("is-active");
   });
 
   it("lets the player enter a move through the coordinate readouts", async () => {

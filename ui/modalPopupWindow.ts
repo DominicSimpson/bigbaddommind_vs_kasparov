@@ -413,6 +413,8 @@ export function showGameInfoModal(content: {
     name: string;
     points: number;
   }>;
+  onOpen?: () => void;
+  onClose?: () => void;
 }): void {
   closeActiveStatusDialog();
 
@@ -425,9 +427,11 @@ export function showGameInfoModal(content: {
     computerDifficulty,
     currentFen,
     leaderboardEntries,
+    onOpen,
+    onClose,
   } = content;
   const { dialog, form, actions } = createStatusDialog("Game info", moveGuidance);
-  dialog.classList.add("setup-dialog--large");
+  dialog.classList.add("setup-dialog--game-info", "setup-dialog--large");
 
   const visualSection = document.createElement("section");
   visualSection.className = "setup-dialog__section";
@@ -648,6 +652,7 @@ export function showGameInfoModal(content: {
       activeStatusDialog = null;
     }
 
+    onClose?.();
     dialog.remove();
   }, { once: true });
 
@@ -657,6 +662,7 @@ export function showGameInfoModal(content: {
   });
 
   dialog.showModal();
+  onOpen?.();
 }
 
 export function showConfirmationModal(

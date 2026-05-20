@@ -23,6 +23,10 @@ async function waitForPlayerControlsEnabled(page: Page): Promise<void> {
   });
 }
 
+function getInfoIndicator(page: Page) {
+  return page.locator(".team-mate-panel__row", { hasText: "Info" }).locator(".team-mate-panel__led");
+}
+
 // // This test suite focuses on measuring the latency of the computer player's 
 // turn in a chess game. It includes tests to ensure that the latency is 
 // consistent regardless of whether the computer is playing as white or black, 
@@ -85,12 +89,13 @@ test("computer turn enters the thinking state promptly under throttled CPU", asy
   await enableCpuThrottle(page, CPU_THROTTLE_RATE);
   await startGame(page, "white");
 
-  const submitButton = page.locator("#move-entry-submit-button");
-  const startedAt = Date.now();
+  const teamMatePanel = page.locator(".team-mate-panel");
 
   await clickSquare(page, "e2");
   await clickSquare(page, "e4");
-  await expect(submitButton).toBeDisabled({
+
+  const startedAt = Date.now();
+  await expect(teamMatePanel).toHaveAttribute("data-state", "thinking", {
     timeout: MAX_THINKING_STATE_ENTRY_MS,
   });
 
@@ -103,4 +108,23 @@ test("computer turn enters the thinking state promptly under throttled CPU", asy
 
   expect(thinkingStateEntryMs).toBeLessThanOrEqual(MAX_THINKING_STATE_ENTRY_MS);
   await waitForPlayerControlsEnabled(page);
+});
+
+test("game info light toggles only while the Game Info modal is open", async ({ page }) => {
+  await startGame(page, "white");
+
+  const infoIndicator = getInfoIndicator(page);
+
+  await expect(infoIndicator).not.toHaveClass(/is-active/);
+
+  await page.getByRole("button", { name: "View game information" }).click();
+
+  const gameInfoDialog = page.locator("dialog.setup-dialog--game-info[open]");
+  await expect(gameInfoDialog).toBeVisible();
+  await expect(infoIndicator).toHaveClass(/is-active/);
+
+  await gameInfoDialog.getByRole("button", { name: "OK" }).click();
+
+  await expect(gameInfoDialog).toHaveCount(0);
+  await expect(infoIndicator).not.toHaveClass(/is-active/);
 });

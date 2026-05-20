@@ -17,6 +17,7 @@ export const CHECK_STATUS_MODAL_DELAY_MS = 1320;
 // Types related to rendering the game status and the team-mate panel:
 type RenderStatusOptions = {
   isComputerThinking?: boolean;
+  isGameInfoOpen?: boolean;
   onPlayAgain?: () => void;
 };
 
@@ -91,22 +92,23 @@ function renderTeamMatePanel(
   sideToMove: "white" | "black",
   gameStatus: GameResult,
   isComputerThinking: boolean,
+  isGameInfoOpen: boolean,
 ): void {
   const isCheck = gameStatus.status === "check";
   const isEnd = gameStatus.status === "checkmate";
-  const showInfo = !isCheck && !isEnd && !isComputerThinking;
   const indicators: TeamMateIndicator[] = [
     { label: sideLabels.white, active: sideToMove === "white" && !isEnd },
     { label: sideLabels.black, active: sideToMove === "black" && !isEnd },
     { label: "Check", active: isCheck },
     { label: "End", active: isEnd },
     { label: "Think", active: isComputerThinking },
-    { label: "Info", active: showInfo },
+    { label: "Info", active: isGameInfoOpen },
   ];
 
   const panel = document.createElement("section");
   panel.className = "team-mate-panel";
   panel.setAttribute("aria-label", "Team-Mate computer status panel");
+  panel.dataset.state = isComputerThinking ? "thinking" : "idle";
 
   const commandStack = document.createElement("div");
   commandStack.className = "team-mate-panel__commands";
@@ -158,8 +160,16 @@ export function renderStatus(
   const statusAnnouncementKey = getStatusAnnouncementKey(gameStatus);
   const shouldAnnounceStatus = statusAnnouncementKey !== lastAnnouncedStatusKey;
   const isComputerThinking = options.isComputerThinking ?? false;
+  const isGameInfoOpen = options.isGameInfoOpen ?? false;
 
-  renderTeamMatePanel(turnBadgeElement, sideLabels, sideToMove, gameStatus, isComputerThinking);
+  renderTeamMatePanel(
+    turnBadgeElement,
+    sideLabels,
+    sideToMove,
+    gameStatus,
+    isComputerThinking,
+    isGameInfoOpen,
+  );
 
   if (gameStatus.status !== "check") {
     clearPendingStatusAnnouncement();

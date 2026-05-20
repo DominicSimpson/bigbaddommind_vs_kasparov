@@ -113,6 +113,7 @@ let isAwaitingPromotionChoice = false;
 let pendingPromotionColour: Colour | null = null;
 let isGameActive = false;
 let isComputerThinking = false;
+let isGameInfoOpen = false;
 let computerThinkingCoord: string | null = null;
 let dragOriginCoord: string | null = null;
 let dragStartPoint: { x: number; y: number } | null = null;
@@ -432,6 +433,7 @@ function renderGame(): void {
   });
   renderStatus(board, status, turnBadge, sideLabels, {
     isComputerThinking,
+    isGameInfoOpen,
     onPlayAgain: () => {
       void initialiseGame(false);
     },
@@ -503,6 +505,7 @@ function resetBoardForNewGame(): void {
   computerThinkingCoord = null;
   computerDestinationCoord = null;
   isComputerThinking = false;
+  isGameInfoOpen = false;
   isAwaitingPromotionChoice = false;
   pendingPromotionColour = null;
   resetStatusDialogs();
@@ -1367,6 +1370,14 @@ gameInfoButton.addEventListener("click", () => {
       computerDifficulty: computerDifficulty ?? "medium",
       currentFen: board.toFEN(),
       leaderboardEntries,
+      onOpen: () => {
+        isGameInfoOpen = true;
+        renderGame();
+      },
+      onClose: () => {
+        isGameInfoOpen = false;
+        renderGame();
+      },
     });
   })();
 });

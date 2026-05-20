@@ -177,4 +177,27 @@ describe("showGameInfoModal", () => {
 
     expect(document.querySelector("dialog")).toBeNull();
   });
+
+  it("calls the open and close hooks for the game info modal", () => {
+    const onOpen = vi.fn();
+    const onClose = vi.fn();
+
+    openGameInfoModal({
+      onOpen,
+      onClose,
+    });
+
+    expect(onOpen).toHaveBeenCalledTimes(1);
+
+    const okButton = Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
+      .find(button => button.textContent === "OK");
+
+    if (!okButton) {
+      throw new Error("Expected an OK button to exist.");
+    }
+
+    okButton.click();
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
 });
