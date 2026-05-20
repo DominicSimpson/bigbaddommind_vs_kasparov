@@ -2292,3 +2292,9 @@ body {
     display: grid;
   }
 }
+
+#footer {
+  text-align: center;
+  font-family: Arial, Helvetica, sans-serif;
+  margin: 20px;
+}
