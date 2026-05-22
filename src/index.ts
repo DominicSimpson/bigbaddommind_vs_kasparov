@@ -133,6 +133,8 @@ const COMPUTER_MOVE_MIN_ANIMATION_MS = 420;
 const COMPUTER_MOVE_DESTINATION_HOLD_MS = 1000;
 const CASTLING_READOUT_SWAP_DELAY_MS = 900;
 const BOARD_DRAG_THRESHOLD_PX = 6;
+const SCROLL_CUE_BREAKPOINT_PX = 900;
+const SCROLL_CUE_BOTTOM_THRESHOLD_PX = 8;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const GAME_INFO_MOVE_GUIDANCE = "To move a piece, either click and drag it to its destination square, or click the piece and then click the destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.";
 const GAME_INFO_PROMOTION_GUIDANCE = "To promote a pawn that reaches the opposite side of the board, select one of the four piece options shown in the pop-up window. You can also use the piece buttons below the move input when they come into focus.";
@@ -149,6 +151,21 @@ let currentGameLeaderboardAward: {
   name: string;
   difficulty: ComputerDifficulty;
 } | null = null;
+
+function updateScrollCueVisibility(): void {
+  if (window.innerWidth > SCROLL_CUE_BREAKPOINT_PX) {
+    document.body.classList.remove("has-scroll-cue");
+    return;
+  }
+
+  const scrollBottom = window.scrollY + window.innerHeight;
+  const hasMoreContent = (
+    scrollBottom
+    < document.documentElement.scrollHeight - SCROLL_CUE_BOTTOM_THRESHOLD_PX
+  );
+
+  document.body.classList.toggle("has-scroll-cue", hasMoreContent);
+}
 
 // // Clears any pending computer-turn timeout, preventing the computer 
 // from making a move if the timeout hasn't already completed. 
@@ -441,6 +458,7 @@ function renderGame(): void {
   renderCapturedPieces(board, capturedPieces);
   syncControlAvailability();
   syncMoveEntryAvailability();
+  updateScrollCueVisibility();
 }
 
 function syncControlAvailability(): void {
@@ -466,6 +484,7 @@ function renderIdleState(): void {
   renderCapturedPieces(board, capturedPieces);
   syncControlAvailability();
   syncMoveEntryAvailability();
+  updateScrollCueVisibility();
 }
 
 // // If setup fails, it still renders the board, shows the error text, 
@@ -482,6 +501,7 @@ function renderSetupError(message: string): void {
   turnBadge.textContent = "";
   renderCapturedPieces(board, capturedPieces);
   syncMoveEntryAvailability();
+  updateScrollCueVisibility();
 }
 
 // // Resets the board and all relevant state to start a new game. 
@@ -1333,6 +1353,8 @@ preloadDrawByThreefoldRepetitionSound();
 preloadDrawByInsufficientMaterialSound();
 preloadStalemateSound();
 preloadQuitGameSound();
+window.addEventListener("scroll", updateScrollCueVisibility, { passive: true });
+window.addEventListener("resize", updateScrollCueVisibility);
 boardRoot.addEventListener("mousedown", handleBoardMouseDown);
 boardRoot.addEventListener("mouseup", event => {
   void handleBoardMouseUp(event);

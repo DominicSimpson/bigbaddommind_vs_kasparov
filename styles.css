@@ -53,6 +53,18 @@ body {
     linear-gradient(180deg, #bfa78f 0%, #a88f76 100%);
 }
 
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+  opacity: 0;
+  z-index: 3;
+  transition: opacity 180ms ease;
+}
+
 .app-shell {
   flex: 1 0 auto;
   width: min(1680px, calc(100% - 2rem));
@@ -142,6 +154,7 @@ body {
 .board-column {
   display: grid;
   gap: 0.85rem;
+  min-width: 0;
 }
 
 .panel-sidebar {
@@ -2245,6 +2258,111 @@ body {
   .control-panel,
   .move-entry-panel {
     width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  body.has-scroll-cue::before {
+    bottom: 0;
+    width: min(100%, 32rem);
+    height: 4.5rem;
+    background: linear-gradient(180deg, rgba(168, 143, 118, 0) 0%, rgba(168, 143, 118, 0.72) 100%);
+    opacity: 1;
+  }
+
+  body.has-scroll-cue::after {
+    bottom: 0.9rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-right: 3px solid rgba(57, 37, 21, 0.78);
+    border-bottom: 3px solid rgba(57, 37, 21, 0.78);
+    transform: translateX(-50%) rotate(45deg);
+    opacity: 0.9;
+    animation: scroll-cue-bob 1.6s ease-in-out infinite;
+  }
+
+  :root {
+    --board-size: 32rem;
+  }
+
+  .board-layout {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .board-column,
+  .panel-sidebar,
+  .captured-panel--left {
+    width: 100%;
+    min-width: 0;
+    justify-self: stretch;
+  }
+
+  .board-frame {
+    width: 100%;
+    max-width: var(--board-size);
+    margin-top: 0;
+  }
+
+  .panel-sidebar {
+    order: 2;
+    gap: 1rem;
+  }
+
+  .captured-panel--left {
+    order: 3;
+    min-height: auto;
+    align-self: start;
+    gap: 0.6rem;
+    padding: 0.8rem 0.9rem;
+  }
+
+  .captured-panel--left::before {
+    height: 100%;
+    border-bottom-left-radius: inherit;
+    border-bottom-right-radius: inherit;
+  }
+
+  .captured-panel__title {
+    font-size: 0.82rem;
+  }
+
+  .captured-panel__row {
+    grid-template-columns: minmax(0, 6.25rem) minmax(0, 1fr);
+    align-items: center;
+    column-gap: 0.55rem;
+  }
+
+  .captured-panel__label {
+    font-size: 0.68rem;
+    line-height: 1.25;
+  }
+
+  .captured-panel__symbols {
+    min-height: 1.5rem;
+    gap: 0.18rem 0.24rem;
+  }
+
+  .captured-panel__piece {
+    min-width: 1.1rem;
+    font-size: 1.05rem;
+  }
+
+  .captured-panel__empty {
+    font-size: 0.76rem;
+  }
+}
+
+@keyframes scroll-cue-bob {
+  0%,
+  100% {
+    transform: translateX(-50%) rotate(45deg);
+    opacity: 0.55;
+  }
+
+  50% {
+    transform: translateX(-50%) translateY(0.28rem) rotate(45deg);
+    opacity: 0.95;
   }
 }
 
