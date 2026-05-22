@@ -135,6 +135,7 @@ const CASTLING_READOUT_SWAP_DELAY_MS = 900;
 const BOARD_DRAG_THRESHOLD_PX = 6;
 const SCROLL_CUE_BREAKPOINT_PX = 900;
 const SCROLL_CUE_BOTTOM_THRESHOLD_PX = 8;
+const SCROLL_CUE_SECTION_THRESHOLD_PX = 24;
 const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const GAME_INFO_MOVE_GUIDANCE = "To move a piece, either click and drag it to its destination square, or click the piece and then click the destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.";
 const GAME_INFO_PROMOTION_GUIDANCE = "To promote a pawn that reaches the opposite side of the board, select one of the four piece options shown in the pop-up window. You can also use the piece buttons below the move input when they come into focus.";
@@ -151,9 +152,10 @@ let currentGameLeaderboardAward: {
   name: string;
   difficulty: ComputerDifficulty;
 } | null = null;
+const mobileScrollCueButton = document.getElementById("mobile-scroll-cue");
 
 function updateScrollCueVisibility(): void {
-  if (window.innerWidth > SCROLL_CUE_BREAKPOINT_PX) {
+  if (window.innerWidth > SCROLL_CUE_BREAKPOINT_PX || isGameInfoOpen) {
     document.body.classList.remove("has-scroll-cue");
     return;
   }
@@ -165,6 +167,37 @@ function updateScrollCueVisibility(): void {
   );
 
   document.body.classList.toggle("has-scroll-cue", hasMoreContent);
+}
+
+function scrollToNextSection(): void {
+  const nextSectionTargets = [
+    document.querySelector<HTMLElement>(".panel-sidebar"),
+    document.getElementById("captured-pieces"),
+    document.getElementById("footer"),
+  ].filter((element): element is HTMLElement => element !== null);
+
+  const viewportTop = window.scrollY;
+
+  for (const element of nextSectionTargets) {
+    const elementTop = window.scrollY + element.getBoundingClientRect().top;
+
+    if (elementTop > viewportTop + SCROLL_CUE_SECTION_THRESHOLD_PX) {
+      element.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+          ? "auto"
+          : "smooth",
+        block: "start",
+      });
+      return;
+    }
+  }
+
+  window.scrollTo({
+    top: document.documentElement.scrollHeight,
+    behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "auto"
+      : "smooth",
+  });
 }
 
 // // Clears any pending computer-turn timeout, preventing the computer 
@@ -1355,6 +1388,7 @@ preloadStalemateSound();
 preloadQuitGameSound();
 window.addEventListener("scroll", updateScrollCueVisibility, { passive: true });
 window.addEventListener("resize", updateScrollCueVisibility);
+mobileScrollCueButton?.addEventListener("click", scrollToNextSection);
 boardRoot.addEventListener("mousedown", handleBoardMouseDown);
 boardRoot.addEventListener("mouseup", event => {
   void handleBoardMouseUp(event);

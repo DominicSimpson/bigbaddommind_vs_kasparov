@@ -28,6 +28,9 @@ export type SelectedGameOptions = {
 let activeStatusDialog: HTMLDialogElement | null = null;
 let activeStatusDialogTimeoutId: number | null = null;
 const STATUS_DIALOG_TIMEOUT_MS = 3000;
+const MOBILE_SCROLL_CUE_BREAKPOINT_PX = 700;
+const MODAL_SCROLL_CUE_BOTTOM_THRESHOLD_PX = 8;
+const MODAL_SCROLL_CUE_SECTION_THRESHOLD_PX = 24;
 
 // Promotion options for when a pawn reaches the final rank:
 const PROMOTION_OPTIONS: ReadonlyArray<{
@@ -200,6 +203,78 @@ function createStatusDialog(titleText: string | null, descriptionText: string): 
   dialog.append(form);
 
   return { dialog, form, actions };
+}
+
+function createModalScrollCueButton(): HTMLButtonElement {
+  const button = document.createElement("button");
+  button.className = "setup-dialog__scroll-cue";
+  button.type = "button";
+  button.setAttribute("aria-label", "Scroll to the next section");
+
+  const chevron = document.createElement("span");
+  chevron.className = "setup-dialog__scroll-cue-chevron";
+  chevron.setAttribute("aria-hidden", "true");
+  button.append(chevron);
+
+  return button;
+}
+
+function attachModalScrollCue(
+  dialog: HTMLDialogElement,
+  scrollContainer: HTMLElement,
+  scrollCueButton: HTMLButtonElement,
+  targetElements: HTMLElement[],
+): () => void {
+  const updateScrollCueVisibility = (): void => {
+    if (window.innerWidth > MOBILE_SCROLL_CUE_BREAKPOINT_PX) {
+      dialog.classList.remove("setup-dialog--has-scroll-cue");
+      return;
+    }
+
+    const hasMoreContent = (
+      scrollContainer.scrollTop + scrollContainer.clientHeight
+      < scrollContainer.scrollHeight - MODAL_SCROLL_CUE_BOTTOM_THRESHOLD_PX
+    );
+
+    dialog.classList.toggle("setup-dialog--has-scroll-cue", hasMoreContent);
+  };
+
+  const scrollToNextSection = (): void => {
+    const viewportTop = scrollContainer.scrollTop;
+
+    for (const element of targetElements) {
+      const elementTop = element.offsetTop;
+
+      if (elementTop > viewportTop + MODAL_SCROLL_CUE_SECTION_THRESHOLD_PX) {
+        scrollContainer.scrollTo({
+          top: Math.max(0, elementTop - 16),
+          behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+            ? "auto"
+            : "smooth",
+        });
+        return;
+      }
+    }
+
+    scrollContainer.scrollTo({
+      top: scrollContainer.scrollHeight,
+      behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        ? "auto"
+        : "smooth",
+    });
+  };
+
+  scrollContainer.addEventListener("scroll", updateScrollCueVisibility, { passive: true });
+  window.addEventListener("resize", updateScrollCueVisibility);
+  scrollCueButton.addEventListener("click", scrollToNextSection);
+  updateScrollCueVisibility();
+
+  return (): void => {
+    scrollContainer.removeEventListener("scroll", updateScrollCueVisibility);
+    window.removeEventListener("resize", updateScrollCueVisibility);
+    scrollCueButton.removeEventListener("click", scrollToNextSection);
+    dialog.classList.remove("setup-dialog--has-scroll-cue");
+  };
 }
 
 export function resetStatusDialogs(): void {
@@ -432,6 +507,7 @@ export function showGameInfoModal(content: {
   } = content;
   const { dialog, form, actions } = createStatusDialog("Game info", moveGuidance);
   dialog.classList.add("setup-dialog--game-info", "setup-dialog--large");
+  const scrollCueButton = createModalScrollCueButton();
 
   const visualSection = document.createElement("section");
   visualSection.className = "setup-dialog__section";
@@ -644,14 +720,28 @@ export function showGameInfoModal(content: {
   });
 
   actions.append(closeButton);
+  dialog.append(scrollCueButton);
   document.body.append(dialog);
   activeStatusDialog = dialog;
+  const detachModalScrollCue = attachModalScrollCue(
+    dialog,
+    form,
+    scrollCueButton,
+    [
+      promotionDescription,
+      promotionSection,
+      gameDetailsSection,
+      leaderboardSection,
+      actions,
+    ],
+  );
 
   dialog.addEventListener("close", () => {
     if (activeStatusDialog === dialog) {
       activeStatusDialog = null;
     }
 
+    detachModalScrollCue();
     onClose?.();
     dialog.remove();
   }, { once: true });
