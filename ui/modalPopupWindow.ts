@@ -392,6 +392,11 @@ function createGameInfoPromotionThumbnail(): HTMLDivElement {
 function createGameInfoColourThumbnail(colour: Colour): HTMLDivElement {
   const thumbnail = document.createElement("div");
   thumbnail.className = "setup-dialog__colour-thumbnail";
+  thumbnail.classList.add(
+    colour === "black"
+      ? "setup-dialog__colour-thumbnail--black"
+      : "setup-dialog__colour-thumbnail--white",
+  );
   thumbnail.setAttribute("aria-hidden", "true");
 
   const indicator = document.createElement("span");
