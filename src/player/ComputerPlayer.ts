@@ -3,6 +3,7 @@ import type { Move } from "../types/Move.js";
 import type { Colour } from "../types/colour.js";
 import { MinimaxPlayer } from "./MinimaxPlayer.js";
 import { RandomMovePlayer } from "./RandomMovePlayer.js";
+import { refineComputerMoveForQueenSafety } from "./queenSafety.js";
 
 export type ComputerDifficulty = "easy" | "medium" | "hard";
 
@@ -27,17 +28,35 @@ export class ComputerPlayer {
 
     private readonly player: PlayerLike;
 
+    private readonly randomFn: () => number;
+
     constructor(difficulty: ComputerDifficulty = "medium", options: ComputerPlayerOptions = {}) {
         this.difficulty = difficulty;
+        this.randomFn = options.randomFn ?? Math.random;
         this.player = this.createPlayer(difficulty, options);
     }
 
     public chooseMove(board: ChessBoard, colour: Colour = board.getSideToMove()): Move | null {
-        return this.player.chooseMove(board, colour);
+        const chosenMove = this.player.chooseMove(board, colour);
+        return refineComputerMoveForQueenSafety(
+            board,
+            colour,
+            this.difficulty,
+            chosenMove,
+            this.randomFn
+        );
     }
 
     public playMove(board: ChessBoard, colour: Colour = board.getSideToMove()): Move | null {
-        return this.player.playMove(board, colour);
+        if (colour !== board.getSideToMove()) {
+            throw new Error("ComputerPlayer can only play for the side to move.");
+        }
+
+        const move = this.chooseMove(board, colour);
+        if (!move) return null;
+
+        board.makeMove(move);
+        return move;
     }
 
     private createPlayer(

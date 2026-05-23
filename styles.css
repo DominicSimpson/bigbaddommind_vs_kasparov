@@ -173,6 +173,8 @@ body::after {
   width: min(100%, 420px);
   height: auto;
   margin: 0 auto 1rem;
+  border: 1px solid #000;
+  border-radius: 4px;
 }
 
 .app-header h1 {
