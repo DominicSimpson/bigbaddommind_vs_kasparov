@@ -4,14 +4,17 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 
 const {
   isSoundOnMock,
+  setSoundEnabledMock,
   toggleSoundEnabledMock,
 } = vi.hoisted(() => ({
   isSoundOnMock: vi.fn<() => boolean>(),
+  setSoundEnabledMock: vi.fn<(enabled: boolean) => void>(),
   toggleSoundEnabledMock: vi.fn<() => boolean>(),
 }));
 
 vi.mock("../../src/audio/moveSound.js", () => ({
   isSoundOn: isSoundOnMock,
+  setSoundEnabled: setSoundEnabledMock,
   toggleSoundEnabled: toggleSoundEnabledMock,
 }));
 
@@ -67,6 +70,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   isSoundOnMock.mockReset();
+  setSoundEnabledMock.mockReset();
   toggleSoundEnabledMock.mockReset();
   isSoundOnMock.mockReturnValue(true);
 });
@@ -126,28 +130,35 @@ describe("showGameInfoModal", () => {
   });
 
   it("toggles the sound and FEN controls inside the panel", () => {
-    toggleSoundEnabledMock.mockReturnValue(false);
+    setSoundEnabledMock.mockImplementation((enabled: boolean) => {
+      isSoundOnMock.mockReturnValue(enabled);
+    });
     openGameInfoModal();
 
-    const initialSoundButton = document.querySelector<HTMLButtonElement>(".setup-dialog__sound-thumbnail");
+    const soundButtons = document.querySelectorAll<HTMLButtonElement>(".setup-dialog__sound-option");
+    const initialSoundOnButton = document.querySelector<HTMLButtonElement>("[data-sound-state='on']");
+    const initialSoundOffButton = document.querySelector<HTMLButtonElement>("[data-sound-state='off']");
     const fenButton = document.querySelector<HTMLButtonElement>(".setup-dialog__fen-thumbnail");
     const fenReadout = document.querySelector<HTMLElement>(".setup-dialog__fen-readout");
 
-    if (!initialSoundButton || !fenButton || !fenReadout) {
+    if (!initialSoundOnButton || !initialSoundOffButton || !fenButton || !fenReadout) {
       throw new Error("Expected the game info controls to exist.");
     }
 
-    expect(initialSoundButton.getAttribute("aria-pressed")).toBe("true");
-    expect(initialSoundButton.textContent).toContain("On");
+    expect(soundButtons).toHaveLength(2);
+    expect(initialSoundOnButton.getAttribute("aria-pressed")).toBe("true");
+    expect(initialSoundOffButton.getAttribute("aria-pressed")).toBe("false");
 
-    initialSoundButton.click();
+    initialSoundOffButton.click();
 
-    const updatedSoundButton = document.querySelector<HTMLButtonElement>(".setup-dialog__sound-thumbnail");
+    const updatedSoundOnButton = document.querySelector<HTMLButtonElement>("[data-sound-state='on']");
+    const updatedSoundOffButton = document.querySelector<HTMLButtonElement>("[data-sound-state='off']");
 
-    expect(toggleSoundEnabledMock).toHaveBeenCalledTimes(1);
-    expect(updatedSoundButton?.getAttribute("aria-pressed")).toBe("false");
-    expect(updatedSoundButton?.getAttribute("aria-label")).toBe("Turn sound on");
-    expect(updatedSoundButton?.textContent).toContain("Off");
+    expect(setSoundEnabledMock).toHaveBeenCalledTimes(1);
+    expect(setSoundEnabledMock).toHaveBeenCalledWith(false);
+    expect(toggleSoundEnabledMock).not.toHaveBeenCalled();
+    expect(updatedSoundOnButton?.getAttribute("aria-pressed")).toBe("false");
+    expect(updatedSoundOffButton?.getAttribute("aria-pressed")).toBe("true");
 
     expect(fenReadout.hidden).toBe(true);
     fenButton.click();

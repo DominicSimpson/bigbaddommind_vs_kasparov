@@ -3,7 +3,7 @@ import type { Colour } from "../src/types/colour.js";
 import type { PromotionPiece } from "../src/types/Move.js";
 import {
   isSoundOn,
-  toggleSoundEnabled,
+  setSoundEnabled,
 } from "../src/audio/moveSound.js";
 import { pieceSymbols } from "./renderBoard.js";
 
@@ -433,31 +433,54 @@ function createGameInfoDifficultyThumbnail(
   return thumbnail;
 }
 
-function createGameInfoSoundThumbnail(enabled: boolean): HTMLButtonElement {
-  const thumbnail = document.createElement("button");
+function createGameInfoSoundThumbnail(enabled: boolean): HTMLDivElement {
+  const thumbnail = document.createElement("div");
   thumbnail.className = "setup-dialog__sound-thumbnail";
-  thumbnail.type = "button";
-  thumbnail.setAttribute("aria-pressed", enabled ? "true" : "false");
-  thumbnail.setAttribute("aria-label", enabled ? "Turn sound off" : "Turn sound on");
+  thumbnail.setAttribute("role", "group");
+  thumbnail.setAttribute("aria-label", "Sound setting");
 
-  const indicator = document.createElement("span");
-  indicator.className = "setup-dialog__sound-thumbnail-indicator";
-  indicator.setAttribute("aria-hidden", "true");
+  const soundOptions: Array<{
+    key: "on" | "off";
+    label: string;
+    selected: boolean;
+    iconPath: string;
+  }> = [
+    {
+      key: "on",
+      label: "On",
+      selected: enabled,
+      iconPath: "/icons/sound-on.png",
+    },
+    {
+      key: "off",
+      label: "Off",
+      selected: !enabled,
+      iconPath: "/icons/sound-off.png",
+    },
+  ];
 
-  const indicatorInner = document.createElement("span");
-  indicatorInner.className = "setup-dialog__sound-thumbnail-indicator-inner";
-  indicator.append(indicatorInner);
+  for (const option of soundOptions) {
+    const button = document.createElement("button");
+    button.className = "setup-dialog__sound-option";
+    button.type = "button";
+    button.dataset.soundState = option.key;
+    button.setAttribute("aria-pressed", option.selected ? "true" : "false");
+    button.setAttribute("aria-label", `Turn sound ${option.key}`);
 
-  const icon = document.createElement("span");
-  icon.className = "setup-dialog__sound-thumbnail-icon";
-  icon.textContent = enabled ? "SND" : "MUTE";
-  icon.setAttribute("aria-hidden", "true");
+    const icon = document.createElement("img");
+    icon.className = "setup-dialog__sound-option-icon";
+    icon.src = option.iconPath;
+    icon.alt = "";
+    icon.setAttribute("aria-hidden", "true");
 
-  const text = document.createElement("span");
-  text.className = "setup-dialog__sound-thumbnail-text";
-  text.textContent = enabled ? "On" : "Off";
+    const text = document.createElement("span");
+    text.className = "setup-dialog__sound-option-text";
+    text.textContent = option.label;
 
-  thumbnail.append(indicator, icon, text);
+    button.append(icon, text);
+    thumbnail.append(button);
+  }
+
   return thumbnail;
 }
 
@@ -616,15 +639,32 @@ export function showGameInfoModal(content: {
   const soundRowValue = document.createElement("div");
   soundRowValue.className = "setup-dialog__detail-value";
   let soundThumbnail = createGameInfoSoundThumbnail(isSoundOn());
-  const handleSoundToggle = (): void => {
-    const enabled = toggleSoundEnabled();
+  const handleSoundToggle = (enabled: boolean): void => {
+    if (enabled === isSoundOn()) {
+      return;
+    }
+
+    setSoundEnabled(enabled);
     const nextSoundThumbnail = createGameInfoSoundThumbnail(enabled);
-    nextSoundThumbnail.addEventListener("click", handleSoundToggle);
+    bindSoundThumbnailEvents(nextSoundThumbnail);
     soundThumbnail.replaceWith(nextSoundThumbnail);
     soundThumbnail = nextSoundThumbnail;
   };
 
-  soundThumbnail.addEventListener("click", handleSoundToggle);
+  function bindSoundThumbnailEvents(thumbnail: HTMLDivElement): void {
+    const onButton = thumbnail.querySelector<HTMLButtonElement>("[data-sound-state='on']");
+    const offButton = thumbnail.querySelector<HTMLButtonElement>("[data-sound-state='off']");
+
+    onButton?.addEventListener("click", () => {
+      handleSoundToggle(true);
+    });
+
+    offButton?.addEventListener("click", () => {
+      handleSoundToggle(false);
+    });
+  }
+
+  bindSoundThumbnailEvents(soundThumbnail);
   soundRowValue.append(soundThumbnail);
   soundRow.append(soundRowLabel, soundRowValue);
 

@@ -26,7 +26,7 @@ export class Square { // Square representation
 
     get coord(): string {
         return `${"abcdefgh"[this.file]}${this.rank + 1}`;
-        // Converts internal zero-indexed (file, rank) coordinates (0, 7)   
+        // Converts internal zero-indexed (rank, file) coordinates (0, 7)   
         // into standard algebraic notation (a1–h8)
         // e.g. (file=0, rank=0) = a1
     }
