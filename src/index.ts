@@ -1254,6 +1254,33 @@ async function handleExitGame(): Promise<void> {
   enterIdleState();
 }
 
+async function handleNewGame(): Promise<void> {
+  if (isAwaitingPromotionChoice) {
+    return;
+  }
+
+  if (!isGameActive) {
+    await initialiseGame(true);
+    return;
+  }
+
+  const shouldStartNewGame = await showConfirmationModal(
+    "Start a new game? Your current game will be lost.",
+    {
+      title: "Start new game",
+      confirmLabel: "Start game",
+      cancelLabel: "Keep playing",
+    },
+  );
+
+  if (!shouldStartNewGame) {
+    renderGame();
+    return;
+  }
+
+  await initialiseGame(false);
+}
+
 // // Computer-move trigger. It:
 // - checks whether it's currently the computer's turn
 // - checks the game isn't already over
@@ -1473,7 +1500,7 @@ boardRoot.addEventListener("mouseup", event => {
 });
 boardRoot.addEventListener("click", handleBoardClick);
 newGameButton.addEventListener("click", () => {
-  void initialiseGame(!isGameActive);
+  void handleNewGame();
 });
 undoMoveButton.addEventListener("click", handleUndoMove);
 exitGameButton.addEventListener("click", () => {

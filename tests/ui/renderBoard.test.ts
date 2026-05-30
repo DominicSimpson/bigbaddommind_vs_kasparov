@@ -68,6 +68,20 @@ describe("renderBoard", () => {
     expect(selectedPiece?.getAttribute("aria-label")).toBe("white pawn on e2");
   });
 
+  it("uses the same selected styling for a move-entry destination highlight", () => {
+    const board = new ChessBoard();
+    const root = createRoot();
+
+    renderBoard(board, root, {
+      selectedCoord: "e2",
+      moveEntryDestinationHighlightCoord: "e4",
+    });
+
+    expect(root.querySelector('.square[data-coord="e2"]')?.className).toContain("selected");
+    expect(root.querySelector('.square[data-coord="e4"]')?.className).toContain("selected");
+    expect(root.querySelector('.square[data-coord="e4"]')?.className).not.toContain("occupied");
+  });
+
   it("renders the computer move preview on the destination square and hides the origin piece", () => {
     const board = new ChessBoard();
     const root = createRoot();

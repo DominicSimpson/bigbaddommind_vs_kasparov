@@ -391,6 +391,66 @@ describe("control panel buttons", () => {
     expect(document.querySelector("#status")?.textContent).toBe("");
   });
 
+  it("asks for confirmation before starting a new game mid-game and keeps the current game when cancelled", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+    showConfirmationModalMock.mockResolvedValue(false);
+
+    await loadApp();
+
+    getSquare("e2").click();
+
+    getButton("#new-game-button").click();
+    await flushPromises();
+
+    expect(showConfirmationModalMock).toHaveBeenCalledWith(
+      "Start a new game? Your current game will be lost.",
+      expect.objectContaining({
+        title: "Start new game",
+        confirmLabel: "Start game",
+        cancelLabel: "Keep playing",
+      }),
+    );
+    expect(chooseGameOptionsMock).toHaveBeenCalledTimes(1);
+    expect(getSquare("e2").className).toContain("selected");
+    expect(document.querySelector("#status")?.textContent).toBe("");
+    expect(getButton("#undo-move-button").disabled).toBe(false);
+    expect(getButton("#exit-game-button").disabled).toBe(false);
+  });
+
+  it("starts a fresh setup flow when New Game is confirmed mid-game", async () => {
+    queueGameSetup(
+      {
+        playerColour: "white",
+        computerDifficulty: "medium",
+        playerName: null,
+      },
+      {
+        playerColour: "black",
+        computerDifficulty: "easy",
+        playerName: "Pat",
+      },
+    );
+    showConfirmationModalMock.mockResolvedValue(true);
+
+    await loadApp();
+
+    getSquare("e2").click();
+
+    getButton("#new-game-button").click();
+    await flushPromises();
+
+    expect(showConfirmationModalMock).toHaveBeenCalledTimes(1);
+    expect(chooseGameOptionsMock).toHaveBeenCalledTimes(2);
+    expect(getSquare("e2").className).not.toContain("selected");
+    expect(getButton("#undo-move-button").disabled).toBe(false);
+    expect(getButton("#exit-game-button").disabled).toBe(false);
+    expect(getButton("#game-info-button").disabled).toBe(false);
+  });
+
   it("shows the undo warning when only one side has moved", async () => {
     queueGameSetup({
       playerColour: "white",
@@ -591,6 +651,32 @@ describe("control panel buttons", () => {
     );
     expect(moveFromInput.value).toBe("e2");
     expect(moveToInput.value).toBe("e4");
+  });
+
+  it("lights the typed destination square before submit when the move entry is keyed in manually", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+
+    await loadApp();
+
+    const moveFromInput = document.querySelector<HTMLInputElement>("#move-from-input");
+    const moveToInput = document.querySelector<HTMLInputElement>("#move-to-input");
+
+    if (!moveFromInput || !moveToInput) {
+      throw new Error("Expected move entry inputs to exist.");
+    }
+
+    moveFromInput.value = "e2";
+    moveFromInput.dispatchEvent(new Event("input", { bubbles: true }));
+    moveToInput.value = "e4";
+    moveToInput.dispatchEvent(new Event("input", { bubbles: true }));
+
+    expect(getSquare("e2").className).toContain("selected");
+    expect(getSquare("e4").className).toContain("selected");
+    expect(getSquare("e4").className).toContain("legal-target");
   });
 
   it("keeps both move-entry readouts lit after a mouse drag move is confirmed", async () => {
@@ -813,6 +899,7 @@ describe("control panel buttons", () => {
       computerDifficulty: "medium",
       playerName: null,
     });
+    showConfirmationModalMock.mockResolvedValue(true);
 
     getButton("#new-game-button").click();
     await flushPromises();

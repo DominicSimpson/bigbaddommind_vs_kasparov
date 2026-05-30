@@ -26,6 +26,33 @@ function getLeft(locator: Locator): Promise<number> {
 }
 
 test.describe("responsive layout", () => {
+  test("keeps the setup dialog scrollable on very small mobile viewports", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await page.goto("/");
+
+    const setupForm = page.locator("dialog.setup-dialog .setup-dialog__form").first();
+    const startGameButton = page.getByRole("button", { name: "Start game" });
+
+    await expect(page.getByRole("heading", { name: "Start a new game" })).toBeVisible();
+
+    const scrollMetricsBefore = await setupForm.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      scrollTop: element.scrollTop,
+    }));
+
+    expect(scrollMetricsBefore.scrollHeight).toBeGreaterThan(scrollMetricsBefore.clientHeight);
+
+    await setupForm.hover();
+    await page.mouse.wheel(0, 480);
+
+    await expect
+      .poll(async () => setupForm.evaluate(element => element.scrollTop), { timeout: 3000 })
+      .toBeGreaterThan(scrollMetricsBefore.scrollTop);
+
+    await expect(startGameButton).toBeInViewport();
+  });
+
   test("stacks the sidebar and captured pieces beneath the board on narrow screens", async ({
     page,
   }) => {
