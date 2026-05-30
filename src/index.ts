@@ -58,6 +58,7 @@ import {
   submitPromotionChoice,
   resetStatusDialogs,
   showConfirmationModal,
+  showGameOverAcknowledgementModal,
   showGameInfoModal,
   showInformationalModal,
 } from "../ui/modalPopupWindow.js";
@@ -152,6 +153,7 @@ let currentGameLeaderboardAward: {
   name: string;
   difficulty: ComputerDifficulty;
 } | null = null;
+let isTransitioningToIdleAfterCheckmate = false;
 const mobileScrollCueButton = document.getElementById("mobile-scroll-cue");
 
 function updateScrollCueVisibility(): void {
@@ -487,6 +489,7 @@ function renderGame(): void {
     onPlayAgain: () => {
       void initialiseGame(false);
     },
+    suppressGameOverModal: isTransitioningToIdleAfterCheckmate,
   });
   renderCapturedPieces(board, capturedPieces);
   syncControlAvailability();
@@ -504,7 +507,7 @@ function syncControlAvailability(): void {
 // // Renders the board in its idle state, with no game in progress. 
 // It also updates the status text to prompt the user to start a new game, 
 // and clears the turn badge and captured pieces display:
-function renderIdleState(): void {
+function renderIdleState(statusMessage = "No game in progress. Press 'New Game' to begin."): void {
   renderBoard(board, boardRoot, {
     selectedCoord,
     computerMovingCoord,
@@ -512,7 +515,7 @@ function renderIdleState(): void {
     computerAxisLight: getComputerAxisLight(),
     computerDestinationCoord,
   });
-  status.textContent = "No game in progress. Press 'New Game' to begin.";
+  status.textContent = statusMessage;
   turnBadge.replaceChildren();
   renderCapturedPieces(board, capturedPieces);
   syncControlAvailability();
@@ -565,9 +568,10 @@ function resetBoardForNewGame(): void {
   resetStatusAnnouncements();
 }
 
-function enterIdleState(): void {
+function enterIdleState(statusMessage = "No game in progress. Press 'New Game' to begin."): void {
   resetBoardForNewGame();
   isGameActive = false;
+  isTransitioningToIdleAfterCheckmate = false;
   currentPlayerName = null;
   computerColour = null;
   computerDifficulty = null;
@@ -575,7 +579,26 @@ function enterIdleState(): void {
     white: "White",
     black: "Black",
   };
-  renderIdleState();
+  renderIdleState(statusMessage);
+}
+
+function shouldReturnToIdleAfterMove(): boolean {
+  return board.getGameStatus().status === "checkmate";
+}
+
+function transitionToIdleAfterCheckmate(): void {
+  const gameStatus = board.getGameStatus();
+  if (gameStatus.status !== "checkmate") {
+    return;
+  }
+
+  isTransitioningToIdleAfterCheckmate = true;
+  showGameOverAcknowledgementModal(
+    `Checkmate. ${sideLabels[gameStatus.winner]} wins.`,
+    () => {
+      enterIdleState("Checkmate. Press 'New Game' to begin.");
+    },
+  );
 }
 
 function resetComputerTurnVisualState(): void {
@@ -808,6 +831,18 @@ async function completePlayerMove(
   }
 
   applyMove(chosenMove);
+
+  if (shouldReturnToIdleAfterMove()) {
+    selectedCoord = null;
+    clearMoveEntry();
+    computerMovingCoord = null;
+    computerMovePreview = null;
+    computerDestinationCoord = null;
+    renderGame();
+    transitionToIdleAfterCheckmate();
+    return true;
+  }
+
   selectedCoord = null;
   if (preserveReadoutsOnSuccess) {
     setMoveEntryReadouts(originCoord, destinationCoord);
@@ -1306,6 +1341,17 @@ function playComputerTurnIfNeeded(
               }
 
               applyMove(chosenMove);
+
+              if (shouldReturnToIdleAfterMove()) {
+                isComputerThinking = false;
+                selectedCoord = null;
+                clearMoveEntry();
+                clearComputerTurnVisualState();
+                renderGame();
+                transitionToIdleAfterCheckmate();
+                return;
+              }
+
               isComputerThinking = false;
               selectedCoord = null;
               clearMoveEntry();

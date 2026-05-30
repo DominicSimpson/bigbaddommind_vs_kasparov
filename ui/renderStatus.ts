@@ -19,6 +19,7 @@ type RenderStatusOptions = {
   isComputerThinking?: boolean;
   isGameInfoOpen?: boolean;
   onPlayAgain?: () => void;
+  suppressGameOverModal?: boolean;
 };
 
 // // This type defines the structure of the information needed to render 
@@ -161,6 +162,7 @@ export function renderStatus(
   const shouldAnnounceStatus = statusAnnouncementKey !== lastAnnouncedStatusKey;
   const isComputerThinking = options.isComputerThinking ?? false;
   const isGameInfoOpen = options.isGameInfoOpen ?? false;
+  const suppressGameOverModal = options.suppressGameOverModal ?? false;
 
   renderTeamMatePanel(
     turnBadgeElement,
@@ -199,31 +201,31 @@ export function renderStatus(
       return;
     case "checkmate":
       statusElement.textContent = `Checkmate. ${sideLabels[gameStatus.winner]} wins.`;
-      if (shouldAnnounceStatus && options.onPlayAgain) {
+      if (!suppressGameOverModal && shouldAnnounceStatus && options.onPlayAgain) {
         showReplayModal(statusElement.textContent, options.onPlayAgain);
       }
       return;
     case "stalemate":
       statusElement.textContent = "Stalemate.";
-      if (shouldAnnounceStatus && options.onPlayAgain) {
+      if (!suppressGameOverModal && shouldAnnounceStatus && options.onPlayAgain) {
         showReplayModal(statusElement.textContent, options.onPlayAgain);
       }
       return;
     case "drawByFiftyMoveRule":
       statusElement.textContent = "Draw by the fifty-move rule.";
-      if (shouldAnnounceStatus && options.onPlayAgain) {
+      if (!suppressGameOverModal && shouldAnnounceStatus && options.onPlayAgain) {
         showReplayModal(statusElement.textContent, options.onPlayAgain);
       }
       return;
     case "drawByRepetition":
       statusElement.textContent = "Draw by repetition.";
-      if (shouldAnnounceStatus && options.onPlayAgain) {
+      if (!suppressGameOverModal && shouldAnnounceStatus && options.onPlayAgain) {
         showReplayModal(statusElement.textContent, options.onPlayAgain);
       }
       return;
     case "drawByInsufficientMaterial":
       statusElement.textContent = "Draw by insufficient material.";
-      if (shouldAnnounceStatus && options.onPlayAgain) {
+      if (!suppressGameOverModal && shouldAnnounceStatus && options.onPlayAgain) {
         showReplayModal(statusElement.textContent, options.onPlayAgain);
       }
       return;

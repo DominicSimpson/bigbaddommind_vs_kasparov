@@ -5,6 +5,7 @@ import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vite
 const chooseGameOptionsMock = vi.fn();
 const choosePromotionPieceMock = vi.fn();
 const showConfirmationModalMock = vi.fn();
+const showGameOverAcknowledgementModalMock = vi.fn();
 const showGameInfoModalMock = vi.fn();
 const showInformationalModalMock = vi.fn();
 const submitPromotionChoiceMock = vi.fn();
@@ -24,6 +25,7 @@ vi.mock("../../ui/modalPopupWindow.js", async () => {
     chooseGameOptions: chooseGameOptionsMock,
     choosePromotionPiece: choosePromotionPieceMock,
     showConfirmationModal: showConfirmationModalMock,
+    showGameOverAcknowledgementModal: showGameOverAcknowledgementModalMock,
     showGameInfoModal: showGameInfoModalMock,
     showInformationalModal: showInformationalModalMock,
     submitPromotionChoice: submitPromotionChoiceMock,
@@ -316,6 +318,7 @@ describe("control panel buttons", () => {
     vi.useFakeTimers();
     choosePromotionPieceMock.mockReset();
     showConfirmationModalMock.mockReset();
+    showGameOverAcknowledgementModalMock.mockReset();
     showGameInfoModalMock.mockReset();
     showInformationalModalMock.mockReset();
     submitPromotionChoiceMock.mockReset();
@@ -469,6 +472,37 @@ describe("control panel buttons", () => {
 
     onConfirm();
     expect(playQuitGameSoundMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns to the idle state after the player delivers checkmate", async () => {
+    queueGameSetup({
+      playerColour: "white",
+      computerDifficulty: "medium",
+      playerName: null,
+    });
+    showGameOverAcknowledgementModalMock.mockImplementation((_message, onClose: () => void) => {
+      onClose();
+    });
+
+    await loadApp({
+      initialFen: "7k/6pp/5Q1K/8/8/8/8/8 w - - 0 1",
+    });
+
+    getSquare("f6").click();
+    getSquare("g7").click();
+    await flushPromises();
+
+    expect(showGameOverAcknowledgementModalMock).toHaveBeenCalledWith(
+      "Checkmate. White wins.",
+      expect.any(Function),
+    );
+    expect(document.querySelector("#status")?.textContent).toBe(
+      "Checkmate. Press 'New Game' to begin.",
+    );
+    expect(getButton("#new-game-button").disabled).toBe(false);
+    expect(getButton("#undo-move-button").disabled).toBe(true);
+    expect(getButton("#exit-game-button").disabled).toBe(true);
+    expect(getButton("#game-info-button").disabled).toBe(true);
   });
 
   it("opens the game info modal when Game Info is pressed", async () => {

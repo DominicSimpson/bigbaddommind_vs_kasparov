@@ -320,6 +320,43 @@ export function showInformationalModal(
   dialog.showModal();
 }
 
+export function showGameOverAcknowledgementModal(
+  message: string,
+  onClose: () => void,
+  title = "Game over",
+): void {
+  closeActiveStatusDialog();
+
+  const { dialog, actions } = createStatusDialog(title, message);
+  const closeButton = document.createElement("button");
+  closeButton.className = "setup-dialog__button setup-dialog__button--primary";
+  closeButton.type = "button";
+  closeButton.textContent = "OK";
+  closeButton.addEventListener("click", () => {
+    dialog.close();
+  });
+
+  actions.append(closeButton);
+  document.body.append(dialog);
+  activeStatusDialog = dialog;
+
+  dialog.addEventListener("close", () => {
+    if (activeStatusDialog === dialog) {
+      activeStatusDialog = null;
+    }
+
+    dialog.remove();
+    onClose();
+  }, { once: true });
+
+  dialog.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    dialog.close();
+  });
+
+  dialog.showModal();
+}
+
 function createGameInfoMoveInputThumbnail(): HTMLDivElement {
   const thumbnail = document.createElement("div");
   thumbnail.className = "setup-dialog__move-thumbnail";
