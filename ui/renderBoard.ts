@@ -24,6 +24,7 @@ export type ComputerAxisLight = {
 // and also defines the piece symbols and other UI-related types:
 export type BoardRenderState = {
   selectedCoord?: string | null;
+  moveEntryDestinationHighlightCoord?: string | null;
   computerMovingCoord?: string | null;
   computerMovePreview?: ComputerMovePreview | null;
   computerAxisLight?: ComputerAxisLight | null;
@@ -59,6 +60,7 @@ export function renderBoard(
   root: HTMLElement,
   {
     selectedCoord = null,
+    moveEntryDestinationHighlightCoord = null,
     computerMovingCoord = null,
     computerMovePreview = null,
     computerAxisLight = null,
@@ -124,7 +126,10 @@ export function renderBoard(
         classes.push("occupied");
       }
 
-      if (square.coord === selectedCoord) {
+      if (
+        square.coord === selectedCoord
+        || square.coord === moveEntryDestinationHighlightCoord
+      ) {
         classes.push("selected");
       }
 

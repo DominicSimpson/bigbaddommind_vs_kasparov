@@ -106,6 +106,7 @@ let sideLabels: SideLabels = {
 };
 let playerColour: Colour = "white";
 let selectedCoord: string | null = null;
+let moveEntryDestinationHighlightCoord: string | null = null;
 let moveEntryFromCoord = "";
 let moveEntryToCoord = "";
 let computerColour: Colour | null = null;
@@ -320,12 +321,14 @@ function clearMoveEntry(): void {
   clearPendingCastlingReadoutTimeout();
   moveEntryFromCoord = "";
   moveEntryToCoord = "";
+  moveEntryDestinationHighlightCoord = null;
 }
 
 function setMoveEntryReadouts(originCoord: string, destinationCoord: string): void {
   clearPendingCastlingReadoutTimeout();
   moveEntryFromCoord = originCoord;
   moveEntryToCoord = destinationCoord;
+  moveEntryDestinationHighlightCoord = null;
 }
 
 function getCastlingRookReadout(move: Move): { originCoord: string; destinationCoord: string } | null {
@@ -476,6 +479,7 @@ function renderGame(): void {
 
   renderBoard(board, boardRoot, {
     selectedCoord,
+    moveEntryDestinationHighlightCoord,
     computerMovingCoord,
     computerMovePreview,
     computerAxisLight: getComputerAxisLight(),
@@ -510,6 +514,7 @@ function syncControlAvailability(): void {
 function renderIdleState(statusMessage = "No game in progress. Press 'New Game' to begin."): void {
   renderBoard(board, boardRoot, {
     selectedCoord,
+    moveEntryDestinationHighlightCoord,
     computerMovingCoord,
     computerMovePreview,
     computerAxisLight: getComputerAxisLight(),
@@ -528,6 +533,7 @@ function renderIdleState(statusMessage = "No game in progress. Press 'New Game' 
 function renderSetupError(message: string): void {
   renderBoard(board, boardRoot, {
     selectedCoord,
+    moveEntryDestinationHighlightCoord,
     computerMovingCoord,
     computerMovePreview,
     computerAxisLight: getComputerAxisLight(),
@@ -552,6 +558,7 @@ function resetBoardForNewGame(): void {
   board.loadFEN(INITIAL_POSITION_FEN);
   currentGameLeaderboardAward = null;
   selectedCoord = null;
+  moveEntryDestinationHighlightCoord = null;
   clearMoveEntry();
   dragOriginCoord = null;
   dragStartPoint = null;
@@ -607,6 +614,7 @@ function resetComputerTurnVisualState(): void {
   computerMovingCoord = null;
   computerMovePreview = null;
   computerDestinationCoord = null;
+  moveEntryDestinationHighlightCoord = null;
 }
 
 function clearComputerTurnVisualState(): void {
@@ -614,6 +622,7 @@ function clearComputerTurnVisualState(): void {
   computerMovingCoord = null;
   computerMovePreview = null;
   computerDestinationCoord = null;
+  moveEntryDestinationHighlightCoord = null;
 }
 
 function getSquareByCoord(coord: string): Square | null {
@@ -956,6 +965,7 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
     selectedCoord = coord;
     moveEntryFromCoord = coord;
     moveEntryToCoord = "";
+    moveEntryDestinationHighlightCoord = null;
     renderGame();
     return;
   }
@@ -964,9 +974,12 @@ async function handleBoardClick(event: MouseEvent): Promise<void> {
     selectedCoord = selectedCoord === coord ? null : coord;
     moveEntryFromCoord = selectedCoord ?? "";
     moveEntryToCoord = "";
+    moveEntryDestinationHighlightCoord = null;
     renderGame();
     return;
   }
+
+  moveEntryDestinationHighlightCoord = null;
   moveEntryToCoord = coord;
   await completePlayerMove(selectedCoord, coord, {
     preserveReadoutsOnSuccess: true,
@@ -1035,6 +1048,7 @@ async function handleBoardMouseUp(event: MouseEvent): Promise<void> {
   selectedCoord = originCoord;
   moveEntryFromCoord = originCoord;
   moveEntryToCoord = destinationCoord;
+  moveEntryDestinationHighlightCoord = null;
   suppressNextBoardClick = true;
   await completePlayerMove(originCoord, destinationCoord, {
     preserveReadoutsOnSuccess: true,
@@ -1047,6 +1061,7 @@ function handleMoveFromInput(): void {
 
   if (!isBoardCoord(moveEntryFromCoord)) {
     selectedCoord = null;
+    moveEntryDestinationHighlightCoord = null;
     renderGame();
     return;
   }
@@ -1055,17 +1070,27 @@ function handleMoveFromInput(): void {
 
   if (!square?.piece || square.piece.colour !== playerColour) {
     selectedCoord = null;
+    moveEntryDestinationHighlightCoord = null;
     renderGame();
     return;
   }
 
   selectedCoord = moveEntryFromCoord;
+  moveEntryDestinationHighlightCoord = isBoardCoord(moveEntryToCoord)
+    ? moveEntryToCoord
+    : null;
   renderGame();
 }
 
 function handleMoveToInput(): void {
   moveEntryToCoord = normaliseMoveEntryValue(moveToInput.value);
   moveToInput.value = moveEntryToCoord;
+  moveEntryDestinationHighlightCoord = (
+    selectedCoord
+    && isBoardCoord(moveEntryToCoord)
+  )
+    ? moveEntryToCoord
+    : null;
 }
 
 function stepMoveFromInput(step: 1 | -1): void {
@@ -1106,6 +1131,9 @@ async function handleMoveEntrySubmit(event: Event): Promise<void> {
   const destinationCoord = normaliseMoveEntryValue(moveToInput.value);
   moveEntryFromCoord = originCoord;
   moveEntryToCoord = destinationCoord;
+  moveEntryDestinationHighlightCoord = isBoardCoord(destinationCoord)
+    ? destinationCoord
+    : null;
 
   if (!isBoardCoord(originCoord) || !isBoardCoord(destinationCoord)) {
     showInformationalModal("Enter both move coordinates in chess notation, for example e2 to e4.");
@@ -1118,6 +1146,7 @@ async function handleMoveEntrySubmit(event: Event): Promise<void> {
   if (!square?.piece || square.piece.colour !== playerColour) {
     showInformationalModal("Choose one of your own pieces as the starting square.");
     selectedCoord = null;
+    moveEntryDestinationHighlightCoord = null;
     renderGame();
     return;
   }
@@ -1133,6 +1162,7 @@ async function handleMoveEntrySubmit(event: Event): Promise<void> {
     selectedCoord = originCoord;
     moveEntryFromCoord = originCoord;
     moveEntryToCoord = destinationCoord;
+    moveEntryDestinationHighlightCoord = destinationCoord;
     renderGame();
     showInformationalModal(`The move ${originCoord} to ${destinationCoord} is not legal in this position.`);
   }
