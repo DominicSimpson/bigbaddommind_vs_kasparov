@@ -21,9 +21,9 @@
   --screen-border: #80868e;
   --led: #77ff46;
   --led-dim: #50634a;
-  --panel-sidebar-base-width: 25rem;
+  --panel-sidebar-base-width: 22rem;
   --panel-sidebar-offset: -10rem;
-  --panel-sidebar-right-extend: 15rem;
+  --panel-sidebar-right-extend: 12rem;
   --panel-sidebar-y-offset: 0.05rem;
   --board-panel-surface: linear-gradient(180deg, rgba(38, 42, 45, 0.96) 0%, rgba(19, 22, 24, 0.96) 100%);
   --mobile-footer-gap: 2.5rem;
@@ -203,7 +203,7 @@ body::after {
 
 .board-layout {
   display: grid;
-  grid-template-columns: minmax(10.5rem, 13rem) minmax(0, 3fr) minmax(60rem, 82rem);
+  grid-template-columns: minmax(10.5rem, 13rem) minmax(34rem, 3fr) minmax(22rem, 34rem);
   align-items: stretch;
   gap: 1.5rem;
 }
@@ -2391,7 +2391,7 @@ body::after {
   overflow: visible;
 }
 
-@media (max-width: 1500px) {
+@media (max-width: 1400px) {
   .app-shell {
     width: min(100%, calc(100% - 2rem));
   }
