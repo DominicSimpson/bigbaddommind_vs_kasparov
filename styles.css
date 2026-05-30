@@ -1247,10 +1247,13 @@ body::after {
   width: min(94vw, 46rem);
 }
 
-.setup-dialog--large .setup-dialog__form {
+.setup-dialog--large .setup-dialog__form,
+.setup-dialog--scrollable .setup-dialog__form {
   max-height: min(86vh, 52rem);
   overflow-y: auto;
   scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 @media (min-width: 1100px) {

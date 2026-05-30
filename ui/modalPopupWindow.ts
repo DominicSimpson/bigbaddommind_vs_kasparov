@@ -998,11 +998,12 @@ export function showReplayModal(
 export function chooseGameOptions(): Promise<SelectedGameOptions> {
   return new Promise<SelectedGameOptions>((resolve, reject) => {
     const dialog = document.createElement("dialog");
-    dialog.className = "setup-dialog";
+    dialog.className = "setup-dialog setup-dialog--scrollable";
 
     const form = document.createElement("form");
     form.className = "setup-dialog__form";
     form.method = "dialog";
+    const scrollCueButton = createModalScrollCueButton();
 
     const title = document.createElement("h2");
     title.className = "setup-dialog__title";
@@ -1101,9 +1102,21 @@ export function chooseGameOptions(): Promise<SelectedGameOptions> {
       actions,
     );
     dialog.append(form);
+    dialog.append(scrollCueButton);
     document.body.append(dialog);
+    const detachModalScrollCue = attachModalScrollCue(
+      dialog,
+      form,
+      scrollCueButton,
+      [
+        difficultySection,
+        playerNameSection,
+        actions,
+      ],
+    );
 
     const cleanup = (): void => {
+      detachModalScrollCue();
       dialog.remove();
     };
 
