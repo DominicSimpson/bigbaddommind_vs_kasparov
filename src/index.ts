@@ -1172,16 +1172,17 @@ async function handleExitGame(): Promise<void> {
       title: "Exit game",
       confirmLabel: "Exit game",
       cancelLabel: "Stay here",
+      onConfirm: () => {
+        if (isQuitGameSoundState(board)) {
+          playQuitGameSound();
+        }
+      },
     },
   );
 
   if (!shouldExit) {
     renderGame();
     return;
-  }
-
-  if (isQuitGameSoundState(board)) {
-    playQuitGameSound();
   }
 
   enterIdleState();

@@ -806,6 +806,7 @@ export function showConfirmationModal(
     title?: string;
     confirmLabel?: string;
     cancelLabel?: string;
+    onConfirm?: () => void;
   } = {},
 ): Promise<boolean> {
   return new Promise<boolean>((resolve) => {
@@ -815,6 +816,7 @@ export function showConfirmationModal(
       title = "Confirm",
       confirmLabel = "Confirm",
       cancelLabel = "Cancel",
+      onConfirm,
     } = options;
     const { dialog, actions } = createStatusDialog(title, message);
 
@@ -831,6 +833,7 @@ export function showConfirmationModal(
     confirmButton.type = "button";
     confirmButton.textContent = confirmLabel;
     confirmButton.addEventListener("click", () => {
+      onConfirm?.();
       dialog.close("confirm");
     });
 

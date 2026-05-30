@@ -448,19 +448,27 @@ describe("control panel buttons", () => {
 
     expect(showConfirmationModalMock).toHaveBeenCalledWith(
       "Are you sure that you want to exit the current game and return the board to its idle state?",
-      {
+      expect.objectContaining({
         title: "Exit game",
         confirmLabel: "Exit game",
         cancelLabel: "Stay here",
-      },
+        onConfirm: expect.any(Function),
+      }),
     );
-    expect(playQuitGameSoundMock).toHaveBeenCalledTimes(1);
     expect(document.querySelector("#status")?.textContent).toBe(
       "No game in progress. Press 'New Game' to begin.",
     );
     expect(getButton("#undo-move-button").disabled).toBe(true);
     expect(getButton("#exit-game-button").disabled).toBe(true);
     expect(getButton("#game-info-button").disabled).toBe(true);
+
+    const onConfirm = showConfirmationModalMock.mock.calls.at(-1)?.[1]?.onConfirm;
+    if (typeof onConfirm !== "function") {
+      throw new Error("Expected Exit Game confirmation to provide an onConfirm callback.");
+    }
+
+    onConfirm();
+    expect(playQuitGameSoundMock).toHaveBeenCalledTimes(1);
   });
 
   it("opens the game info modal when Game Info is pressed", async () => {
