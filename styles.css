@@ -2159,6 +2159,9 @@ body::after {
   position: relative;
   display: grid;
   place-items: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
   aspect-ratio: 1;
   transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
   cursor: default;
@@ -2783,5 +2786,32 @@ body::after {
 @media (max-width: 430px) {
   :root {
     --mobile-safe-bottom-space: env(safe-area-inset-bottom, 0px);
+  }
+
+  .app-shell {
+    width: min(100%, calc(100% - 0.5rem));
+  }
+
+  .app-header,
+  .board-panel {
+    padding: 0.8rem;
+  }
+
+  .board-panel {
+    padding-bottom: 2.5rem;
+  }
+
+  .board-shell {
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) 1.9rem;
+    padding: 0.6rem 0.55rem 0.5rem 0.45rem;
+  }
+
+  .board-screen {
+    padding: 0.35rem;
+  }
+
+  .board-axis__label {
+    font-size: 0.58rem;
   }
 }

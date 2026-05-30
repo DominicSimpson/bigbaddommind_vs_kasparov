@@ -53,6 +53,55 @@ test.describe("responsive layout", () => {
     await expect(startGameButton).toBeInViewport();
   });
 
+  test("keeps the full board visible on very small mobile viewports", async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 568 });
+    await startGame(page);
+
+    const geometry = await page.evaluate(() => {
+      const boardScreen = document.querySelector(".board-screen");
+      const edgeSelectors = ["a1", "h1", "h8", "h2", "h7"];
+
+      if (!(boardScreen instanceof HTMLElement)) {
+        return null;
+      }
+
+      const screenRect = boardScreen.getBoundingClientRect();
+      const squares = edgeSelectors.map((coord) => {
+        const square = document.querySelector(`.square[data-coord="${coord}"]`);
+
+        if (!(square instanceof HTMLElement)) {
+          return null;
+        }
+
+        const rect = square.getBoundingClientRect();
+        return {
+          coord,
+          left: rect.left,
+          right: rect.right,
+        };
+      });
+
+      return {
+        screenLeft: screenRect.left,
+        screenRight: screenRect.right,
+        squares,
+      };
+    });
+
+    if (!geometry) {
+      throw new Error("Expected the board screen to exist.");
+    }
+
+    for (const square of geometry.squares) {
+      if (!square) {
+        throw new Error("Expected each edge square to exist.");
+      }
+
+      expect(square.left).toBeGreaterThanOrEqual(geometry.screenLeft - 1);
+      expect(square.right).toBeLessThanOrEqual(geometry.screenRight + 1);
+    }
+  });
+
   test("stacks the sidebar and captured pieces beneath the board on narrow screens", async ({
     page,
   }) => {
