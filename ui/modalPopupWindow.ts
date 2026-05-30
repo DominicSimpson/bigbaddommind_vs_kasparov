@@ -619,9 +619,18 @@ export function showGameInfoModal(content: {
 
   form.insertBefore(promotionSection, actions);
 
+  const resolutionDivider = document.createElement("hr");
+  resolutionDivider.className = "setup-dialog__divider";
+
+  const resolutionLabel = document.createElement("p");
+  resolutionLabel.className = "setup-dialog__label";
+  resolutionLabel.textContent = "Resolution";
+
   const samsungBrowserDescription = document.createElement("p");
   samsungBrowserDescription.className = "setup-dialog__description";
   samsungBrowserDescription.textContent = samsungBrowserGuidance;
+  form.insertBefore(resolutionDivider, actions);
+  form.insertBefore(resolutionLabel, actions);
   form.insertBefore(samsungBrowserDescription, actions);
 
   const gameDetailsSection = document.createElement("section");
