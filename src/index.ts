@@ -872,11 +872,11 @@ async function completePlayerMove(
 }
 
 // // Animates the computer's move by updating the computerMovePreview 
-// // state with intermediate coordinates. The piece then visually "moves" 
-// // across the board by re-rendering the board for each intermediate coordinate.
-// // The animation is just a visual effect, it doesn't affect the actual game 
-// // state or move legality, and it doesn't update the board until the 
-// // computer has "finished thinking" and is ready to make its move. 
+// state with intermediate coordinates. The piece then visually "moves" 
+// across the board by re-rendering the board for each intermediate coordinate.
+// The animation is just a visual effect, it doesn't affect the actual game 
+// state or move legality, and it doesn't update the board until the 
+// computer has "finished thinking" and is ready to make its move. 
 // Its purpose is so that the human player can see which piece the 
 // computer is moving, and track it across the board:
 async function animateComputerMove(
@@ -1091,6 +1091,7 @@ function handleMoveToInput(): void {
   )
     ? moveEntryToCoord
     : null;
+  renderGame();
 }
 
 function stepMoveFromInput(step: 1 | -1): void {
