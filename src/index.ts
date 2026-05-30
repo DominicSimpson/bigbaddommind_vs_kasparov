@@ -142,6 +142,7 @@ const INITIAL_POSITION_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq
 const GAME_INFO_MOVE_GUIDANCE = "To move a piece, either click and drag it to its destination square, or click the piece and then click the destination square. You can also enter the move manually using the move input: type the piece's starting square, then its destination square, and click 'Enter Move'.";
 const GAME_INFO_PROMOTION_GUIDANCE = "To promote a pawn that reaches the opposite side of the board, select one of the four piece options shown in the pop-up window. You can also use the piece buttons below the move input when they come into focus.";
 const GAME_INFO_PROMOTION_THUMBNAIL_CAPTION = "Example: choosing the queen button will result in you promoting the pawn to a queen.";
+const GAME_INFO_SAMSUNG_BROWSER_GUIDANCE = "If you are using Samsung Internet on Android, or any browser feature that forces websites into dark mode, switch that setting off or use a light-site setting for the best experience. Forced darkening can make this app harder to read and navigate.";
 const BOARD_COORD_SEQUENCE = FILES.flatMap(file => RANKS.map(rank => (
   `${"abcdefgh"[file]}${rank + 1}`
 )));
@@ -1526,6 +1527,7 @@ gameInfoButton.addEventListener("click", () => {
       moveGuidance: GAME_INFO_MOVE_GUIDANCE,
       promotionGuidance: GAME_INFO_PROMOTION_GUIDANCE,
       promotionThumbnailCaption: GAME_INFO_PROMOTION_THUMBNAIL_CAPTION,
+      samsungBrowserGuidance: GAME_INFO_SAMSUNG_BROWSER_GUIDANCE,
       playerName: sideLabels[playerColour],
       playerColour,
       computerDifficulty: computerDifficulty ?? "medium",

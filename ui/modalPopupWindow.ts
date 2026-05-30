@@ -545,6 +545,7 @@ export function showGameInfoModal(content: {
   moveGuidance: string;
   promotionGuidance: string;
   promotionThumbnailCaption: string;
+  samsungBrowserGuidance: string;
   playerName: string;
   playerColour: Colour;
   computerDifficulty: ComputerDifficulty;
@@ -562,6 +563,7 @@ export function showGameInfoModal(content: {
     moveGuidance,
     promotionGuidance,
     promotionThumbnailCaption,
+    samsungBrowserGuidance,
     playerName,
     playerColour,
     computerDifficulty,
@@ -616,6 +618,11 @@ export function showGameInfoModal(content: {
   );
 
   form.insertBefore(promotionSection, actions);
+
+  const samsungBrowserDescription = document.createElement("p");
+  samsungBrowserDescription.className = "setup-dialog__description";
+  samsungBrowserDescription.textContent = samsungBrowserGuidance;
+  form.insertBefore(samsungBrowserDescription, actions);
 
   const gameDetailsSection = document.createElement("section");
   gameDetailsSection.className = "setup-dialog__game-details";
